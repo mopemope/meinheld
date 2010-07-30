@@ -32,7 +32,6 @@ static picoev_loop* main_loop; //main loop
 static PyObject *wsgi_app = NULL; //wsgi app
 
 static PyObject *watchdog = NULL; //watchdog
-static PyObject *watchdog_args = NULL; //watchdog args
 
 static char *log_path = NULL; //access log path
 static int log_fd = -1; //access log
@@ -600,7 +599,6 @@ meinheld_listen(PyObject *self, PyObject *args)
 static void 
 sigint_cb(int signum)
 {
-    printf("Bye.\n");
     loop_done = 0;
 }
 
@@ -657,6 +655,7 @@ meinheld_stop(PyObject *self, PyObject *args)
 static PyObject *
 meinheld_run_loop(PyObject *self, PyObject *args)
 {
+    int i = 0;
     //PyObject *app;
     PyObject *watchdog_result;
     if (!PyArg_ParseTuple(args, "O:run", &wsgi_app))
@@ -667,6 +666,8 @@ meinheld_run_loop(PyObject *self, PyObject *args)
         return NULL;
         
     }
+    
+    Py_INCREF(wsgi_app);
 
     /* init picoev */
     picoev_init(MAX_FDS);
@@ -683,17 +684,19 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     /* loop */
     while (loop_done) {
         picoev_loop_once(main_loop, 10);
-        /*
-        if(watchdog){
-            watchdog_result = PyObject_CallObject(watchdog, watchdog_args);
+        i++;
+        if(watchdog && i > 10){
+            watchdog_result = PyObject_CallFunction(watchdog, NULL);
             if(PyErr_Occurred()){
                 PyErr_Print();
                 PyErr_Clear();
             }
-            Py_DECREF(watchdog_result);
-        }*/
+            Py_XDECREF(watchdog_result);
+            i = 0;
+        }
     }
-    
+
+    Py_DECREF(wsgi_app);
     picoev_destroy_loop(main_loop);
     picoev_deinit();
     clear_start_response();
@@ -701,6 +704,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     if(unix_sock_name){
         unlink(unix_sock_name);
     }
+    printf("Bye.\n");
     Py_RETURN_NONE;
 }
 
@@ -749,12 +753,11 @@ meinheld_set_listen_socket(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-/*
 PyObject *
 meinheld_set_watchdog(PyObject *self, PyObject *args)
 {
-    PyObject *temp, *tempargs;
-    if (!PyArg_ParseTuple(args, "OO:watchdog", &temp, &tempargs))
+    PyObject *temp;
+    if (!PyArg_ParseTuple(args, "O:watchdog", &temp))
         return NULL;
     
     if(!PyCallable_Check(temp)){
@@ -762,9 +765,9 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
         return NULL;
     }
     watchdog = temp;
-    watchdog_args = tempargs;
+    Py_INCREF(watchdog);
     Py_RETURN_NONE;
-}*/
+}
 
 PyObject *
 meinheld_set_process_name(PyObject *self, PyObject *args)
@@ -802,7 +805,7 @@ static PyMethodDef WsMethods[] = {
     {"stop", meinheld_stop, METH_VARARGS, "stop main loop"},
     // support gunicorn 
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
-    //{"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
+    {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
     {"run", meinheld_run_loop, METH_VARARGS, "set wsgi app, run the main loop"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
