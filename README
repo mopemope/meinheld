@@ -46,7 +46,7 @@ CPU : Intel(R) Atom(TM) CPU N270   @ 1.60GHz
 Memoy : 1G
 OS: Ubuntu 10.04
 
-- meinheld 0.2 (example/hello_world.py)
+- meinheld 0.1 (example/hello_world.py)
 
 Requests per second:    2927.62 [#/sec] (mean)
 
