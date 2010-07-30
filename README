@@ -1,0 +1,64 @@
+.. -*- restructuredtext -*-
+
+======================================================
+High performance asynchronous Python WSGI web server 
+======================================================
+
+
+What's this
+---------------------------------
+this is a python wsgi web server.
+
+Thus this is yet an another asynchronous web server like fapws3, tornado.
+
+And meinheld is a WSGI compliant web server.
+
+Require
+---------------------------------
+
+Python > 2.5.
+
+sorry meinheld supported linux only.
+
+
+Install
+---------------------------------
+
+execute: 
+
+> python setup.py install
+
+Performance
+------------------------------
+
+meinheld is used high performance http_parser.
+
+(see http://github.com/ry/http-parser)
+
+and useing high performance event library picoev.
+
+(see http://developer.cybozu.co.jp/kazuho/2009/08/picoev-a-tiny-e.html)
+
+simple benchmark 
+================================
+
+CPU : Intel(R) Atom(TM) CPU N270   @ 1.60GHz 
+Memoy : 1G
+OS: Ubuntu 10.04
+
+- meinheld 0.2 (example/hello_world.py)
+
+Requests per second:    2927.62 [#/sec] (mean)
+
+- fapws3 0.6 (example/fapws3_hello_world.py)
+
+Requests per second:    1293.53 [#/sec] (mean)
+
+sendfile
+===========================
+
+meinheld use sendfile(2), over wgsi.file_wrapper.
+
+
+
+
