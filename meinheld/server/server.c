@@ -332,8 +332,11 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         r = read(cli->fd, buf, sizeof(buf));
         switch (r) {
             case 0: 
-                finish = 1;
-                break;
+                cli->keep_alive = 0;
+                cli->status_code = 503;
+                send_error_page(cli);
+                close_conn(cli, loop);
+                return;
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
@@ -342,6 +345,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     write_error_log(__FILE__, __LINE__); 
                     cli->keep_alive = 0;
                     cli->status_code = 500;
+                    send_error_page(cli);
                     close_conn(cli, loop);
                     return;
                 }
