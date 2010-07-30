@@ -6,7 +6,7 @@
 # Example code from Eventlet sources
 # 
 # gunicorn worker 
-# gunicorn --workers=2 --worker-class="meinheld.gworker.MeinheldWorker" gunicorn_test:app 
+# gunicorn --workers=2 --worker-class="meinheld.gmeinheld.MeinheldWorker" gunicorn_test:app 
 #
 
 def app(environ, start_response):
