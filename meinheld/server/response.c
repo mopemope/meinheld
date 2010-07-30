@@ -6,6 +6,8 @@
 
 #define MSG_500 ("HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/html\r\nServer:  " SERVER "\r\n\r\n<html><head><title>500 Internal Server Error</head><h1>Internal Server Error</h1><p>The server encountered an internal error and was unable to complete your request.  Either the server is overloaded or there is an error in the application.</p></html>\n")
 
+#define MSG_503 ("HTTP/1.0 503 Service Unavailable\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Service Unavailable</head><body><p>Service Unavailable.</p></body></html>")
+
 #define MSG_400 ("HTTP/1.0 400 Bad Request\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Bad Request</head><body><p>Bad Request.</p></body></html>")
 
 #define MSG_411 ("HTTP/1.0 411 Length Required\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Length Required</head><body><p>Length Required.</p></body></html>")
@@ -69,6 +71,9 @@ send_error_page(client_t *client)
             break;
         case 413:
             blocking_write(client, MSG_413, sizeof(MSG_413) -1);
+            break;
+        case 503:
+            blocking_write(client, MSG_503, sizeof(MSG_503) -1);
             break;
         default:
             //Internal Server Error
