@@ -71,8 +71,6 @@ simple benchmark
 
 simple hello_world bench::
 
-    from meinheld import server
-
     def hello_world(environ, start_response):
         status = '200 OK'
         res = "Hello world!"
