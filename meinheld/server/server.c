@@ -331,12 +331,15 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }
         r = read(cli->fd, buf, sizeof(buf));
         switch (r) {
+            /*
+            read 0 occured overload
             case 0: 
                 cli->keep_alive = 0;
                 cli->status_code = 503;
                 send_error_page(cli);
                 close_conn(cli, loop);
                 return;
+            */
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
