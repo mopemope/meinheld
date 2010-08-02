@@ -17,3 +17,10 @@ class MeinheldWorker(Worker):
         server.set_listen_socket(fd)
         server.run(self.wsgi)
 
+    def handle_quit(self, sig, frame):
+        server.stop()
+
+    def handle_exit(self, sig, frame):
+        server.stop()
+        sys.exit(0)
+
