@@ -718,6 +718,17 @@ FileWrapperObject_new(PyObject *self, PyObject *filelike, size_t blksize)
     return (PyObject *)f;
 }
 
+static PyObject * 
+FileWrapperObject_iter(FileWrapperObject* self)
+{
+    PyObject *iterator = PyObject_GetIter(self->filelike);
+    if (iterator == NULL) {
+        PyErr_SetString(PyExc_TypeError, "file-like object must be a iterable object");
+        return NULL;
+    }
+    return (PyObject *)iterator;
+}
+
 static void
 FileWrapperObject_dealloc(FileWrapperObject* self)
 {
@@ -838,7 +849,7 @@ PyTypeObject FileWrapperType = {
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
     0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
+    FileWrapperObject_iter,		               /* tp_iter */
     0,		               /* tp_iternext */
     FileWrapperObject_method,             /* tp_methods */
     0,             /* tp_members */
