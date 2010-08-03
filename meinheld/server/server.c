@@ -504,7 +504,6 @@ inet_listen(void)
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
-    setup_server_env();
     return 1;
 }
 
@@ -564,7 +563,6 @@ unix_listen(char *sock_name)
         return -1;
     }
     unix_sock_name = sock_name;
-    setup_server_env();
     return 1;
 }
 
@@ -675,6 +673,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     }
     
     Py_INCREF(wsgi_app);
+    setup_server_env();
 
     /* init picoev */
     picoev_init(MAX_FDS);
@@ -704,8 +703,11 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     }
 
     Py_DECREF(wsgi_app);
+    Py_XDECREF(watchdog);
+    
     picoev_destroy_loop(main_loop);
     picoev_deinit();
+    
     clear_start_response();
     clear_static_env();
     if(unix_sock_name){
@@ -756,7 +758,6 @@ meinheld_set_listen_socket(PyObject *self, PyObject *args)
         return NULL;
     }
     listen_sock = temp_sock;
-    setup_server_env();
     Py_RETURN_NONE;
 }
 
