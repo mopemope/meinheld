@@ -719,8 +719,9 @@ FileWrapperObject_new(PyObject *self, PyObject *filelike, size_t blksize)
 }
 
 static PyObject * 
-FileWrapperObject_iter(FileWrapperObject* self)
+FileWrapperObject_iter(PyObject *o)
 {
+    FileWrapperObject *self = (FileWrapperObject *)o;
     PyObject *iterator = PyObject_GetIter(self->filelike);
     if (iterator == NULL) {
         PyErr_SetString(PyExc_TypeError, "file-like object must be a iterable object");
@@ -784,7 +785,7 @@ static PyMethodDef FileWrapperObject_method[] = {
 
 PyTypeObject ResponseObjectType = {
 	PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    "meinheld.response",             /*tp_name*/
+    "meinheld.start_response",             /*tp_name*/
     sizeof(ResponseObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)ResponseObject_dealloc, /*tp_dealloc*/
@@ -803,7 +804,7 @@ PyTypeObject ResponseObjectType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
-    "wsgi_response ",           /* tp_doc */
+    "wsgi start_response ",           /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
@@ -844,7 +845,7 @@ PyTypeObject FileWrapperType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
-    "wsgi_file_wrapperr ",           /* tp_doc */
+    "wsgi file_wrapper",           /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
