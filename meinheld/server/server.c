@@ -43,6 +43,8 @@ int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
 
+static PyObject *continue_key;
+
 static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
@@ -821,8 +823,13 @@ static PyMethodDef WsMethods[] = {
 PyMODINIT_FUNC
 initserver(void)
 {
-    (void) Py_InitModule("meinheld.server", WsMethods);
+    PyObject *m = Py_InitModule("meinheld.server", WsMethods);
     PyType_Ready(&FileWrapperType);
+
+    continue_key = Py_BuildValue("i", -1);
+	PyModule_AddObject(m, "CONTINUE", continue_key);
+    Py_INCREF(continue_key);
+
 }
 
 
