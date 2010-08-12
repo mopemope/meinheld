@@ -50,6 +50,9 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 static void
 w_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
+static inline void
+resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop);
+
 
 static inline int
 setsig(int sig, void* handler)
@@ -164,24 +167,17 @@ close_conn(client_t *cli, picoev_loop* loop)
 
 }
 
-
 static inline int
-process_wsgi_app(client_t *cli)
+process_resume_wsgi_app(ClientObject *pyclient)
 {
-    PyObject *args = NULL, *start = NULL, *res = NULL;
+    PyObject *start = NULL, *res = NULL;
+
+    client_t *client = pyclient->client;
+
+    res = PyGreenlet_Switch(pyclient->greenlet, NULL, NULL);
     
-    start = create_start_response(cli);
-
-    if(!start)
-        return 0;
-    args = Py_BuildValue("(OO)", cli->environ, start);
-
-    res = PyObject_CallObject(wsgi_app, args);
-    Py_DECREF(args);
-    
-
     //check response & Py_ErrorOccued
-    if(cli->response && cli->response == Py_None){
+    if(res && res == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
     }
 
@@ -195,6 +191,44 @@ process_wsgi_app(client_t *cli)
         return 0;
     }
 
+    client->response = res;
+    //next send response 
+    return 1;
+    
+}
+
+static inline int
+process_wsgi_app(client_t *cli)
+{
+    PyObject *args = NULL, *start = NULL, *res = NULL;
+    
+    start = create_start_response(cli);
+
+    if(!start){
+        return -1;
+    }
+    args = Py_BuildValue("(OO)", cli->environ, start);
+
+    res = PyObject_CallObject(wsgi_app, args);
+    Py_DECREF(args);
+    
+
+    //check response & Py_ErrorOccued
+    if(res && res == Py_None){
+        PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
+    }
+
+    if (PyErr_Occurred()){ 
+        write_error_log(__FILE__, __LINE__);
+        return -1;
+    }
+    
+    if(PyInt_Check(res)){
+        // suspend process
+        return 0;
+    }
+
+    //next send response 
     cli->response = res;
     
     return 1;
@@ -204,9 +238,11 @@ process_wsgi_app(client_t *cli)
 static void
 resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
-    client_t *client = ( client_t *)(cb_arg);
+    ClientObject *pyclient = (ClientObject *)(cb_arg);
+    client_t *client = pyclient->client;
     picoev_del(loop, client->fd);
     // resume
+    resume_wsgi_app(pyclient, loop);
 }
 
 static void
@@ -237,6 +273,49 @@ w_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             //ok or die
             close_conn(client, loop);
         }
+    }
+}
+
+static inline void
+resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
+{
+    int ret;
+    client_t *client = pyclient->client;
+    ret = process_resume_wsgi_app(pyclient);
+    switch(ret){
+        case -1:
+            //Internal Server Error
+            client->bad_request_code = 500;
+            send_error_page(client);
+            close_conn(client, loop);
+            return;
+        case 0:
+            // suspend
+            return;
+        default:
+            pyclient->client = NULL;
+            break;
+    }
+    
+    ret = response_start(client);
+    switch(ret){
+        case -1:
+            // Internal Server Error
+            client->bad_request_code = 500;
+            send_error_page(client);
+            close_conn(client, loop);
+            return;
+        case 0:
+            // continue
+            // set callback
+#ifdef DEBUG
+            printf("set write callback %d \n", ret);
+#endif
+            picoev_add(loop, client->fd, PICOEV_WRITE, WRITE_TIMEOUT_SECS, w_callback, (void *)client);
+            return;
+        default:
+            // send OK
+            close_conn(client, loop);
     }
 }
 
@@ -836,11 +915,14 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O:resume_client", &temp)){
         return NULL;
     }
-    //TODO check type
-    pyclient = (ClientObject *)temp;
-    client = pyclient->client;
+    //TODO check client type
 
-    picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)client);
+    pyclient = (ClientObject *)temp;
+    if(pyclient->client){
+        client = pyclient->client;
+
+        picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)pyclient);
+    }
     Py_RETURN_NONE;
 }
 
