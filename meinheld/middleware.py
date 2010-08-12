@@ -4,8 +4,8 @@ CONTINUATION_KEY = 'meinheld.continuation'
 
 class Continuation(object):
 
-    def __init__(self, cothread):
-        self._greenlet = cothread
+    def __init__(self, g):
+        self._greenlet = g
 
     def suspend(self):
         parent = self._greenlet.parent
