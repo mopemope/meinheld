@@ -8,6 +8,10 @@ typedef struct {
     PyObject_HEAD
     client_t *client;
     PyGreenlet *greenlet;
+    PyObject *args;
+    PyObject *kwargs;
+    uint8_t suspended;
+    uint8_t resumed;
 } ClientObject;
 
 extern PyTypeObject ClientObjectType;

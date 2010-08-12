@@ -10,7 +10,10 @@ ClientObject_New(client_t* client)
     }
     o->client = client;
     o->greenlet = NULL;
-    
+    o->args = NULL;
+    o->kwargs = NULL;
+    o->suspended = 0;    
+    o->resumed = 0;    
     return (PyObject *)o;
 }
 

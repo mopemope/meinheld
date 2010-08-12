@@ -10,10 +10,10 @@ class Continuation(object):
         self.client = client
 
     def suspend(self):
-        server._suspend_client(self.client)
+        return server._suspend_client(self.client)
     
-    def resume(self):
-        server._resume_client(self.client)
+    def resume(self, *args, **kwargs):
+        return server._resume_client(self.client, args, kwargs)
         
 
 class SpawnMiddleware(object):
