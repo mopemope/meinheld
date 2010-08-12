@@ -6,13 +6,11 @@ CONTINUATION_KEY = 'meinheld.continuation'
 
 class Continuation(object):
 
-    def __init__(self, client, g):
-        self._greenlet = g
+    def __init__(self, client):
         self.client = client
 
     def suspend(self):
-        parent = self._greenlet.parent
-        return parent.switch(-1)
+        server._suspend_client(self.client)
     
     def resume(self):
         server._resume_client(self.client)
@@ -29,7 +27,7 @@ class SpawnMiddleware(object):
         client = environ[CLIENT_KEY]
         client.set_greenlet(g)
 
-        c = Continuation(client, g)
+        c = Continuation(client)
         environ[CONTINUATION_KEY] = c
         return g.switch(environ, start_response)
 
