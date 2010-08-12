@@ -182,8 +182,11 @@ process_resume_wsgi_app(ClientObject *pyclient)
     old_client = start_response->cli;
     start_response->cli = client;
     
-    res = PyGreenlet_Switch(pyclient->greenlet, NULL, NULL);
+    res = PyGreenlet_Switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
     start_response->cli = old_client;
+    
+    Py_XDECREF(pyclient->args);
+    Py_XDECREF(pyclient->kwargs);
 
     //check response & Py_ErrorOccued
     if(res && res == Py_None){
@@ -252,6 +255,7 @@ resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     picoev_del(loop, client->fd);
     // resume
     resume_wsgi_app(pyclient, loop);
+    pyclient->resumed = 0;
 }
 
 static void
@@ -928,7 +932,8 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     //TODO check client type
 
     pyclient = (ClientObject *)temp;
-    if(pyclient->client && pyclient->greenlet){
+    if(pyclient->client && pyclient->greenlet && !(pyclient->suspended)){
+        pyclient->suspended = 1;
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
         return PyGreenlet_Switch(parent, switch_value, NULL);
     }
@@ -938,19 +943,29 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
 PyObject *
 meinheld_resume_client(PyObject *self, PyObject *args)
 {
-    PyObject *temp;
+    PyObject *temp, *switch_args, *switch_kwargs;
     ClientObject *pyclient;
     client_t *client;
 
-    if (!PyArg_ParseTuple(args, "O:_resume_client", &temp)){
+    if (!PyArg_ParseTuple(args, "O|OO:_resume_client", &temp, &switch_args, &switch_kwargs)){
         return NULL;
     }
     //TODO check client type
 
     pyclient = (ClientObject *)temp;
-    if(pyclient->client && pyclient->greenlet){
+    if(pyclient->client && pyclient->greenlet && !pyclient->resumed){
+        if(switch_args){
+            pyclient->args = switch_args;
+            Py_INCREF(pyclient->args);
+        }
+        if(switch_kwargs){
+            pyclient->kwargs = switch_kwargs;
+            Py_INCREF(pyclient->kwargs);
+        }
         client = pyclient->client;
 
+        pyclient->suspended = 0;
+        pyclient->resumed = 1;
         picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)pyclient);
     }
     Py_RETURN_NONE;
