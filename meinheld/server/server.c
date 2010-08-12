@@ -174,10 +174,17 @@ process_resume_wsgi_app(ClientObject *pyclient)
 {
     PyObject *res = NULL;
 
+    client_t *old_client;
     client_t *client = pyclient->client;
-
-    res = PyGreenlet_Switch(pyclient->greenlet, NULL, NULL);
     
+    //swap bind client_t
+
+    old_client = start_response->cli;
+    start_response->cli = client;
+    
+    res = PyGreenlet_Switch(pyclient->greenlet, NULL, NULL);
+    start_response->cli = old_client;
+
     //check response & Py_ErrorOccued
     if(res && res == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
