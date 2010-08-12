@@ -35,6 +35,8 @@ typedef struct {
 extern PyTypeObject ResponseObjectType;
 extern PyTypeObject FileWrapperType;
 
+extern ResponseObject *start_response;
+
 PyObject * create_start_response(client_t *cli);
 PyObject * file_wrapper(PyObject *self, PyObject *args);
 

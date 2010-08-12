@@ -14,6 +14,8 @@
 
 #define MSG_413 ("HTTP/1.0 413 Request Entity Too Large\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Request Entity Too Large</head><body><p>Request Entity Too Large.</p></body></html>")
 
+ResponseObject *start_response = NULL;
+
 static inline int 
 blocking_write(client_t *client, char *data, size_t len)
 {
@@ -588,10 +590,6 @@ response_start(client_t *client)
     }
     return ret;
 }
-
-
-
-static ResponseObject *start_response = NULL;
 
 inline void
 setup_start_response(void)
