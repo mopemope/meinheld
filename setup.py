@@ -35,6 +35,9 @@ setup(name='meinheld',
     license='BSD',
     platforms='Linux',
     packages= ['meinheld'],
+    install_requires=[
+        'greenlet>=0.3.1',
+    ],
     ext_modules = [
         Extension('meinheld.server',
             sources=['meinheld/server/server.c', 'meinheld/server/picoev_epoll.c',
