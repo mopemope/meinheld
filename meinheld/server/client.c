@@ -1,4 +1,5 @@
 #include "client.h"
+#include "greenlet.h"
 
 inline PyObject* 
 ClientObject_New(client_t* client)
@@ -8,15 +9,48 @@ ClientObject_New(client_t* client)
         return NULL;
     }
     o->client = client;
+    o->greenlet = NULL;
+    
     return (PyObject *)o;
 }
 
-static void
+static inline void
 ClientObject_dealloc(ClientObject* self)
 {
     self->client = NULL;
+    Py_XDECREF(self->greenlet);
     PyObject_DEL(self);
 }
+
+static inline PyObject *
+ClientObject_set_greenlet(ClientObject *self, PyObject *args)
+{
+    PyObject *temp;
+
+    if (!PyArg_ParseTuple(args, "O:set_greenlet", &temp)){
+        return NULL;
+    }
+    if(!PyGreenlet_Check(temp)){
+        return NULL;
+    }
+    Py_INCREF(temp);
+    self->greenlet = (PyGreenlet *)temp;
+    Py_RETURN_NONE;
+}
+
+
+static PyMethodDef ClientObject_method[] = {
+    { "set_greenlet",      (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0 },
+    { NULL, NULL}
+};
+
+/*
+static PyMemberDef ClientObject_members[] = {
+    {"_greenlet", T_OBJECT_EX, offsetof(ClientObject, greenlet), 0, "greenlet"},
+    {NULL}
+};*/
+
+
 
 PyTypeObject ClientObjectType = {
 	PyVarObject_HEAD_INIT(&PyType_Type, 0)
@@ -45,9 +79,9 @@ PyTypeObject ClientObjectType = {
     0,		               /* tp_richcompare */
     0,		               /* tp_weaklistoffset */
     0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    0,             /* tp_methods */
-    0,             /* tp_members */
+    0,		                   /* tp_iternext */
+    ClientObject_method,        /* tp_methods */
+    0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
@@ -58,3 +92,9 @@ PyTypeObject ClientObjectType = {
     0,                         /* tp_alloc */
     0,                           /* tp_new */
 };
+
+inline void 
+setup_client(void)
+{
+    PyGreenlet_Import();
+}

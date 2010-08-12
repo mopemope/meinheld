@@ -23,6 +23,8 @@
 #include "request.h"
 #include "http_parser.h"
 
+#include "greenlet.h"
+
 #define SERVER "meinheld/0.1.2"
 
 typedef enum {

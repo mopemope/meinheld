@@ -202,6 +202,14 @@ process_wsgi_app(client_t *cli)
 }
 
 static void
+resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+{
+    client_t *client = ( client_t *)(cb_arg);
+    picoev_del(loop, client->fd);
+    // resume
+}
+
+static void
 w_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     client_t *client = ( client_t *)(cb_arg);
@@ -458,7 +466,9 @@ setup_server_env(void)
     cache_time_init();
     setup_static_env(server_name, server_port);
     setup_start_response();
+    setup_client();
     PycString_IMPORT;
+    PyGreenlet_Import();
 }
 
 static inline int 
@@ -816,6 +826,23 @@ meinheld_set_process_name(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyObject *
+meinheld_resume_client(PyObject *self, PyObject *args)
+{
+    PyObject *temp;
+    ClientObject *pyclient;
+    client_t *client;
+
+    if (!PyArg_ParseTuple(args, "O:resume_client", &temp)){
+        return NULL;
+    }
+    //TODO check type
+    pyclient = (ClientObject *)temp;
+    client = pyclient->client;
+
+    picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)client);
+    Py_RETURN_NONE;
+}
 
 static PyMethodDef WsMethods[] = {
     {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
@@ -831,6 +858,8 @@ static PyMethodDef WsMethods[] = {
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
     {"run", meinheld_run_loop, METH_VARARGS, "set wsgi app, run the main loop"},
+    // green
+    {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
