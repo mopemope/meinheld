@@ -604,7 +604,7 @@ clear_start_response(void)
 }
 
 
-PyObject *  
+inline PyObject *  
 create_start_response(client_t *cli)
 {
     /*
@@ -754,7 +754,7 @@ FileWrapperObject_close(FileWrapperObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-PyObject *
+inline PyObject *
 file_wrapper(PyObject *self, PyObject *args)
 {
     PyObject *filelike = NULL;
@@ -767,7 +767,7 @@ file_wrapper(PyObject *self, PyObject *args)
     return FileWrapperObject_new(self, filelike, blksize);
 }
 
-int 
+inline int 
 CheckFileWrapper(PyObject *obj)
 {
     if (obj->ob_type != &FileWrapperType){
