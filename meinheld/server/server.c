@@ -43,7 +43,6 @@ int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
 
-static PyObject *continue_key;
 
 static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
@@ -169,17 +168,17 @@ close_conn(client_t *cli, picoev_loop* loop)
 static inline int
 process_wsgi_app(client_t *cli)
 {
-    PyObject *args = NULL, *start = NULL;
+    PyObject *args = NULL, *start = NULL, *res = NULL;
     
     start = create_start_response(cli);
 
     if(!start)
         return 0;
     args = Py_BuildValue("(OO)", cli->environ, start);
-    cli->response = PyObject_CallObject(wsgi_app, args);
-    
-    Py_DECREF(args);
 
+    res = PyObject_CallObject(wsgi_app, args);
+    Py_DECREF(args);
+    
     //check response & Py_ErrorOccued
     if(cli->response && cli->response == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
@@ -187,8 +186,15 @@ process_wsgi_app(client_t *cli)
 
     if (PyErr_Occurred()){ 
         write_error_log(__FILE__, __LINE__);
+        return -1;
+    }
+    
+    if(PyInt_Check(res)){
+        // suspend process
         return 0;
     }
+
+    cli->response = res;
     
     return 1;
     
@@ -229,12 +235,19 @@ static inline void
 call_wsgi_app(client_t *client, picoev_loop* loop)
 {
     int ret;
-    if(!process_wsgi_app(client)){
-        //Internal Server Error
-        client->bad_request_code = 500;
-        send_error_page(client);
-        close_conn(client, loop);
-        return;
+    ret = process_wsgi_app(client);
+    switch(ret){
+        case -1:
+            //Internal Server Error
+            client->bad_request_code = 500;
+            send_error_page(client);
+            close_conn(client, loop);
+            return;
+        case 0:
+            // suspend
+            return;
+        default:
+            break;
     }
     
     ret = response_start(client);
@@ -825,10 +838,6 @@ initserver(void)
 {
     PyObject *m = Py_InitModule("meinheld.server", WsMethods);
     PyType_Ready(&FileWrapperType);
-
-    continue_key = Py_BuildValue("i", -1);
-	PyModule_AddObject(m, "CONTINUE", continue_key);
-    Py_INCREF(continue_key);
 
 }
 
