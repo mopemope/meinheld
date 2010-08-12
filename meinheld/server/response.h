@@ -37,10 +37,14 @@ extern PyTypeObject FileWrapperType;
 
 extern ResponseObject *start_response;
 
-PyObject * create_start_response(client_t *cli);
-PyObject * file_wrapper(PyObject *self, PyObject *args);
+inline PyObject * 
+create_start_response(client_t *cli);
 
-int CheckFileWrapper(PyObject *obj);
+inline PyObject * 
+file_wrapper(PyObject *self, PyObject *args);
+
+inline int 
+CheckFileWrapper(PyObject *obj);
 
 inline int
 response_start(client_t *client);
@@ -54,7 +58,7 @@ setup_start_response(void);
 inline void
 clear_start_response(void);
 
-void
+inline void
 send_error_page(client_t *client);
 
 
