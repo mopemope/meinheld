@@ -22,4 +22,7 @@ ClientObject_New(client_t* client);
 inline void 
 setup_client(void);
 
+inline int 
+CheckClientObject(PyObject *obj);
+
 #endif

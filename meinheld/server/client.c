@@ -1,6 +1,15 @@
 #include "client.h"
 #include "greenlet.h"
 
+inline int 
+CheckClientObject(PyObject *obj)
+{
+    if (obj->ob_type != &ClientObjectType){
+        return 0;
+    }
+    return 1;
+}
+
 inline PyObject* 
 ClientObject_New(client_t* client)
 {

@@ -929,7 +929,12 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O:_suspend_client", &temp)){
         return NULL;
     }
-    //TODO check client type
+    
+    // check client object
+    if(!CheckClientObject(temp)){
+        PyErr_SetString(PyExc_TypeError, "must be a client object");
+        return NULL;
+    }
 
     pyclient = (ClientObject *)temp;
     if(pyclient->client && pyclient->greenlet && !(pyclient->suspended)){
@@ -950,7 +955,12 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O|OO:_resume_client", &temp, &switch_args, &switch_kwargs)){
         return NULL;
     }
-    //TODO check client type
+
+    // check client object
+    if(!CheckClientObject(temp)){
+        PyErr_SetString(PyExc_TypeError, "must be a client object");
+        return NULL;
+    }
 
     pyclient = (ClientObject *)temp;
     if(pyclient->client && pyclient->greenlet && !pyclient->resumed){
