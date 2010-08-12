@@ -11,7 +11,7 @@
 #include "http_request_parser.h"
 #include "response.h"
 #include "log.h"
-
+#include "client.h"
 
 #define MAX_FDS 1024 * 8
 #define ACCEPT_TIMEOUT_SECS 1
@@ -179,6 +179,7 @@ process_wsgi_app(client_t *cli)
     res = PyObject_CallObject(wsgi_app, args);
     Py_DECREF(args);
     
+
     //check response & Py_ErrorOccued
     if(cli->response && cli->response == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
@@ -836,8 +837,9 @@ static PyMethodDef WsMethods[] = {
 PyMODINIT_FUNC
 initserver(void)
 {
-    PyObject *m = Py_InitModule("meinheld.server", WsMethods);
+    (void)Py_InitModule("meinheld.server", WsMethods);
     PyType_Ready(&FileWrapperType);
+    PyType_Ready(&ClientObjectType);
 
 }
 

@@ -614,7 +614,7 @@ create_start_response(client_t *cli)
         start_response->cli = cli;
         return (PyObject *)start_response;
     }
-    yystart_response = PyObject_NEW(ResponseObject, &ResponseObjectType);
+    start_response = PyObject_NEW(ResponseObject, &ResponseObjectType);
     if(start_response == NULL)
         return NULL;
     */

@@ -1,6 +1,6 @@
 #include "http_request_parser.h"
 #include "response.h"
-
+#include "client.h"
 #include "cStringIO.h"
 
 
@@ -540,6 +540,11 @@ headers_complete_cb (http_parser *p)
     PyMem_Free(req);
     client->req = NULL;
     client->body_length = p->content_length;
+    
+    //keep client data
+    obj = ClientObject_New(client);
+    PyDict_SetItemString(env, "meinheld.client", obj);
+    Py_DECREF(obj);
 
     return 0;
 }
