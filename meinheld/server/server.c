@@ -43,6 +43,8 @@ int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
 
+static PyObject *switch_value;
+
 
 static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
@@ -170,7 +172,7 @@ close_conn(client_t *cli, picoev_loop* loop)
 static inline int
 process_resume_wsgi_app(ClientObject *pyclient)
 {
-    PyObject *start = NULL, *res = NULL;
+    PyObject *res = NULL;
 
     client_t *client = pyclient->client;
 
@@ -548,6 +550,7 @@ setup_server_env(void)
     setup_client();
     PycString_IMPORT;
     PyGreenlet_Import();
+    switch_value = Py_BuildValue("(i)", -1);
 }
 
 static inline int 
@@ -906,19 +909,39 @@ meinheld_set_process_name(PyObject *self, PyObject *args)
 }
 
 PyObject *
+meinheld_suspend_client(PyObject *self, PyObject *args)
+{
+    PyObject *temp;
+    ClientObject *pyclient;
+    PyGreenlet *parent;
+
+    if (!PyArg_ParseTuple(args, "O:_suspend_client", &temp)){
+        return NULL;
+    }
+    //TODO check client type
+
+    pyclient = (ClientObject *)temp;
+    if(pyclient->client && pyclient->greenlet){
+        parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
+        return PyGreenlet_Switch(parent, switch_value, NULL);
+    }
+    Py_RETURN_NONE;
+}
+
+PyObject *
 meinheld_resume_client(PyObject *self, PyObject *args)
 {
     PyObject *temp;
     ClientObject *pyclient;
     client_t *client;
 
-    if (!PyArg_ParseTuple(args, "O:resume_client", &temp)){
+    if (!PyArg_ParseTuple(args, "O:_resume_client", &temp)){
         return NULL;
     }
     //TODO check client type
 
     pyclient = (ClientObject *)temp;
-    if(pyclient->client){
+    if(pyclient->client && pyclient->greenlet){
         client = pyclient->client;
 
         picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)pyclient);
@@ -941,6 +964,7 @@ static PyMethodDef WsMethods[] = {
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
     {"run", meinheld_run_loop, METH_VARARGS, "set wsgi app, run the main loop"},
     // green
+    {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
