@@ -942,6 +942,12 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_ValueError, "greenlet is not set");
         return NULL;
     }
+
+    if(pyclient->resumed == 1){
+        //call later
+        PyErr_SetString(PyExc_Exception, "not called resume ");
+        return NULL;
+    }
     
     if(pyclient->client && !(pyclient->suspended)){
         pyclient->suspended = 1;
