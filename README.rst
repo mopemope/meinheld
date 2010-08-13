@@ -10,7 +10,7 @@ And meinheld is a WSGI compliant web server.
 Require
 ---------------------------------
 
-meinheld requires **Python 2.x >= 2.5**.
+meinheld requires **Python 2.x >= 2.5**. **greenlet >= 0.3.1**.
 
 sorry meinheld supported linux only.
 
@@ -54,6 +54,41 @@ with gunicorn. user worker class "meinheld.gmeinheld.MeinheldWorker"::
     
     $ gunicorn --workers=2 --worker-class="meinheld.gmeinheld.MeinheldWorker" gunicorn_test:app
 
+Continuation
+---------------------------------
+
+meinheld provide simple continuation API (based on greenlet).
+
+to enable continuation, use SpawnMiddleware.
+
+Continuation Object has suspend and resume method.
+
+
+example ::
+
+    from meinheld import server
+    from meinheld import middleware
+
+    def hello_world(environ, start_response):
+        status = '200 OK'
+        res = "Hello world!"
+        response_headers = [('Content-type','text/plain'),('Content-Length',str(len(res)))]
+        start_response(status, response_headers)
+        c = environ.get(middleware.CONTINUATION_KEY, None)
+        waiters.append(c)
+        c.suspend()
+        
+        ...
+
+        for c in waiters:
+            c.resume()
+        return [res]
+
+
+    server.listen(("0.0.0.0", 8000))
+    server.run(middleware.SpawnMiddleware(hello_world))
+
+For more info see http://github.com/mopemope/meinheld/tree/master/example/chat/
 
 Performance
 ------------------------------
