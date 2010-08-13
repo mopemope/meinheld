@@ -1,0 +1,5 @@
+0.2
+======
+* support greenlet continuation (use greenlet C/API. suspend and resume support)
+* add client object to wsgi environ
+
