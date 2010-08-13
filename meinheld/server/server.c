@@ -937,10 +937,19 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     }
 
     pyclient = (ClientObject *)temp;
-    if(pyclient->client && pyclient->greenlet && !(pyclient->suspended)){
+    
+    if(!pyclient->greenlet){
+        PyErr_SetString(PyExc_ValueError, "greenlet is not set");
+        return NULL;
+    }
+    
+    if(pyclient->client && !(pyclient->suspended)){
         pyclient->suspended = 1;
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
         return PyGreenlet_Switch(parent, switch_value, NULL);
+    }else{
+        PyErr_SetString(PyExc_Exception, "already suspended");
+        return NULL;
     }
     Py_RETURN_NONE;
 }
@@ -963,7 +972,19 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     }
 
     pyclient = (ClientObject *)temp;
-    if(pyclient->client && pyclient->greenlet && !pyclient->resumed){
+    
+    if(!pyclient->greenlet){
+        PyErr_SetString(PyExc_ValueError, "greenlet is not set");
+        return NULL;
+    }
+
+    if(!pyclient->suspended){
+        // not suspend
+        PyErr_SetString(PyExc_Exception, "not suspended");
+        return NULL;
+    }
+
+    if(pyclient->client && !pyclient->resumed){
         if(switch_args){
             pyclient->args = switch_args;
             Py_INCREF(pyclient->args);
@@ -977,6 +998,9 @@ meinheld_resume_client(PyObject *self, PyObject *args)
         pyclient->suspended = 0;
         pyclient->resumed = 1;
         picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)pyclient);
+    }else{
+        PyErr_SetString(PyExc_Exception, "already resumed");
+        return NULL;
     }
     Py_RETURN_NONE;
 }
