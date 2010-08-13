@@ -59,9 +59,9 @@ Continuation
 
 meinheld provide simple continuation API (based on greenlet).
 
-to enable continuation, use SpawnMiddleware.
+to enable continuation, use SpawnMiddleware. get Continuation from wsgi environ.
 
-Continuation Object has suspend and resume method.
+Continuation Object has couple method, suspend and resume.
 
 
 example ::
@@ -69,20 +69,24 @@ example ::
     from meinheld import server
     from meinheld import middleware
 
-    def hello_world(environ, start_response):
-        status = '200 OK'
-        res = "Hello world!"
-        response_headers = [('Content-type','text/plain'),('Content-Length',str(len(res)))]
-        start_response(status, response_headers)
+    def app(environ, start_response):
+        ...
+        
+        #get Continuation
         c = environ.get(middleware.CONTINUATION_KEY, None)
-        waiters.append(c)
-        c.suspend()
         
         ...
 
-        for c in waiters:
-            c.resume()
-        return [res]
+        if condtion:
+            waiters.append(c)
+            #suspend 
+            c.suspend()
+        else:
+            for c in waiters:
+                # resume suspend function
+                c.resume()
+
+        ...
 
 
     server.listen(("0.0.0.0", 8000))
@@ -125,13 +129,13 @@ spec
 
 * OS: Ubuntu 10.04
 
-============= =====================
-server        Requests per second
-============= =====================
-meinheld 0.1  2927.62 [#/sec]
-fapws3 0.6    1293.53 [#/sec] 
-gevent 0.13   1174.19 [#/sec]
-============= =====================
+============== =====================
+server         Requests per second
+============== =====================
+meinheld (0.1)  2927.62 [#/sec]
+fapws3 (0.6)    1293.53 [#/sec] 
+gevent (0.13)   1174.19 [#/sec]
+============== =====================
 
 sendfile
 ===========================
