@@ -43,6 +43,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
         return NULL;
     }
     if(!PyGreenlet_Check(temp)){
+        PyErr_SetString(PyExc_TypeError, "must be greenlet object");
         return NULL;
     }
     Py_INCREF(temp);
