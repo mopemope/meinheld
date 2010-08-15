@@ -26,7 +26,7 @@ include_dirs=[]
 
 
 setup(name='meinheld',
-    version="0.2",
+    version="0.2.1dev",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
@@ -38,6 +38,12 @@ setup(name='meinheld',
     install_requires=[
         'greenlet>=0.3.1',
     ],
+    
+    entry_points="""
+
+    [gunicorn.workers]
+    gunicorn_worker=meinheld.gmeinheld:MeinheldWorker
+    """,
     ext_modules = [
         Extension('meinheld.server',
             sources=['meinheld/server/server.c', 'meinheld/server/picoev_epoll.c',
