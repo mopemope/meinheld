@@ -25,7 +25,7 @@
 
 #include "greenlet.h"
 
-#define SERVER "meinheld/0.2"
+#define SERVER "meinheld/0.2.1dev"
 
 typedef enum {
     BODY_TYPE_NONE,
