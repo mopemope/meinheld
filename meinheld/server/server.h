@@ -65,5 +65,6 @@ typedef struct _client {
 
 extern int max_content_length; //max_content_length
 
+extern picoev_loop* main_loop; //main loop
 
 #endif
