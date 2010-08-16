@@ -2,18 +2,18 @@
 
 
 inline int 
-CheckSocketObject(PyObject *obj)
+CheckNSocketObject(PyObject *obj)
 {
-    if (obj->ob_type != &SocketObjectType){
+    if (obj->ob_type != &NSocketObjectType){
         return 0;
     }
     return 1;
 }
 
 inline PyObject* 
-SocketObject_New(int fd)
+NSocketObject_New(int fd)
 {
-    SocketObject *o = PyObject_NEW(SocketObject, &SocketObjectType);
+    NSocketObject *o = PyObject_NEW(NSocketObject, &NSocketObjectType);
     if(o == NULL){
         return NULL;
     }
@@ -22,26 +22,26 @@ SocketObject_New(int fd)
 }
 
 static inline void
-SocketObject_dealloc(SocketObject* self)
+NSocketObject_dealloc(NSocketObject* self)
 {
     PyObject_DEL(self);
 }
 
 
 
-static PyMethodDef SocketObject_method[] = {
+static PyMethodDef NSocketObject_method[] = {
     //{ "set_greenlet",      (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0 },
     { NULL, NULL}
 };
 
 
 
-PyTypeObject SocketObjectType = {
+PyTypeObject NSocketObjectType = {
 	PyVarObject_HEAD_INIT(&PyType_Type, 0)
     "meinheld.client",             /*tp_name*/
-    sizeof(SocketObject), /*tp_basicsize*/
+    sizeof(NSocketObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)SocketObject_dealloc, /*tp_dealloc*/
+    (destructor)NSocketObject_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
@@ -64,7 +64,7 @@ PyTypeObject SocketObjectType = {
     0,		               /* tp_weaklistoffset */
     0,		               /* tp_iter */
     0,		                   /* tp_iternext */
-    SocketObject_method,        /* tp_methods */
+    NSocketObject_method,        /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */

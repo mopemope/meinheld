@@ -7,14 +7,14 @@
 typedef struct {
     PyObject_HEAD
     int fd;
-} SocketObject;
+} NSocketObject;
 
-extern PyTypeObject SocketObjectType;
+extern PyTypeObject NSocketObjectType;
 
 inline PyObject* 
-SocketObject_New(int fd);
+NSocketObject_New(int fd);
 
 inline int 
-CheckSocketObject(PyObject *obj);
+CheckNSocketObject(PyObject *obj);
 
 #endif
