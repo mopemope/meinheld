@@ -28,7 +28,9 @@ static short server_port = 8000;
 static int listen_sock;  // listen socket
 
 static int loop_done; // main loop flag
-static picoev_loop* main_loop; //main loop
+
+picoev_loop* main_loop; //main loop
+
 static PyObject *wsgi_app = NULL; //wsgi app
 
 static PyObject *watchdog = NULL; //watchdog
