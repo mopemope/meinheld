@@ -7,6 +7,10 @@
 typedef struct {
     PyObject_HEAD
     int fd;
+    PyGreenlet *current;
+    buffer *read_buf;
+    buffer *write_buf;
+
 } NSocketObject;
 
 extern PyTypeObject NSocketObjectType;
