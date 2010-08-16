@@ -28,7 +28,6 @@ NSocketObject_dealloc(NSocketObject* self)
 }
 
 
-
 static PyMethodDef NSocketObject_method[] = {
     //{ "set_greenlet",      (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0 },
     { NULL, NULL}
@@ -77,4 +76,9 @@ PyTypeObject NSocketObjectType = {
     0,                           /* tp_new */
 };
 
+inline void 
+setup_nsocket(void)
+{
+    PyGreenlet_Import();
+}
 

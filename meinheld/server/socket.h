@@ -17,4 +17,7 @@ NSocketObject_New(int fd);
 inline int 
 CheckNSocketObject(PyObject *obj);
 
+inline void 
+setup_nsocket(void);
+
 #endif
