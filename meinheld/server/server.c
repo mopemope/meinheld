@@ -12,6 +12,7 @@
 #include "response.h"
 #include "log.h"
 #include "client.h"
+#include "socket.h"
 
 #define MAX_FDS 1024 * 8
 #define ACCEPT_TIMEOUT_SECS 1
@@ -561,6 +562,7 @@ setup_server_env(void)
     setup_static_env(server_name, server_port);
     setup_start_response();
     setup_client();
+    setup_nsocket();
     PycString_IMPORT;
     PyGreenlet_Import();
     switch_value = Py_BuildValue("(i)", -1);
