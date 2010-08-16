@@ -475,7 +475,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             default:
 
 #ifdef DEBUG
-                printf("read request fd %d bufsize %d \n", cli->fd, r);
+                printf("read request fd %d buf_size %d \n", cli->fd, r);
 #endif
                 nread = execute_parse(cli, buf, r);
                 
