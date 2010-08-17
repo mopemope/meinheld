@@ -41,17 +41,15 @@ CheckNSocketObject(PyObject *obj)
 }
 
 inline PyObject* 
-NSocketObject_New(int fd)
+NSocketObject_New(int fd, ClientObject *client)
 {
-    PyGreenlet *current;
     NSocketObject *o = PyObject_NEW(NSocketObject, &NSocketObjectType);
     if(o == NULL){
         return NULL;
     }
-    current = PyGreenlet_GetCurrent();
     o->fd = fd;
-    o->current = current;
-    
+    o->client = client;
+    Py_INCREF(o->client);    
     setup_sock(fd);
     return (PyObject *)o;
 }
@@ -59,6 +57,7 @@ NSocketObject_New(int fd)
 static inline void
 NSocketObject_dealloc(NSocketObject* self)
 {
+    Py_DECREF(self->client);
     PyObject_DEL(self);
 }
 
@@ -68,7 +67,7 @@ write_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
     PyObject *obj;
     NSocketObject *socket = (NSocketObject *)cb_arg;
     buffer *write_buf = socket->write_buf;
-
+    
     if ((events & PICOEV_TIMEOUT) != 0) {
 
     } else if ((events & PICOEV_WRITE) != 0) {
@@ -91,7 +90,7 @@ write_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                     //all done
                     picoev_del(loop, socket->fd);
                     //switch 
-                    PyGreenlet_Switch(socket->current, NULL, NULL);
+                    PyGreenlet_Switch(socket->client->greenlet, NULL, NULL);
                 }
                 break;
         }
@@ -103,15 +102,22 @@ static inline void
 read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     PyObject *obj;
+
     NSocketObject *socket = (NSocketObject *)cb_arg;
     buffer *read_buf = socket->read_buf;
+    
     if ((events & PICOEV_TIMEOUT) != 0) {
 
+        free_buffer(socket->read_buf);
+        resume_inner(loop, (PyObject *)socket->client);
     
     } else if ((events & PICOEV_READ) != 0) {
+        //printf("read \n");
 
         ssize_t r;
         r = read(socket->fd, read_buf->buf, read_buf->len);
+        // update timeout
+        picoev_set_timeout(loop, socket->fd, 5);
         switch (r) {
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
@@ -119,6 +125,7 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 } else { /* fatal error */
                     free_buffer(socket->read_buf);
                     picoev_del(loop, socket->fd);
+                    //PyGreenlet_Throw(socket->client->greenlet, PyExc_IOError, PyString_FromString("fatal io error"), NULL);
                     return;
                 }
                 break;
@@ -130,28 +137,28 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                     picoev_del(loop, socket->fd);
                     //switch 
                     obj = Py_BuildValue("(O)", getPyString(socket->read_buf));
-                    PyGreenlet_Switch(socket->current, obj, NULL);
+                    //PyGreenlet_Switch(socket->client->greenlet, obj, NULL);
                 }
                 break;
         }
     }
 }
 
-inline PyObject * 
+static inline PyObject * 
 read_ready(NSocketObject *socket, ssize_t len)
 {
     PyGreenlet *current, *parent;
 
     socket->read_buf = new_buffer(len, len);
-    picoev_add(main_loop, socket->fd, PICOEV_READ, 0, read_inner, (void *)socket);
+    picoev_add(main_loop, socket->fd, PICOEV_READ, 5, read_inner, (void *)socket);
     
     // switch to hub
-    current = socket->current;
+    current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
-    return PyGreenlet_Switch(parent, NULL, NULL);
+    return PyGreenlet_Switch(parent, switch_value, NULL);
 }
 
-inline PyObject * 
+static inline PyObject * 
 write_ready(NSocketObject *socket, char *buf, ssize_t len)
 {
     PyGreenlet *current, *parent;
@@ -163,13 +170,23 @@ write_ready(NSocketObject *socket, char *buf, ssize_t len)
     picoev_add(main_loop, socket->fd, PICOEV_WRITE, 0, write_inner, (void *)socket);
     
     // switch to hub
-    current = socket->current;
+    current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
     return PyGreenlet_Switch(parent, NULL, NULL);
 }
 
+static inline PyObject * 
+NSocketObject_read(NSocketObject *socket, PyObject *args)
+{
+    ssize_t len; 
+    if (!PyArg_ParseTuple(args, "i:read", &len)){
+        return NULL;
+    }
+    return read_ready(socket, len);
+}
+
 static PyMethodDef NSocketObject_method[] = {
-    //{ "set_greenlet",      (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0 },
+    { "read",      (PyCFunction)NSocketObject_read, METH_VARARGS, 0 },
     { NULL, NULL}
 };
 

@@ -2,12 +2,12 @@
 #define SOCKET_H
 
 #include "server.h"
-
+#include "client.h"
 
 typedef struct {
     PyObject_HEAD
     int fd;
-    PyGreenlet *current;
+    ClientObject *client;
     buffer *read_buf;
     buffer *write_buf;
 
@@ -16,7 +16,7 @@ typedef struct {
 extern PyTypeObject NSocketObjectType;
 
 inline PyObject* 
-NSocketObject_New(int fd);
+NSocketObject_New(int fd, ClientObject *client);
 
 inline int 
 CheckNSocketObject(PyObject *obj);
