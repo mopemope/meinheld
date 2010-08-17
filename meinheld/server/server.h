@@ -19,11 +19,11 @@
 #include <netinet/tcp.h>
 #include <netdb.h>
 
+#include "greenlet.h"
 #include "picoev.h"
 #include "request.h"
 #include "http_parser.h"
 
-#include "greenlet.h"
 
 #define SERVER "meinheld/0.2.1dev"
 

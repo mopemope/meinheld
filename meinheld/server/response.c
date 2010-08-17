@@ -1,5 +1,6 @@
 #include "response.h"
 #include "log.h"
+#include "socket.h"
 
 #define CRLF "\r\n"
 #define DELIM ": "
@@ -85,22 +86,6 @@ send_error_page(client_t *client)
     client->keep_alive = 0;
 }
 
-
-static inline void
-extent_sndbuf(client_t *client)
-{
-    int bufsize = 1024 * 1024 * 2, r;
-    r = setsockopt(client->fd, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
-    assert(r == 0);
-}
-
-static inline void 
-enable_cork(client_t *client)
-{
-    int on = 1, r;
-    r = setsockopt(client->fd, IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
-    assert(r == 0);
-}
 
 
 static inline write_bucket *

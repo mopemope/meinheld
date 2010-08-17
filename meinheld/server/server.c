@@ -70,29 +70,6 @@ setsig(int sig, void* handler)
 }
 
 
-static inline void 
-setup_sock(int fd)
-{
-    int on = 1, r;
-    r = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-    assert(r == 0);
-    r = fcntl(fd, F_SETFL, O_NONBLOCK);
-    assert(r == 0);
-}
-
-
-static inline void 
-disable_cork(client_t *client)
-{
-    int off = 0;
-    int on = 1, r;
-    r = setsockopt(client->fd, IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
-    assert(r == 0);
-
-    r = setsockopt(client->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-    assert(r == 0);
-}
-
 static inline client_t *
 new_client_t(int client_fd, struct sockaddr_in client_addr){
     client_t *client;

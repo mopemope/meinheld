@@ -24,4 +24,13 @@ CheckNSocketObject(PyObject *obj);
 inline void 
 setup_nsocket(void);
 
+inline void 
+setup_sock(int fd);
+
+inline void 
+enable_cork(client_t *client);
+
+inline void 
+disable_cork(client_t *client);
+
 #endif
