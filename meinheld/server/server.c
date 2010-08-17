@@ -153,7 +153,6 @@ static inline int
 process_resume_wsgi_app(ClientObject *pyclient)
 {
     PyObject *res = NULL;
-    PyObject *typ, *val, *tb;
     client_t *old_client;
     client_t *client = pyclient->client;
     
@@ -162,12 +161,9 @@ process_resume_wsgi_app(ClientObject *pyclient)
     old_client = start_response->cli;
     start_response->cli = client;
     
-    if(PyErr_Occurred()){
-        // C code only
-        PyErr_Fetch(&typ, &val, &tb);
-        PyErr_Clear();
+    if(pyclient->err_type){
         //set error
-        res = PyGreenlet_Throw(pyclient->greenlet, typ, val, tb);
+        res = PyGreenlet_Throw(pyclient->greenlet, pyclient->err_type, pyclient->err_val, pyclient->err_tb);
     }else{
         res = PyGreenlet_Switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
     }
@@ -175,6 +171,11 @@ process_resume_wsgi_app(ClientObject *pyclient)
     
     Py_XDECREF(pyclient->args);
     Py_XDECREF(pyclient->kwargs);
+    
+    Py_CLEAR(pyclient->err_type);
+    assert(pyclient->err_type == NULL);
+    Py_CLEAR(pyclient->err_val);
+    Py_CLEAR(pyclient->err_tb);
 
     //check response & PyErr_Occurred
     if(res && res == Py_None){
@@ -236,7 +237,7 @@ process_wsgi_app(client_t *cli)
 }
 
 inline void
-resume_inner(picoev_loop* loop, PyObject *obj)
+switch_wsgi_app(picoev_loop* loop, PyObject *obj)
 {
     ClientObject *pyclient = (ClientObject *)obj;
     client_t *client = pyclient->client;
@@ -250,7 +251,7 @@ static void
 resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
-    resume_inner(loop, pyclient); 
+    switch_wsgi_app(loop, (PyObject *)pyclient); 
 }
 
 
@@ -989,14 +990,11 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     }
 
     if(pyclient->client && !pyclient->resumed){
-        if(switch_args){
-            pyclient->args = switch_args;
-            Py_INCREF(pyclient->args);
-        }
-        if(switch_kwargs){
-            pyclient->kwargs = switch_kwargs;
-            Py_INCREF(pyclient->kwargs);
-        }
+        pyclient->args = switch_args;
+        Py_XINCREF(pyclient->args);
+    
+        pyclient->kwargs = switch_kwargs;
+        Py_XINCREF(pyclient->kwargs);
         client = pyclient->client;
 
         pyclient->suspended = 0;
