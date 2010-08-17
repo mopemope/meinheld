@@ -110,7 +110,8 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 
         free_buffer(socket->read_buf);
         PyErr_SetString(PyExc_IOError, "timeout");
-        resume_inner(loop, (PyObject *)socket->client);
+        catch_error(socket->client);
+        switch_wsgi_app(loop, (PyObject *)socket->client);
     
     } else if ((events & PICOEV_READ) != 0) {
         //printf("read \n");
@@ -125,8 +126,9 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                     break;
                 } else { /* fatal error */
                     free_buffer(socket->read_buf);
-                    picoev_del(loop, socket->fd);
                     PyErr_SetFromErrno(PyExc_IOError);
+                    catch_error(socket->client);
+                    switch_wsgi_app(loop, (PyObject *)socket->client);
                     return;
                 }
                 break;
@@ -139,7 +141,7 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                     //switch 
                     obj = Py_BuildValue("(O)", getPyString(socket->read_buf));
                     socket->client->args = obj;
-                    resume_inner(loop, (PyObject *)socket->client);
+                    switch_wsgi_app(loop, (PyObject *)socket->client);
                 }
                 break;
         }
