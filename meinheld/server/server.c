@@ -153,7 +153,7 @@ static inline int
 process_resume_wsgi_app(ClientObject *pyclient)
 {
     PyObject *res = NULL;
-
+    PyObject *typ, *val, *tb;
     client_t *old_client;
     client_t *client = pyclient->client;
     
@@ -162,13 +162,21 @@ process_resume_wsgi_app(ClientObject *pyclient)
     old_client = start_response->cli;
     start_response->cli = client;
     
-    res = PyGreenlet_Switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
+    if(PyErr_Occurred()){
+        // C code only
+        PyErr_Fetch(&typ, &val, &tb);
+        PyErr_Clear();
+        //set error
+        res = PyGreenlet_Throw(pyclient->greenlet, typ, val, tb);
+    }else{
+        res = PyGreenlet_Switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
+    }
     start_response->cli = old_client;
     
     Py_XDECREF(pyclient->args);
     Py_XDECREF(pyclient->kwargs);
 
-    //check response & Py_ErrorOccued
+    //check response & PyErr_Occurred
     if(res && res == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
     }
