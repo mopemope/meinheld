@@ -51,6 +51,8 @@ NSocketObject_New(int fd)
     current = PyGreenlet_GetCurrent();
     o->fd = fd;
     o->current = current;
+    
+    setup_sock(fd);
     return (PyObject *)o;
 }
 
