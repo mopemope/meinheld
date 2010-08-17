@@ -56,9 +56,15 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static inline PyObject *
+ClientObject_get_fd(ClientObject *self, PyObject *args)
+{
+    return Py_BuildValue("i", self->client->fd);
+}
 
 static PyMethodDef ClientObject_method[] = {
     { "set_greenlet",      (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0 },
+    {"get_fd", (PyCFunction)ClientObject_get_fd, METH_VARARGS, "get fd"},
     { NULL, NULL}
 };
 
