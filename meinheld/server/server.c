@@ -46,7 +46,7 @@ int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
 
-static PyObject *switch_value;
+PyObject *switch_value;
 
 
 static void
@@ -227,16 +227,24 @@ process_wsgi_app(client_t *cli)
     
 }
 
-static void
-resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+inline void
+resume_inner(picoev_loop* loop, PyObject *obj)
 {
-    ClientObject *pyclient = (ClientObject *)(cb_arg);
+    ClientObject *pyclient = (ClientObject *)obj;
     client_t *client = pyclient->client;
     picoev_del(loop, client->fd);
     // resume
     resume_wsgi_app(pyclient, loop);
     pyclient->resumed = 0;
 }
+
+static void
+resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+{
+    ClientObject *pyclient = (ClientObject *)(cb_arg);
+    resume_inner(loop, pyclient); 
+}
+
 
 static void
 w_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
@@ -997,12 +1005,15 @@ PyObject *
 meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
 {
     int fd;
-
-    if (!PyArg_ParseTuple(args, "i:_get_socket_fromfd", &fd)){
+    PyObject *temp;
+    if (!PyArg_ParseTuple(args, "iO:_get_socket_fromfd", &fd, &temp)){
         return NULL;
     }
-
-    return NSocketObject_New(fd);
+    if(!CheckClientObject(temp)){
+        PyErr_SetString(PyExc_TypeError, "must be a client object");
+        return NULL;
+    }
+    return NSocketObject_New(fd, (ClientObject *)temp);
 
 }
 

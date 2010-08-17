@@ -67,4 +67,9 @@ extern int max_content_length; //max_content_length
 
 extern picoev_loop* main_loop; //main loop
 
+extern PyObject* switch_value;
+
+inline void
+resume_inner(picoev_loop* loop, PyObject *obj);
+
 #endif

@@ -53,6 +53,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
     }
     Py_INCREF(temp);
     self->greenlet = (PyGreenlet *)temp;
+
     Py_RETURN_NONE;
 }
 
