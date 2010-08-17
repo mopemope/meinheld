@@ -993,6 +993,20 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyObject *
+meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
+{
+    int fd;
+
+    if (!PyArg_ParseTuple(args, "i:_get_socket_fromfd", &fd)){
+        return NULL;
+    }
+
+    return NSocketObject_New(fd);
+
+}
+
+
 static PyMethodDef WsMethods[] = {
     {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
     {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."},
@@ -1007,9 +1021,11 @@ static PyMethodDef WsMethods[] = {
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
     {"run", meinheld_run_loop, METH_VARARGS, "set wsgi app, run the main loop"},
-    // green
+    // greenlet and continuation
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
+    // io
+    {"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -1019,6 +1035,7 @@ initserver(void)
     (void)Py_InitModule("meinheld.server", WsMethods);
     PyType_Ready(&FileWrapperType);
     PyType_Ready(&ClientObjectType);
+    PyType_Ready(&NSocketObjectType);
 
 }
 
