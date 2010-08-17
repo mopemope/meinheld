@@ -109,6 +109,7 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
     if ((events & PICOEV_TIMEOUT) != 0) {
 
         free_buffer(socket->read_buf);
+        PyErr_SetString(PyExc_IOError, "timeout");
         resume_inner(loop, (PyObject *)socket->client);
     
     } else if ((events & PICOEV_READ) != 0) {
@@ -125,7 +126,7 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 } else { /* fatal error */
                     free_buffer(socket->read_buf);
                     picoev_del(loop, socket->fd);
-                    //PyGreenlet_Throw(socket->client->greenlet, PyExc_IOError, PyString_FromString("fatal io error"), NULL);
+                    PyErr_SetFromErrno(PyExc_IOError);
                     return;
                 }
                 break;
@@ -137,7 +138,8 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                     picoev_del(loop, socket->fd);
                     //switch 
                     obj = Py_BuildValue("(O)", getPyString(socket->read_buf));
-                    //PyGreenlet_Switch(socket->client->greenlet, obj, NULL);
+                    socket->client->args = obj;
+                    resume_inner(loop, (PyObject *)socket->client);
                 }
                 break;
         }
