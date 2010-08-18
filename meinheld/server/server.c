@@ -187,10 +187,8 @@ process_resume_wsgi_app(ClientObject *pyclient)
     }
     
     if(PyInt_Check(res)){
-        if(res == hub_switch_value){
-            // suspend process
-            return 0;
-        }
+        // suspend process
+        return 0;
     }
 
     client->response = res;
@@ -226,10 +224,8 @@ process_wsgi_app(client_t *cli)
     }
     
     if(PyInt_Check(res)){
-        if(res == hub_switch_value){
-            // suspend process
-            return 0;
-        }
+        // suspend process
+        return 0;
     }
 
     //next send response 
@@ -310,6 +306,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             break;
     }
 
+
     if(client->response_closed){
         //closed
         close_conn(client, loop);
@@ -356,6 +353,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
         default:
             break;
     }
+    
     
     if(client->response_closed){
         //closed

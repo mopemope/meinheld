@@ -75,6 +75,7 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
         switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
     } else if ((events & PICOEV_WRITE) != 0) {
         ssize_t r;
+
         r = write(socket->fd, send_buf->buf, send_buf->len);
         //printf("write %d \n", r);
         switch (r) {
@@ -89,6 +90,7 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
+                socket->client->client->response_closed = 1;
                 send_buf->buf += r;
                 send_buf->len -= r;
                 if(!send_buf->len){
@@ -181,8 +183,6 @@ send_ready(NSocketObject *socket, char *buf, ssize_t len)
     write2buf(socket->send_buf, buf, len);
     //printf("start send_buf->buf %p \n", socket->send_buf->buf);
 
-    //socket->send_buf->buf = buf;
-    //socket->send_buf->len = len;
     picoev_add(main_loop, socket->fd, PICOEV_WRITE, 0, send_inner, (void *)socket);
     
     // switch to hub
