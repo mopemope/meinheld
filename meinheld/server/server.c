@@ -309,6 +309,12 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             pyclient->client = NULL;
             break;
     }
+
+    if(client->response_closed){
+        //closed
+        close_conn(client, loop);
+        return;
+    }
     
     ret = response_start(client);
     switch(ret){
@@ -351,6 +357,11 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
             break;
     }
     
+    if(client->response_closed){
+        //closed
+        close_conn(client, loop);
+        return;
+    }
     ret = response_start(client);
     switch(ret){
         case -1:
