@@ -90,7 +90,10 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
-                socket->client->client->response_closed = 1;
+                if(fd == socket->client->client->fd){
+                    // response fd ?
+                    socket->client->client->response_closed = 1;
+                }
                 send_buf->buf += r;
                 send_buf->len -= r;
                 if(!send_buf->len){
