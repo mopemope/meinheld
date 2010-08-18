@@ -187,8 +187,10 @@ process_resume_wsgi_app(ClientObject *pyclient)
     }
     
     if(PyInt_Check(res)){
-        // suspend process
-        return 0;
+        if(PyInt_AS_LONG(res) == -1){
+            // suspend process
+            return 0;
+        }
     }
 
     client->response = res;
@@ -224,8 +226,10 @@ process_wsgi_app(client_t *cli)
     }
     
     if(PyInt_Check(res)){
-        // suspend process
-        return 0;
+        if(PyInt_AS_LONG(res) == -1){
+            // suspend process
+            return 0;
+        }
     }
 
     //next send response 
