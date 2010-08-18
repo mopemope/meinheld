@@ -161,7 +161,7 @@ recv_ready(NSocketObject *socket, ssize_t len)
     // switch to hub
     current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
-    return PyGreenlet_Switch(parent, switch_value, NULL);
+    return PyGreenlet_Switch(parent, hub_switch_value, NULL);
 }
 
 static inline PyObject * 
@@ -178,7 +178,7 @@ send_ready(NSocketObject *socket, char *buf, ssize_t len)
     // switch to hub
     current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
-    return PyGreenlet_Switch(parent, switch_value, NULL);
+    return PyGreenlet_Switch(parent, hub_switch_value, NULL);
 }
 
 static inline PyObject * 

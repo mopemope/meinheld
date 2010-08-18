@@ -67,7 +67,7 @@ extern int max_content_length; //max_content_length
 
 extern picoev_loop* main_loop; //main loop
 
-extern PyObject* switch_value;
+extern PyObject* hub_switch_value;
 
 inline void
 switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj);

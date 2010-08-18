@@ -46,7 +46,7 @@ int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
 
-PyObject *switch_value;
+PyObject *hub_switch_value;
 
 
 static void
@@ -558,7 +558,7 @@ setup_server_env(void)
     setup_nsocket();
     PycString_IMPORT;
     PyGreenlet_Import();
-    switch_value = Py_BuildValue("(i)", -1);
+    hub_switch_value = Py_BuildValue("(i)", -1);
 }
 
 static inline int 
@@ -950,7 +950,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     if(pyclient->client && !(pyclient->suspended)){
         pyclient->suspended = 1;
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
-        return PyGreenlet_Switch(parent, switch_value, NULL);
+        return PyGreenlet_Switch(parent, hub_switch_value, NULL);
     }else{
         PyErr_SetString(PyExc_Exception, "already suspended");
         return NULL;
