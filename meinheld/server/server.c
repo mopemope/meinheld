@@ -187,8 +187,10 @@ process_resume_wsgi_app(ClientObject *pyclient)
     }
     
     if(PyInt_Check(res)){
-        // suspend process
-        return 0;
+        if(res == hub_switch_value){
+            // suspend process
+            return 0;
+        }
     }
 
     client->response = res;
@@ -224,8 +226,10 @@ process_wsgi_app(client_t *cli)
     }
     
     if(PyInt_Check(res)){
-        // suspend process
-        return 0;
+        if(res == hub_switch_value){
+            // suspend process
+            return 0;
+        }
     }
 
     //next send response 
@@ -825,8 +829,12 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     picoev_destroy_loop(main_loop);
     picoev_deinit();
     
+    //clean
     clear_start_response();
     clear_static_env();
+
+    Py_DECREF(hub_switch_value);
+
     if(unix_sock_name){
         unlink(unix_sock_name);
     }
