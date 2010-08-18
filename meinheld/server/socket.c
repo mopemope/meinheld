@@ -110,7 +110,8 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 
         free_buffer(socket->read_buf);
         PyErr_SetString(PyExc_IOError, "timeout");
-        catch_error(socket->client);
+        
+        //catch_error(socket->client);
         switch_wsgi_app(loop, (PyObject *)socket->client);
     
     } else if ((events & PICOEV_READ) != 0) {
@@ -127,7 +128,7 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 } else { /* fatal error */
                     free_buffer(socket->read_buf);
                     PyErr_SetFromErrno(PyExc_IOError);
-                    catch_error(socket->client);
+                    //catch_error(socket->client);
                     switch_wsgi_app(loop, (PyObject *)socket->client);
                     return;
                 }
