@@ -153,6 +153,7 @@ static inline int
 process_resume_wsgi_app(ClientObject *pyclient)
 {
     PyObject *res = NULL;
+    PyObject *err_type, *err_val, *err_tb;
     client_t *old_client;
     client_t *client = pyclient->client;
     
@@ -161,9 +162,11 @@ process_resume_wsgi_app(ClientObject *pyclient)
     old_client = start_response->cli;
     start_response->cli = client;
     
-    if(pyclient->err_type){
+    if(PyErr_Occurred()){
+        PyErr_Fetch(&err_type, &err_val, &err_tb);
+        PyErr_Clear();
         //set error
-        res = PyGreenlet_Throw(pyclient->greenlet, pyclient->err_type, pyclient->err_val, pyclient->err_tb);
+        res = PyGreenlet_Throw(pyclient->greenlet, err_type, err_val, err_tb);
     }else{
         res = PyGreenlet_Switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
     }
@@ -172,10 +175,6 @@ process_resume_wsgi_app(ClientObject *pyclient)
     Py_XDECREF(pyclient->args);
     Py_XDECREF(pyclient->kwargs);
     
-    Py_CLEAR(pyclient->err_type);
-    assert(pyclient->err_type == NULL);
-    Py_CLEAR(pyclient->err_val);
-    Py_CLEAR(pyclient->err_tb);
 
     //check response & PyErr_Occurred
     if(res && res == Py_None){

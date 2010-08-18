@@ -72,22 +72,6 @@ ClientObject_get_fd(ClientObject *self, PyObject *args)
     return Py_BuildValue("i", self->client->fd);
 }
 
-inline void
-catch_error(ClientObject *pyclient)
-{
-    PyObject *err_type, *err_val, *err_tb;
-    if(PyErr_Occurred()){
-       PyErr_Fetch(&err_type, &err_val, &err_tb);
-       PyErr_Clear();
-       pyclient->err_type = err_type;
-       pyclient->err_val = err_val;
-       pyclient->err_tb = err_tb;
-       Py_XINCREF(pyclient->err_type);
-       Py_XINCREF(pyclient->err_val);
-       Py_XINCREF(pyclient->err_tb);
-    }
-}
-
 static PyMethodDef ClientObject_method[] = {
     { "set_greenlet",      (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0 },
     { "get_greenlet",      (PyCFunction)ClientObject_get_greenlet, METH_NOARGS, 0 },
