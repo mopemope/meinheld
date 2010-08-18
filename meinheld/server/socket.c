@@ -70,8 +70,8 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
     
     if ((events & PICOEV_TIMEOUT) != 0) {
         //
+        free_buffer(socket->send_buf);
         PyErr_SetString(PyExc_IOError, "write timeout");
-        
         switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
     } else if ((events & PICOEV_WRITE) != 0) {
         ssize_t r;
@@ -81,6 +81,7 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
                 } else { /* fatal error */
+                    free_buffer(socket->send_buf);
                     PyErr_SetFromErrno(PyExc_IOError);
                     switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
                     return;
@@ -94,6 +95,8 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                     //switch 
                     obj = Py_BuildValue("(i)", send_buf->buf_size);
                     socket->client->args = obj;
+                    socket->send_buf->buf -= r;
+                    free_buffer(socket->send_buf);
                     switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
                 }
                 break;
@@ -169,9 +172,8 @@ send_ready(NSocketObject *socket, char *buf, ssize_t len)
 {
     PyGreenlet *current, *parent;
 
-    socket->send_buf = new_buffer(len, len);
-    socket->send_buf->buf = buf;
-    socket->send_buf->len = len;
+    socket->send_buf = new_buffer(len , len);
+    write2buf(socket->send_buf, buf, len);
 
     picoev_add(main_loop, socket->fd, PICOEV_WRITE, 0, send_inner, (void *)socket);
     
@@ -202,7 +204,6 @@ NSocketObject_send(NSocketObject *socket, PyObject *args)
     }
     
     PyString_AsStringAndSize(s, &buf, &len);
-    printf("NSocketObject_send \n");
 
     return send_ready(socket, buf, len);
 }
