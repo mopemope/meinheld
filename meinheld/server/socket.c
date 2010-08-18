@@ -76,6 +76,7 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
     } else if ((events & PICOEV_WRITE) != 0) {
         ssize_t r;
         r = write(socket->fd, send_buf->buf, send_buf->len);
+        //printf("write %d \n", r);
         switch (r) {
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
@@ -95,7 +96,11 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                     //switch 
                     obj = Py_BuildValue("(i)", send_buf->buf_size);
                     socket->client->args = obj;
-                    socket->send_buf->buf -= r;
+                    
+                    //printf("before send_buf->buf %p \n", socket->send_buf->buf);
+                    socket->send_buf->buf -= socket->send_buf->buf_size-1;
+                    //printf("after send_buf->buf %p \n", socket->send_buf->buf);
+                    
                     free_buffer(socket->send_buf);
                     switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
                 }
@@ -174,7 +179,10 @@ send_ready(NSocketObject *socket, char *buf, ssize_t len)
 
     socket->send_buf = new_buffer(len , len);
     write2buf(socket->send_buf, buf, len);
+    //printf("start send_buf->buf %p \n", socket->send_buf->buf);
 
+    //socket->send_buf->buf = buf;
+    //socket->send_buf->len = len;
     picoev_add(main_loop, socket->fd, PICOEV_WRITE, 0, send_inner, (void *)socket);
     
     // switch to hub
