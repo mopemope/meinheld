@@ -57,11 +57,12 @@ void
 send_error_page(client_t *client)
 {
     shutdown(client->fd, SHUT_RD);
-    if(client->header_done){
+    if(client->header_done || client->response_closed){
         //already sended response data
         //close connection
         return;
     }
+
     int status = client->bad_request_code;
     int r = status < 0 ? status * -1:status;
     client->status_code = r;
