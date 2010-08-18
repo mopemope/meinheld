@@ -236,11 +236,10 @@ process_wsgi_app(client_t *cli)
 }
 
 inline void
-switch_wsgi_app(picoev_loop* loop, PyObject *obj)
+switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj)
 {
     ClientObject *pyclient = (ClientObject *)obj;
-    client_t *client = pyclient->client;
-    picoev_del(loop, client->fd);
+    picoev_del(loop, fd);
     // resume
     resume_wsgi_app(pyclient, loop);
     pyclient->resumed = 0;
@@ -250,7 +249,8 @@ static void
 resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
-    switch_wsgi_app(loop, (PyObject *)pyclient); 
+    client_t *client = pyclient->client;
+    switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
 }
 
 

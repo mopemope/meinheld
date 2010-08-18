@@ -8,8 +8,8 @@ typedef struct {
     PyObject_HEAD
     int fd;
     ClientObject *client;
-    buffer *read_buf;
-    buffer *write_buf;
+    buffer *recv_buf;
+    buffer *send_buf;
 
 } NSocketObject;
 

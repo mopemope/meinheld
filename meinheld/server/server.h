@@ -70,6 +70,6 @@ extern picoev_loop* main_loop; //main loop
 extern PyObject* switch_value;
 
 inline void
-switch_wsgi_app(picoev_loop* loop, PyObject *obj);
+switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj);
 
 #endif

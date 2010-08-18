@@ -62,35 +62,39 @@ NSocketObject_dealloc(NSocketObject* self)
 }
 
 static inline void
-write_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
+send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     PyObject *obj;
     NSocketObject *socket = (NSocketObject *)cb_arg;
-    buffer *write_buf = socket->write_buf;
+    buffer *send_buf = socket->send_buf;
     
     if ((events & PICOEV_TIMEOUT) != 0) {
-
+        //
+        PyErr_SetString(PyExc_IOError, "write timeout");
+        
+        switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
     } else if ((events & PICOEV_WRITE) != 0) {
         ssize_t r;
-        r = write(socket->fd, write_buf->buf, write_buf->len);
+        r = write(socket->fd, send_buf->buf, send_buf->len);
         switch (r) {
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
                 } else { /* fatal error */
-                    free_buffer(socket->write_buf);
-                    picoev_del(loop, socket->fd);
+                    PyErr_SetFromErrno(PyExc_IOError);
+                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
                     return;
                 }
                 break;
             default:
-                write_buf->buf += r;
-                write_buf->len -= r;
-                if(!write_buf->len){
+                send_buf->buf += r;
+                send_buf->len -= r;
+                if(!send_buf->len){
                     //all done
-                    picoev_del(loop, socket->fd);
                     //switch 
-                    PyGreenlet_Switch(socket->client->greenlet, NULL, NULL);
+                    obj = Py_BuildValue("(i)", send_buf->buf_size);
+                    socket->client->args = obj;
+                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
                 }
                 break;
         }
@@ -99,26 +103,25 @@ write_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 
 
 static inline void
-read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
+recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     PyObject *obj;
 
     NSocketObject *socket = (NSocketObject *)cb_arg;
-    buffer *read_buf = socket->read_buf;
+    buffer *recv_buf = socket->recv_buf;
     
     if ((events & PICOEV_TIMEOUT) != 0) {
 
-        free_buffer(socket->read_buf);
-        PyErr_SetString(PyExc_IOError, "timeout");
+        free_buffer(socket->recv_buf);
+        PyErr_SetString(PyExc_IOError, "read timeout");
         
-        //catch_error(socket->client);
-        switch_wsgi_app(loop, (PyObject *)socket->client);
+        switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
     
     } else if ((events & PICOEV_READ) != 0) {
         //printf("read \n");
 
         ssize_t r;
-        r = read(socket->fd, read_buf->buf, read_buf->len);
+        r = read(socket->fd, recv_buf->buf, recv_buf->len);
         // update timeout
         picoev_set_timeout(loop, socket->fd, 5);
         switch (r) {
@@ -126,23 +129,21 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
                 } else { /* fatal error */
-                    free_buffer(socket->read_buf);
+                    free_buffer(socket->recv_buf);
                     PyErr_SetFromErrno(PyExc_IOError);
-                    //catch_error(socket->client);
-                    switch_wsgi_app(loop, (PyObject *)socket->client);
+                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
                     return;
                 }
                 break;
             default:
-                read_buf->buf += r;
-                read_buf->len -= r;
-                if(!read_buf->len){
+                recv_buf->buf += r;
+                recv_buf->len -= r;
+                if(!recv_buf->len){
                     //all done
-                    picoev_del(loop, socket->fd);
                     //switch 
-                    obj = Py_BuildValue("(O)", getPyString(socket->read_buf));
+                    obj = Py_BuildValue("(O)", getPyString(socket->recv_buf));
                     socket->client->args = obj;
-                    switch_wsgi_app(loop, (PyObject *)socket->client);
+                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
                 }
                 break;
         }
@@ -150,12 +151,12 @@ read_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 }
 
 static inline PyObject * 
-read_ready(NSocketObject *socket, ssize_t len)
+recv_ready(NSocketObject *socket, ssize_t len)
 {
     PyGreenlet *current, *parent;
 
-    socket->read_buf = new_buffer(len, len);
-    picoev_add(main_loop, socket->fd, PICOEV_READ, 5, read_inner, (void *)socket);
+    socket->recv_buf = new_buffer(len, len);
+    picoev_add(main_loop, socket->fd, PICOEV_READ, 5, recv_inner, (void *)socket);
     
     // switch to hub
     current = socket->client->greenlet;
@@ -164,34 +165,51 @@ read_ready(NSocketObject *socket, ssize_t len)
 }
 
 static inline PyObject * 
-write_ready(NSocketObject *socket, char *buf, ssize_t len)
+send_ready(NSocketObject *socket, char *buf, ssize_t len)
 {
     PyGreenlet *current, *parent;
 
-    socket->write_buf = new_buffer(len, len);
-    socket->write_buf->buf = buf;
-    socket->write_buf->len = len;
+    socket->send_buf = new_buffer(len, len);
+    socket->send_buf->buf = buf;
+    socket->send_buf->len = len;
 
-    picoev_add(main_loop, socket->fd, PICOEV_WRITE, 0, write_inner, (void *)socket);
+    picoev_add(main_loop, socket->fd, PICOEV_WRITE, 0, send_inner, (void *)socket);
     
     // switch to hub
     current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
-    return PyGreenlet_Switch(parent, NULL, NULL);
+    return PyGreenlet_Switch(parent, switch_value, NULL);
 }
 
 static inline PyObject * 
-NSocketObject_read(NSocketObject *socket, PyObject *args)
+NSocketObject_recv(NSocketObject *socket, PyObject *args)
 {
     ssize_t len; 
-    if (!PyArg_ParseTuple(args, "i:read", &len)){
+    if (!PyArg_ParseTuple(args, "i:recv", &len)){
         return NULL;
     }
-    return read_ready(socket, len);
+    return recv_ready(socket, len);
+}
+
+static inline PyObject * 
+NSocketObject_send(NSocketObject *socket, PyObject *args)
+{
+    PyObject *s;
+    char *buf;
+    ssize_t len;
+    if (!PyArg_ParseTuple(args, "S:send", &s)){
+        return NULL;
+    }
+    
+    PyString_AsStringAndSize(s, &buf, &len);
+    printf("NSocketObject_send \n");
+
+    return send_ready(socket, buf, len);
 }
 
 static PyMethodDef NSocketObject_method[] = {
-    { "read",      (PyCFunction)NSocketObject_read, METH_VARARGS, 0 },
+    { "recv",      (PyCFunction)NSocketObject_recv, METH_VARARGS, 0 },
+    { "send",      (PyCFunction)NSocketObject_send, METH_VARARGS, 0 },
     { NULL, NULL}
 };
 
