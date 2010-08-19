@@ -444,6 +444,13 @@ processs_write(client_t *client)
                         break;
                     }
                 }
+            }else{ 
+                PyErr_SetString(PyExc_TypeError, "response item must be a string");
+                Py_DECREF(item);
+                if (PyErr_Occurred()){ 
+                    write_error_log(__FILE__, __LINE__);
+                    return -1;
+                }
             }
             Py_DECREF(item);
         }
@@ -546,6 +553,14 @@ start_response_write(client_t *client)
 #endif
         Py_DECREF(item);
         return write_headers(client, buf, buflen);
+    }else{
+        PyErr_SetString(PyExc_TypeError, "response item must be a string");
+        Py_XDECREF(item);
+        if (PyErr_Occurred()){ 
+            write_error_log(__FILE__, __LINE__);
+            return -1;
+        }
+        
     }
     return -1;
 }
