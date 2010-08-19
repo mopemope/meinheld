@@ -4,6 +4,7 @@
 * update http parser
 * change max header num and size
 * fix finally call response close
+* add guniconr worker entry point 
 * various bug fixes
 
 0.2
