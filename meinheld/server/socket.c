@@ -136,7 +136,7 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
         ssize_t r;
         r = read(socket->fd, recv_buf->buf, recv_buf->len);
         // update timeout
-        picoev_set_timeout(loop, socket->fd, 5);
+        //picoev_set_timeout(loop, socket->fd, 5);
         switch (r) {
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
@@ -169,7 +169,7 @@ recv_ready(NSocketObject *socket, ssize_t len)
     PyGreenlet *current, *parent;
 
     socket->recv_buf = new_buffer(len, len);
-    picoev_add(main_loop, socket->fd, PICOEV_READ, 5, recv_inner, (void *)socket);
+    picoev_add(main_loop, socket->fd, PICOEV_READ, 0, recv_inner, (void *)socket);
     
     // switch to hub
     current = socket->client->greenlet;

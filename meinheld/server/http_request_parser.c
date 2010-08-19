@@ -49,7 +49,7 @@
  *
  */
 
-#define LIMIT_SIZE 1024 * 512
+#define LIMIT_INMEMORY_BODY_SIZE 1024 * 512
 
 static PyObject *version_key;
 static PyObject *version_val;
@@ -207,7 +207,7 @@ header_field_cb (http_parser *p, const char *buf, size_t len, char partial)
     if(h){
         ret = write2buf(h->field, temp, len);
     }else{
-        req->headers[i] = h = new_header(128, LIMIT_REQUEST_FIELD_SIZE, 1024, LIMIT_REQUEST_FIELD_SIZE);
+        req->headers[i] = h = new_header(128, LIMIT_REQUEST_FIELD_SIZE, 2048, LIMIT_REQUEST_FIELD_SIZE);
         wsgi_header_type type = check_header_type(temp);
         if(type == OTHER){
             ret = write2buf(h->field, "HTTP_", 5);
@@ -386,10 +386,10 @@ body_cb (http_parser *p, const char *buf, size_t len, char partial)
             client->bad_request_code = 411;
             return -1;
         }
-        if(client->body_length > LIMIT_SIZE){
+        if(client->body_length > LIMIT_INMEMORY_BODY_SIZE){
             //large size request
             FILE *tmp = tmpfile();
-            if(tmp <0){
+            if(tmp < 0){
                 client->bad_request_code = 500;
                 return -1;
             }
