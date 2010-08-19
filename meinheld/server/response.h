@@ -52,6 +52,9 @@ response_start(client_t *client);
 inline int 
 process_body(client_t *client);
 
+inline void 
+close_response(client_t *client);
+
 inline void
 setup_start_response(void);
 

@@ -119,7 +119,9 @@ clean_cli(client_t *client)
 static inline void 
 close_conn(client_t *cli, picoev_loop* loop)
 {
-    
+    if(!cli->response_closed){
+        close_response(cli);
+    }
     if(!cli->keep_alive){
         picoev_del(loop, cli->fd);
         clean_cli(cli);
