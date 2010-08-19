@@ -1,6 +1,16 @@
 #include "socket.h"
 
 inline void 
+setup_listen_sock(int fd)
+{
+    int on = 1, r;
+    r = setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &on, sizeof(on));
+    assert(r == 0);
+    r = fcntl(fd, F_SETFL, O_NONBLOCK);
+    assert(r == 0);
+}
+
+inline void 
 setup_sock(int fd)
 {
     int on = 1, r;
