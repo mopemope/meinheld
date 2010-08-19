@@ -573,7 +573,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static inline void
 setup_server_env(void)
 {
-    setup_sock(listen_sock);
+    setup_listen_sock(listen_sock);
     cache_time_init();
     setup_static_env(server_name, server_port);
     setup_start_response();

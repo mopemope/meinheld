@@ -25,6 +25,9 @@ inline void
 setup_nsocket(void);
 
 inline void 
+setup_listen_sock(int fd);
+
+inline void 
 setup_sock(int fd);
 
 inline void 
