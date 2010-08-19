@@ -1,5 +1,13 @@
+0.2.1
+=======
+* use TCP_DEFER_ACCEPT
+* update http parser
+* change max header num and size
+* fix finally call response close
+* various bug fixes
+
 0.2
-======
+=======
 * support greenlet continuation (use greenlet C/API. suspend and resume support)
 * add client object to wsgi environ
 
