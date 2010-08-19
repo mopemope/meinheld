@@ -538,9 +538,6 @@ start_response_write(client_t *client)
     }
     client->response_iter = iterator;
 
-#ifdef DEBUG
-    printf("response_iter ob_refcnt %d \n", client->response_iter->ob_refcnt);
-#endif
     item =  PyIter_Next(iterator);
     if(item != NULL && PyString_Check(item)){
 
@@ -550,7 +547,6 @@ start_response_write(client_t *client)
 
 #ifdef DEBUG
         printf("start_response_write buflen %d \n", buflen);
-        //printf("item refcnt %d \n", item->ob_refcnt);
 #endif
         Py_DECREF(item);
         return write_headers(client, buf, buflen);
@@ -701,6 +697,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     
     Py_XDECREF(self->cli->http_status);
     self->cli->http_status =  PyString_FromFormat("HTTP/1.0 %s\r\n", PyString_AS_STRING(status));
+    //self->cli->http_status =  PyString_FromFormat("HTTP/1.0 %s\r\n", PyString_AS_STRING(status));
 
     Py_RETURN_NONE;
 }
