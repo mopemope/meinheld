@@ -131,12 +131,16 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
         switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
     
     } else if ((events & PICOEV_READ) != 0) {
-        //printf("read \n");
 
+        //printf("read \n");
+        char buf[1024 * 8];
         ssize_t r;
-        r = read(socket->fd, recv_buf->buf, recv_buf->len);
+        r = read(fd, buf, sizeof(buf));
         // update timeout
         //picoev_set_timeout(loop, socket->fd, 5);
+#ifdef DEBUG
+        printf("nsocket read %d \n", r);
+#endif
         switch (r) {
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
@@ -149,9 +153,9 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
-                recv_buf->buf += r;
-                recv_buf->len -= r;
-                if(!recv_buf->len || r == 0){
+                write2buf(recv_buf, buf, r);
+                //if(recv_buf->buf_size == recv_buf->len || r == 0){
+                if(r >= 0){
                     //all done
                     //switch 
                     obj = Py_BuildValue("(O)", getPyString(socket->recv_buf));
