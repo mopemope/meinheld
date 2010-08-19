@@ -6,12 +6,12 @@
 #include <inttypes.h>
 #include "buffer.h"
 
-#define LIMIT_PATH 1024 * 4
+#define LIMIT_PATH 1024 * 8
 #define LIMIT_FRAGMENT 1024
-#define LIMIT_URI 1024 * 4
+#define LIMIT_URI 1024 * 8
 #define LIMIT_QUERY_STRING 1024 * 8
 
-#define LIMIT_REQUEST_FIELDS 30 
+#define LIMIT_REQUEST_FIELDS 128 
 #define LIMIT_REQUEST_FIELD_SIZE 1024 * 8 
 
 
