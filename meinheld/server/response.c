@@ -336,7 +336,7 @@ write_sendfile(int out_fd, int in_fd, size_t count)
     return sendfile(out_fd, in_fd, NULL, count);
 }
 
-static inline void 
+inline void 
 close_response(client_t *client)
 {
     //send all response
