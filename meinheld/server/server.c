@@ -146,7 +146,10 @@ close_conn(client_t *cli, picoev_loop* loop)
         cli->write_bytes = 0;
         cli->response_closed = 0;
         cli->bad_request_code = 0;
+        cli->req = new_request();    
         init_parser(cli, server_name, server_port);
+        picoev_del(main_loop, cli->fd);
+        picoev_add(main_loop, cli->fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)cli);
     }
 
 }
@@ -486,11 +489,11 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 break;
             default:
 
+                nread = execute_parse(cli, buf, r);
 #ifdef DEBUG
-                printf("read request fd %d readed %d \n", cli->fd, r);
+                printf("read request fd %d readed %d nread %d \n", cli->fd, r, nread);
                 printf("%s\n", buf);
 #endif
-                nread = execute_parse(cli, buf, r);
                 
                 if(cli->bad_request_code > 0){
 #ifdef DEBUG
@@ -500,7 +503,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     close_conn(cli, loop);
                     return;
                 }
-                if( nread != r ){
+                if( nread != r && nread != r-1 ){
                     // parse error
 #ifdef DEBUG
                     printf("fd %d parse error %d \n", cli->fd, cli->bad_request_code);

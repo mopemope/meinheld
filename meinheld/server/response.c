@@ -696,8 +696,8 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     Py_INCREF(self->cli->headers);
     
     Py_XDECREF(self->cli->http_status);
+    //self->cli->http_status =  PyString_FromFormat("HTTP/1.1 %s\r\n", PyString_AS_STRING(status));
     self->cli->http_status =  PyString_FromFormat("HTTP/1.0 %s\r\n", PyString_AS_STRING(status));
-    //self->cli->http_status =  PyString_FromFormat("HTTP/1.0 %s\r\n", PyString_AS_STRING(status));
 
     Py_RETURN_NONE;
 }
