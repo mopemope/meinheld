@@ -151,7 +151,7 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
             default:
                 recv_buf->buf += r;
                 recv_buf->len -= r;
-                if(!recv_buf->len){
+                if(!recv_buf->len || r == 0){
                     //all done
                     //switch 
                     obj = Py_BuildValue("(O)", getPyString(socket->recv_buf));
