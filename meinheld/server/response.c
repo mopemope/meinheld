@@ -339,9 +339,10 @@ write_sendfile(int out_fd, int in_fd, size_t count)
 inline void 
 close_response(client_t *client)
 {
+    
     //send all response
     //closing reponse object
-    if (PyObject_HasAttrString(client->response, "close")) {
+    if (client->response && PyObject_HasAttrString(client->response, "close")) {
         PyObject *close = NULL;
         PyObject *args = NULL;
         PyObject *data = NULL;
@@ -357,8 +358,8 @@ close_response(client_t *client)
         if (PyErr_Occurred()){
             PyErr_Clear();
         }
-        client->response_closed = 1; 
     }
+    client->response_closed = 1; 
 
 }
 
