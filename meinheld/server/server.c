@@ -1068,7 +1068,7 @@ static PyMethodDef WsMethods[] = {
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
-    {"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
+    //{"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
