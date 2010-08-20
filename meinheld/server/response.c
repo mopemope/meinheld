@@ -85,6 +85,8 @@ send_error_page(client_t *client)
             break;
     }
     client->keep_alive = 0;
+    client->header_done = 1;
+    client->response_closed = 1;
 }
 
 
