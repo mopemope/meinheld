@@ -177,8 +177,8 @@ process_resume_wsgi_app(ClientObject *pyclient)
     }
     start_response->cli = old_client;
     
-    Py_XDECREF(pyclient->args);
-    Py_XDECREF(pyclient->kwargs);
+    Py_CLEAR(pyclient->args);
+    Py_CLEAR(pyclient->kwargs);
     
 
     //check response & PyErr_Occurred

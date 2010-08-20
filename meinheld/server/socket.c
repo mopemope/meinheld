@@ -86,8 +86,10 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
     } else if ((events & PICOEV_WRITE) != 0) {
         ssize_t r;
 
-        r = write(socket->fd, send_buf->buf, send_buf->len);
-        //printf("write %d \n", r);
+        r = write(fd, send_buf->buf, send_buf->len);
+#ifdef DEBUG
+        printf("nsocket write fd:%d bytes:%d \n", fd, r);
+#endif
         switch (r) {
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
@@ -95,7 +97,7 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 } else { /* fatal error */
                     free_buffer(socket->send_buf);
                     PyErr_SetFromErrno(PyExc_IOError);
-                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
+                    switch_wsgi_app(loop, fd, (PyObject *)socket->client);
                     return;
                 }
                 break;
@@ -109,15 +111,21 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if(!send_buf->len){
                     //all done
                     //switch 
+                    if(socket->client->args){
+                        //clear
+                        Py_CLEAR(socket->client->args);
+                    }
+
                     obj = Py_BuildValue("(i)", send_buf->buf_size);
                     socket->client->args = obj;
                     
-                    //printf("before send_buf->buf %p \n", socket->send_buf->buf);
                     socket->send_buf->buf -= socket->send_buf->buf_size-1;
-                    //printf("after send_buf->buf %p \n", socket->send_buf->buf);
                     
                     free_buffer(socket->send_buf);
-                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
+#ifdef DEBUG
+                    printf("send_inner fd:%d \n", fd);
+#endif
+                    switch_wsgi_app(loop, fd, (PyObject *)socket->client);
                 }
                 break;
         }
@@ -138,7 +146,7 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
         free_buffer(socket->recv_buf);
         PyErr_SetString(PyExc_IOError, "read timeout");
         
-        switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
+        switch_wsgi_app(loop, fd, (PyObject *)socket->client);
     
     } else if ((events & PICOEV_READ) != 0) {
 
@@ -148,9 +156,6 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
         r = read(fd, buf, sizeof(buf));
         // update timeout
         //picoev_set_timeout(loop, socket->fd, 5);
-#ifdef DEBUG
-        printf("nsocket read %d \n", r);
-#endif
         switch (r) {
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
@@ -158,7 +163,7 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 } else { /* fatal error */
                     free_buffer(socket->recv_buf);
                     PyErr_SetFromErrno(PyExc_IOError);
-                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
+                    switch_wsgi_app(loop, fd, (PyObject *)socket->client);
                     return;
                 }
                 break;
@@ -168,9 +173,17 @@ recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if(r >= 0){
                     //all done
                     //switch 
+                    if(socket->client->args){
+                        //clear
+                        Py_CLEAR(socket->client->args);
+                    }
+#ifdef DEBUG
+                    printf("recv_inner fd:%d \n", fd);
+#endif
+
                     obj = Py_BuildValue("(O)", getPyString(socket->recv_buf));
                     socket->client->args = obj;
-                    switch_wsgi_app(loop, socket->fd, (PyObject *)socket->client);
+                    switch_wsgi_app(loop, fd, (PyObject *)socket->client);
                 }
                 break;
         }
@@ -189,7 +202,7 @@ recv_ready(NSocketObject *socket, ssize_t len)
     current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
 #ifdef DEBUG
-    printf("recv_ready fd %d len %d\n", socket->fd, len);
+    printf("recv_ready fd:%d len %d\n", socket->fd, len);
 #endif
     return PyGreenlet_Switch(parent, hub_switch_value, NULL);
 }
@@ -208,6 +221,9 @@ send_ready(NSocketObject *socket, char *buf, ssize_t len)
     // switch to hub
     current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
+#ifdef DEBUG
+    printf("send_ready fd:%d len %d\n", socket->fd, len);
+#endif
     return PyGreenlet_Switch(parent, hub_switch_value, NULL);
 }
 
