@@ -41,7 +41,7 @@ static int log_fd = -1; //access log
 static char *error_log_path = NULL; //error log path
 static int err_log_fd = -1; //error log
 
-static int is_keep_alive = 0; //keep alive support
+static int is_keep_alive = 1; //keep alive support
 int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
@@ -131,6 +131,7 @@ close_conn(client_t *cli, picoev_loop* loop)
 #endif
         PyMem_Free(cli);
     }else{
+        picoev_del(loop, cli->fd);
         clean_cli(cli);
         disable_cork(cli);
         cli->keep_alive = 1;
@@ -148,7 +149,6 @@ close_conn(client_t *cli, picoev_loop* loop)
         cli->bad_request_code = 0;
         cli->req = new_request();    
         init_parser(cli, server_name, server_port);
-        picoev_del(main_loop, cli->fd);
         picoev_add(main_loop, cli->fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)cli);
     }
 
@@ -482,7 +482,13 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     write_error_log(__FILE__, __LINE__); 
                     cli->keep_alive = 0;
                     cli->status_code = 500;
-                    send_error_page(cli);
+                    if(errno != ECONNRESET){
+                        send_error_page(cli);
+                    }else{
+
+                        cli->header_done = 1;
+                        cli->response_closed = 1;
+                    }
                     close_conn(cli, loop);
                     return;
                 }
