@@ -41,7 +41,7 @@ static int log_fd = -1; //access log
 static char *error_log_path = NULL; //error log path
 static int err_log_fd = -1; //error log
 
-static int is_keep_alive = 1; //keep alive support
+static int is_keep_alive = 0; //keep alive support
 int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
@@ -71,7 +71,7 @@ setsig(int sig, void* handler)
 
 
 static inline client_t *
-new_client_t(int client_fd, struct sockaddr_in client_addr){
+new_client_t(int client_fd, char *remote_addr, uint32_t remote_port){
     client_t *client;
     
     client = PyMem_Malloc(sizeof(client_t)); 
@@ -81,8 +81,8 @@ new_client_t(int client_fd, struct sockaddr_in client_addr){
 
     client->fd = client_fd;
     
-    client->remote_addr = inet_ntoa (client_addr.sin_addr);
-    client->remote_port = ntohs(client_addr.sin_port);
+    client->remote_addr = remote_addr;
+    client->remote_port = remote_port;
     client->req = new_request();    
     client->body_type = BODY_TYPE_NONE;
     //printf("input_buf_size %d\n", client->input_buf_size);
@@ -97,17 +97,17 @@ clean_cli(client_t *client)
         free_request(client->req);
         client->req = NULL;
     }
-    Py_XDECREF(client->http_status);
-    Py_XDECREF(client->headers);
-    Py_XDECREF(client->response_iter);
-    Py_XDECREF(client->response);
-    Py_XDECREF(client->environ);
+    Py_CLEAR(client->http_status);
+    Py_CLEAR(client->headers);
+    Py_CLEAR(client->response_iter);
+    Py_CLEAR(client->response);
+    Py_CLEAR(client->environ);
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
             fclose(client->body);
         }
     }else{
-        Py_XDECREF(client->body);
+        Py_CLEAR(client->body);
     }
     if(client->http != NULL){
         PyMem_Free(client->http);
@@ -119,38 +119,25 @@ clean_cli(client_t *client)
 static inline void 
 close_conn(client_t *cli, picoev_loop* loop)
 {
+    client_t *new_client;
     if(!cli->response_closed){
         close_response(cli);
     }
+
+    picoev_del(loop, cli->fd);
+    clean_cli(cli);
     if(!cli->keep_alive){
-        picoev_del(loop, cli->fd);
-        clean_cli(cli);
         close(cli->fd);
 #ifdef DEBUG
         printf("close fd %d \n", cli->fd);
 #endif
-        PyMem_Free(cli);
     }else{
-        picoev_del(loop, cli->fd);
-        clean_cli(cli);
         disable_cork(cli);
-        cli->keep_alive = 1;
-        cli->environ = NULL;
-        cli->http_status = NULL;
-        cli->headers = NULL;
-        cli->header_done = 0;
-        cli->body_type = BODY_TYPE_NONE;
-        cli->status_code = 0;
-        cli->response = NULL;
-        cli->content_length_set = 0;
-        cli->content_length = 0;
-        cli->write_bytes = 0;
-        cli->response_closed = 0;
-        cli->bad_request_code = 0;
-        cli->req = new_request();    
-        init_parser(cli, server_name, server_port);
-        picoev_add(main_loop, cli->fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)cli);
+        new_client = new_client_t(cli->fd, cli->remote_addr, cli->remote_port);
+        init_parser(new_client, server_name, server_port);
+        picoev_add(main_loop, new_client->fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)new_client);
     }
+    PyMem_Free(cli);
 
 }
 
@@ -557,6 +544,8 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     int client_fd;
     client_t *client;
     struct sockaddr_in client_addr;
+    char *remote_addr;
+    uint32_t remote_port;
     if ((events & PICOEV_TIMEOUT) != 0) {
         // time out
         // next turn or other process
@@ -572,7 +561,9 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #endif
             //printf("connected: %d\n", client_fd);
             setup_sock(client_fd);
-            client = new_client_t(client_fd, client_addr);
+            remote_addr = inet_ntoa (client_addr.sin_addr);
+            remote_port = ntohs(client_addr.sin_port);
+            client = new_client_t(client_fd, remote_addr, remote_port);
             init_parser(client, server_name, server_port);
             picoev_add(loop, client_fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)client);
         }else{
