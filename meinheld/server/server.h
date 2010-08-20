@@ -45,6 +45,7 @@ typedef struct _client {
     void *body;
     int bad_request_code;
     request_body_type body_type;    
+    char upgrade;               // new protocol
     uint8_t complete;
 
     http_parser *http;          // http req parser
