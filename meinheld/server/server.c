@@ -41,7 +41,7 @@ static int log_fd = -1; //access log
 static char *error_log_path = NULL; //error log path
 static int err_log_fd = -1; //error log
 
-static int is_keep_alive = 0; //keep alive support
+static int is_keep_alive = 1; //keep alive support
 int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
@@ -414,7 +414,11 @@ prepare_call_wsgi(client_t *client)
             input = PycStringIO->NewInput(object);
             PyDict_SetItemString((PyObject *)client->environ, "wsgi.input", input);
         }else{
-            object = PyString_FromString("");
+            if(client->body){
+                object = client->body;
+            }else{
+                object = PyString_FromString("");
+            }
             input = PycStringIO->NewInput(object);
             PyDict_SetItemString((PyObject *)client->environ, "wsgi.input", input);
         }
@@ -445,7 +449,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     if ((events & PICOEV_TIMEOUT) != 0) {
 
 #ifdef DEBUG
-        printf("** r_callback timeout ** \n");
+        printf("** r_callback timeout %d ** \n", fd);
 #endif
         //timeout
         cli->keep_alive = 0;
@@ -509,7 +513,14 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     close_conn(cli, loop);
                     return;
                 }
-                if( nread != r && nread != r-1 ){
+
+                if(cli->upgrade){
+                    //WebSocket Key
+                    char *key = buf + nread + 1;
+                    PyObject *body = PyString_FromStringAndSize(key, r - nread);
+                    cli->body = body;
+
+                }else if(!cli->upgrade && nread != r){
                     // parse error
 #ifdef DEBUG
                     printf("fd %d parse error %d \n", cli->fd, cli->bad_request_code);
@@ -1074,7 +1085,7 @@ static PyMethodDef WsMethods[] = {
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
-    //{"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
+    {"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

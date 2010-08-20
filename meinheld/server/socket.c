@@ -60,7 +60,7 @@ NSocketObject_New(int fd, ClientObject *client)
     o->fd = fd;
     o->client = client;
     Py_INCREF(o->client);    
-    setup_sock(fd);
+    //setup_sock(fd);
     return (PyObject *)o;
 }
 
@@ -188,6 +188,9 @@ recv_ready(NSocketObject *socket, ssize_t len)
     // switch to hub
     current = socket->client->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
+#ifdef DEBUG
+    printf("recv_ready fd %d len %d\n", socket->fd, len);
+#endif
     return PyGreenlet_Switch(parent, hub_switch_value, NULL);
 }
 
