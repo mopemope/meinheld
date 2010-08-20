@@ -60,7 +60,7 @@ NSocketObject_New(int fd, ClientObject *client)
     o->fd = fd;
     o->client = client;
     Py_INCREF(o->client);    
-    //setup_sock(fd);
+    setup_sock(fd);
     return (PyObject *)o;
 }
 
