@@ -41,7 +41,7 @@ static int log_fd = -1; //access log
 static char *error_log_path = NULL; //error log path
 static int err_log_fd = -1; //error log
 
-static int is_keep_alive = 0; //keep alive support
+static int is_keep_alive = 1; //keep alive support
 int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
@@ -207,7 +207,7 @@ process_wsgi_app(client_t *cli)
     Py_DECREF(args);
     
 
-    //check response & Py_ErrorOccued
+    //check response & PyErr_Occurred
     if(res && res == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
     }
@@ -1076,7 +1076,7 @@ static PyMethodDef WsMethods[] = {
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
-    //{"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
+    {"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

@@ -10,7 +10,6 @@ typedef struct {
     ClientObject *client;
     buffer *recv_buf;
     buffer *send_buf;
-
 } NSocketObject;
 
 extern PyTypeObject NSocketObjectType;

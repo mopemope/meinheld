@@ -61,7 +61,7 @@ static inline PyObject *
 ClientObject_get_greenlet(ClientObject *self, PyObject *args)
 {
     if(self->greenlet){
-        return self->greenlet;
+        return (PyObject *)self->greenlet;
     }
     Py_RETURN_NONE;
 }
