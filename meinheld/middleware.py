@@ -11,9 +11,11 @@ class SpawnMiddleware(object):
 
     def __call__(self, environ, start_response):
         client = environ[CLIENT_KEY]
-        # new greenlet
-        g = greenlet.greenlet(self.app)
-        client.set_greenlet(g)
+        g = client.get_greenlet()
+        if not g:
+            # new greenlet
+            g = greenlet.greenlet(self.app)
+            client.set_greenlet(g)
         
         c = Continuation(client)
         environ[CONTINUATION_KEY] = c
