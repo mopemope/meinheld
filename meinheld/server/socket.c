@@ -1,10 +1,5 @@
 #include "socket.h"
 
-static inline void
-recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg);
-
-static inline void
-send_inner(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 inline void 
 setup_listen_sock(int fd)
@@ -94,21 +89,41 @@ send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
 
 
 static inline void
-recv_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
+switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     NSocketObject *socket = (NSocketObject *)cb_arg;
     if ((events & PICOEV_TIMEOUT) != 0) {
-        free_buffer(socket->recv_buf);
-        PyErr_SetString(PyExc_IOError, "read timeout");
+        if(socket->send_buf){
+            free_buffer(socket->send_buf);
+            socket->send_buf = NULL;
+        }
+        if(socket->recv_buf){
+            free_buffer(socket->recv_buf);
+            socket->recv_buf = NULL;
+        }
+
+        PyErr_SetString(PyExc_IOError, "timeout");
         switch_wsgi_app(loop, fd, (PyObject *)socket->client);
-    } else if ((events & PICOEV_READ) != 0) {
+    } else if ((events & PICOEV_WRITE) != 0 ||  (events & PICOEV_READ) != 0) {
         switch_wsgi_app(loop, fd, (PyObject *)socket->client);
     }
+}
+
+static inline void
+switch_trampolin(NSocketObject *socket, int events)
+{
+    PyGreenlet *current, *parent;
+
+    picoev_add(main_loop, socket->fd, events, 0, switch_callback, (void *)socket);
+    // switch to hub
+    current = socket->client->greenlet;
+    parent = PyGreenlet_GET_PARENT(current);
+    PyGreenlet_Switch(parent, hub_switch_value, NULL);
 
 }
 
 static inline PyObject * 
-write_inner(NSocketObject *socket)
+inner_write(NSocketObject *socket)
 {
     buffer *send_buf = socket->send_buf;
     ssize_t r;
@@ -130,19 +145,16 @@ write_inner(NSocketObject *socket)
                 // response fd ?
                 socket->client->client->response_closed = 1;
             }
-            send_buf->buf += r;
-            send_buf->len -= r;
             //all done
             //switch 
-            socket->send_buf->buf -= socket->send_buf->buf_size-1;
             free_buffer(socket->send_buf);
             socket->send_buf = NULL;
-            return Py_BuildValue("(i)", send_buf->buf_size);
+            return Py_BuildValue("i", r);
     }
 }
 
 static inline PyObject * 
-read_inner(NSocketObject *socket)
+inner_read(NSocketObject *socket)
 {
     buffer *recv_buf = socket->recv_buf;
     
@@ -175,69 +187,55 @@ read_inner(NSocketObject *socket)
 static inline PyObject * 
 recv_ready(NSocketObject *socket, ssize_t len)
 {
-    PyGreenlet *current, *parent;
     PyObject *res;
 
     socket->recv_buf = new_buffer(len, len);
-    picoev_add(main_loop, socket->fd, PICOEV_READ, 0, recv_inner, (void *)socket);
     
-    // switch to hub
-    current = socket->client->greenlet;
-    parent = PyGreenlet_GET_PARENT(current);
-#ifdef DEBUG
-    printf("recv_ready fd:%d len %d\n", socket->fd, len);
-#endif
-    PyGreenlet_Switch(parent, hub_switch_value, NULL);
-    
-    if(PyErr_Occurred()){
-        return NULL;
-    }else{
-        res = read_inner(socket);
+    while(1){
+        res = inner_read(socket);
         if(res){
-            //ok
             return res;
-        }else{
-            if(PyErr_Occurred()){
-                return res;
-            }
-            //retry 
-            return recv_ready(socket, len);
+        }
+
+        if(PyErr_Occurred()){
+            // check socket Error
+            return NULL;
+        }
+    
+        switch_trampolin(socket, PICOEV_READ);
+
+        if(PyErr_Occurred()){
+            // check time out
+            return NULL;
         }
     }
+    
+
 }
 
 static inline PyObject * 
 send_ready(NSocketObject *socket, char *buf, ssize_t len)
 {
-    PyGreenlet *current, *parent;
     PyObject *res;
-
     socket->send_buf = new_buffer(len , len);
     write2buf(socket->send_buf, buf, len);
 
-    picoev_add(main_loop, socket->fd, PICOEV_WRITE, 0, send_inner, (void *)socket);
-    
-    // switch to hub
-    current = socket->client->greenlet;
-    parent = PyGreenlet_GET_PARENT(current);
-#ifdef DEBUG
-    printf("send_ready fd:%d len %d\n", socket->fd, len);
-#endif
-
-    PyGreenlet_Switch(parent, hub_switch_value, NULL);
-    if(PyErr_Occurred()){
-        return NULL;
-    }else{
-        res = write_inner(socket);
+    while(1){
+        res = inner_write(socket);
         if(res){
-            //ok
             return res;
-        }else{
-            if(PyErr_Occurred()){
-                return res;
-            }
-            //retry 
-            return send_ready(socket, buf, len);
+        }
+
+        if(PyErr_Occurred()){
+            // check socket Error
+            return NULL;
+        }
+    
+        switch_trampolin(socket, PICOEV_WRITE);
+
+        if(PyErr_Occurred()){
+            // check time out
+            return NULL;
         }
     }
 }
