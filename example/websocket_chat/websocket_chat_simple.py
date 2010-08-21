@@ -3,6 +3,7 @@ from meinheld import server, middleware, websocket
 
 participants = set()
 
+"""
 @websocket.WebSocketWSGI
 def handle(ws):
     participants.add(ws)
@@ -19,6 +20,7 @@ def handle(ws):
                 print "%s" % a
     finally:
         participants.remove(ws)
+"""
 
 def websocket_handle(environ, start_response):
     ws = environ.get('wsgi.websocket')
@@ -47,7 +49,7 @@ def dispatch(environ, start_response):
         start_response('200 OK', [('Content-Type', 'text/html'), ('Content-Length', '814')])
         ret = [open(os.path.join(
                      os.path.dirname(__file__), 
-                     'websocket_chat.html')).read()]
+                     'templates/websocket_chat.html')).read()]
         return ret
         
 if __name__ == "__main__":
