@@ -52,7 +52,7 @@ simple wsgi app::
 
 with gunicorn. user worker class "meinheld.gmeinheld.MeinheldWorker"::
     
-    $ gunicorn --workers=2 --worker-class="meinheld.gmeinheld.MeinheldWorker" gunicorn_test:app
+    $ gunicorn --workers=2 --worker-class="egg:meinheld#gunicorn_worker" gunicorn_test:app
 
 Continuation
 ---------------------------------
