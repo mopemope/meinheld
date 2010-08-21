@@ -72,21 +72,6 @@ NSocketObject_dealloc(NSocketObject* self)
     PyObject_DEL(self);
 }
 
-static inline void
-send_inner(picoev_loop* loop, int fd, int events, void* cb_arg)
-{
-    NSocketObject *socket = (NSocketObject *)cb_arg;
-    
-    if ((events & PICOEV_TIMEOUT) != 0) {
-        //
-        free_buffer(socket->send_buf);
-        PyErr_SetString(PyExc_IOError, "write timeout");
-        switch_wsgi_app(loop, fd, (PyObject *)socket->client);
-    } else if ((events & PICOEV_WRITE) != 0) {
-        switch_wsgi_app(loop, fd, (PyObject *)socket->client);
-    }
-}
-
 
 static inline void
 switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
@@ -110,7 +95,7 @@ switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 }
 
 static inline void
-switch_trampolin(NSocketObject *socket, int events)
+trampolin_switch(NSocketObject *socket, int events)
 {
     PyGreenlet *current, *parent;
 
@@ -141,15 +126,43 @@ inner_write(NSocketObject *socket)
                 return NULL;
             }
         default:
-            if(socket->fd == socket->client->client->fd){
-                // response fd ?
-                socket->client->client->response_closed = 1;
-            }
             //all done
             //switch 
             free_buffer(socket->send_buf);
             socket->send_buf = NULL;
             return Py_BuildValue("i", r);
+    }
+}
+
+static inline PyObject * 
+inner_write_all(NSocketObject *socket)
+{
+    buffer *send_buf = socket->send_buf;
+    ssize_t r;
+    ssize_t delta = send_buf->buf_size - send_buf->len;
+    r = write(socket->fd, send_buf->buf + delta, send_buf->len);
+#ifdef DEBUG
+    printf("nsocket write fd:%d bytes:%d \n", socket->fd, r);
+#endif
+    switch (r) {
+       case -1:
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return NULL;
+            }else{
+                free_buffer(socket->send_buf);
+                PyErr_SetFromErrno(PyExc_IOError);
+                return NULL;
+            }
+        default:
+            send_buf->len -=r;
+            if(!send_buf->len){
+                //all done
+                //switch 
+                free_buffer(socket->send_buf);
+                socket->send_buf = NULL;
+                return Py_BuildValue("i", send_buf->buf_size);
+            }
+            return NULL;
     }
 }
 
@@ -185,7 +198,7 @@ inner_read(NSocketObject *socket)
 
 
 static inline PyObject * 
-recv_ready(NSocketObject *socket, ssize_t len)
+inner_recv(NSocketObject *socket, ssize_t len)
 {
     PyObject *res;
 
@@ -202,7 +215,7 @@ recv_ready(NSocketObject *socket, ssize_t len)
             return NULL;
         }
     
-        switch_trampolin(socket, PICOEV_READ);
+        trampolin_switch(socket, PICOEV_READ);
 
         if(PyErr_Occurred()){
             // check time out
@@ -214,7 +227,7 @@ recv_ready(NSocketObject *socket, ssize_t len)
 }
 
 static inline PyObject * 
-send_ready(NSocketObject *socket, char *buf, ssize_t len)
+inner_send(NSocketObject *socket, char *buf, ssize_t len)
 {
     PyObject *res;
     socket->send_buf = new_buffer(len , len);
@@ -223,6 +236,10 @@ send_ready(NSocketObject *socket, char *buf, ssize_t len)
     while(1){
         res = inner_write(socket);
         if(res){
+            if(socket->fd == socket->client->client->fd){
+                // response fd ?
+                socket->client->client->response_closed = 1;
+            }
             return res;
         }
 
@@ -231,7 +248,38 @@ send_ready(NSocketObject *socket, char *buf, ssize_t len)
             return NULL;
         }
     
-        switch_trampolin(socket, PICOEV_WRITE);
+        trampolin_switch(socket, PICOEV_WRITE);
+
+        if(PyErr_Occurred()){
+            // check time out
+            return NULL;
+        }
+    }
+}
+
+static inline PyObject * 
+inner_sendall(NSocketObject *socket, char *buf, ssize_t len)
+{
+    PyObject *res;
+    socket->send_buf = new_buffer(len , len);
+    write2buf(socket->send_buf, buf, len);
+
+    while(1){
+        res = inner_write(socket);
+        if(res){
+            if(socket->fd == socket->client->client->fd){
+                // response fd ?
+                socket->client->client->response_closed = 1;
+            }
+            return res;
+        }
+
+        if(PyErr_Occurred()){
+            // check socket Error
+            return NULL;
+        }
+    
+        trampolin_switch(socket, PICOEV_WRITE);
 
         if(PyErr_Occurred()){
             // check time out
@@ -247,7 +295,7 @@ NSocketObject_recv(NSocketObject *socket, PyObject *args)
     if (!PyArg_ParseTuple(args, "i:recv", &len)){
         return NULL;
     }
-    return recv_ready(socket, len);
+    return inner_recv(socket, len);
 }
 
 static inline PyObject * 
@@ -262,13 +310,29 @@ NSocketObject_send(NSocketObject *socket, PyObject *args)
     
     PyString_AsStringAndSize(s, &buf, &len);
 
-    return send_ready(socket, buf, len);
+    return inner_send(socket, buf, len);
+}
+
+static inline PyObject * 
+NSocketObject_sendall(NSocketObject *socket, PyObject *args)
+{
+    PyObject *s;
+    char *buf;
+    ssize_t len;
+    if (!PyArg_ParseTuple(args, "S:sendall", &s)){
+        return NULL;
+    }
+    
+    PyString_AsStringAndSize(s, &buf, &len);
+
+    return inner_sendall(socket, buf, len);
 }
 
 
 static PyMethodDef NSocketObject_method[] = {
     { "recv",      (PyCFunction)NSocketObject_recv, METH_VARARGS, 0 },
     { "send",      (PyCFunction)NSocketObject_send, METH_VARARGS, 0 },
+    { "sendall",      (PyCFunction)NSocketObject_sendall, METH_VARARGS, 0 },
     { NULL, NULL}
 };
 
