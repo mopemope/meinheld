@@ -1,20 +1,8 @@
 from meinheld import server
+from meinheld.common import Continuation, CLIENT_KEY, CONTINUATION_KEY
+from meinheld.websocket import WebSocketMiddleware
 import greenlet
 
-CLIENT_KEY = 'meinheld.client'
-CONTINUATION_KEY = 'meinheld.continuation'
-
-class Continuation(object):
-
-    def __init__(self, client):
-        self.client = client
-
-    def suspend(self):
-        return server._suspend_client(self.client)
-    
-    def resume(self, *args, **kwargs):
-        return server._resume_client(self.client, args, kwargs)
-        
 
 class SpawnMiddleware(object):
 
@@ -31,5 +19,4 @@ class SpawnMiddleware(object):
         environ[CONTINUATION_KEY] = c
 
         return g.switch(environ, start_response)
-
 
