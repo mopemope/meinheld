@@ -26,7 +26,7 @@ include_dirs=[]
 
 
 setup(name='meinheld',
-    version="0.2.1",
+    version="0.3dev",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
@@ -54,7 +54,7 @@ setup(name='meinheld',
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 #libraries=["profiler"],
-                #extra_compile_args=["-DDEBUG"],
+                extra_compile_args=["-DDEBUG"],
             )],
 
     classifiers=[
