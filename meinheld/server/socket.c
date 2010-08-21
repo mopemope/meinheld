@@ -328,11 +328,20 @@ NSocketObject_sendall(NSocketObject *socket, PyObject *args)
     return inner_sendall(socket, buf, len);
 }
 
+static inline PyObject * 
+NSocketObject_close(NSocketObject *socket, PyObject *args)
+{
+    if(socket->fd != socket->client->client->fd){
+        close(socket->fd);
+    }
+    Py_RETURN_NONE;
+}
 
 static PyMethodDef NSocketObject_method[] = {
     { "recv",      (PyCFunction)NSocketObject_recv, METH_VARARGS, 0 },
     { "send",      (PyCFunction)NSocketObject_send, METH_VARARGS, 0 },
     { "sendall",      (PyCFunction)NSocketObject_sendall, METH_VARARGS, 0 },
+    { "close",      (PyCFunction)NSocketObject_close, METH_VARARGS, 0 },
     { NULL, NULL}
 };
 
