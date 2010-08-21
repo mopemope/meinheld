@@ -36,6 +36,7 @@ def websocket_handle(environ, start_response):
                 print "%s" % a
     finally:
         participants.remove(ws)
+    return [""]
 
 def dispatch(environ, start_response):
     """Resolves to the web page or the websocket depending on the path."""
