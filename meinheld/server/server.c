@@ -42,6 +42,8 @@ static char *error_log_path = NULL; //error log path
 static int err_log_fd = -1; //error log
 
 static int is_keep_alive = 0; //keep alive support
+static int keep_alive_timeout = 5;
+
 int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
@@ -413,7 +415,7 @@ prepare_call_wsgi(client_t *client)
         //Py_DECREF(object);
         Py_DECREF(input);
     }
-    if(is_keep_alive){
+    if(keep_alive_timeout){
         //support keep-alive
         c = PyDict_GetItemString(client->environ, "HTTP_CONNECTION");
         if(c){
@@ -565,7 +567,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             remote_port = ntohs(client_addr.sin_port);
             client = new_client_t(client_fd, remote_addr, remote_port);
             init_parser(client, server_name, server_port);
-            picoev_add(loop, client_fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)client);
+            picoev_add(loop, client_fd, PICOEV_READ, keep_alive_timeout, r_callback, (void *)client);
         }else{
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 PyErr_SetFromErrno(PyExc_IOError);
@@ -869,21 +871,32 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-/*
+
 PyObject *
 meinheld_set_keepalive(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, "i", &is_keep_alive))
+    int timeout;
+    if (!PyArg_ParseTuple(args, "i", &timeout))
         return NULL;
+    if(timeout < 0){
+        PyErr_SetString(PyExc_ValueError, "must be timeout value");
+        return NULL;
+    }
+    if(timeout == 0){
+        keep_alive_timeout = 5;
+    }else{
+        keep_alive_timeout = timeout;
+    }
+    is_keep_alive = timeout;
     Py_RETURN_NONE;
 }
 
 PyObject *
 meinheld_get_keepalive(PyObject *self, PyObject *args)
 {
-    return Py_BuildValue("i", is_keep_alive);
+    return Py_BuildValue("i", keep_alive_timeout);
 }
-*/
+
 
 PyObject *
 meinheld_set_max_content_length(PyObject *self, PyObject *args)
@@ -1062,10 +1075,13 @@ static PyMethodDef WsMethods[] = {
     {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
     {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."},
     {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."},
-    //{"set_keepalive", meinheld_set_keepalive, METH_VARARGS, "support keep-alive. set 1"},
-    //{"get_keepalive", meinheld_get_keepalive, METH_VARARGS, "return keep-alive support"},
+
+    {"set_keepalive_timeout", meinheld_set_keepalive, METH_VARARGS, "set keep-alive timeout. eg 5. default 0. (disable keep-alive)"},
+    {"get_keepalive_timeout", meinheld_get_keepalive, METH_VARARGS, "return keep-alive timeout."},
+    
     {"set_max_content_length", meinheld_set_max_content_length, METH_VARARGS, "set max_content_length"},
     {"get_max_content_length", meinheld_get_max_content_length, METH_VARARGS, "return max_content_length"},
+    
     {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"},
     {"stop", meinheld_stop, METH_VARARGS, "stop main loop"},
     // support gunicorn 
@@ -1087,7 +1103,9 @@ initserver(void)
     PyType_Ready(&FileWrapperType);
     PyType_Ready(&ClientObjectType);
     PyType_Ready(&NSocketObjectType);
-
+#ifdef DEBUG
+    printf("client size %d \n", sizeof(client_t));
+#endif
 }
 
 
