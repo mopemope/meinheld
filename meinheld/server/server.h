@@ -38,6 +38,10 @@ typedef struct _client {
     int fd;
     char *remote_addr;
     uint32_t remote_port;
+    
+    uint8_t http_major;
+    uint8_t http_minor;
+
     uint8_t keep_alive;
     request *req;
     uint32_t body_length;
