@@ -42,7 +42,7 @@ static char *error_log_path = NULL; //error log path
 static int err_log_fd = -1; //error log
 
 static int is_keep_alive = 0; //keep alive support
-static int keep_alive_timeout = 5;
+//static int keep_alive_timeout = 5;
 
 int max_content_length = 1024 * 1024 * 16; //max_content_length
 
@@ -136,6 +136,7 @@ close_conn(client_t *cli, picoev_loop* loop)
     }else{
         disable_cork(cli);
         new_client = new_client_t(cli->fd, cli->remote_addr, cli->remote_port);
+        new_client->keep_alive = 1;
         init_parser(new_client, server_name, server_port);
         picoev_add(main_loop, new_client->fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)new_client);
     }
@@ -568,7 +569,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             remote_port = ntohs(client_addr.sin_port);
             client = new_client_t(client_fd, remote_addr, remote_port);
             init_parser(client, server_name, server_port);
-            picoev_add(loop, client_fd, PICOEV_READ, keep_alive_timeout, r_callback, (void *)client);
+            picoev_add(loop, client_fd, PICOEV_READ, READ_LONG_TIMEOUT_SECS, r_callback, (void *)client);
         }else{
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 PyErr_SetFromErrno(PyExc_IOError);
@@ -876,26 +877,21 @@ meinheld_run_loop(PyObject *self, PyObject *args)
 PyObject *
 meinheld_set_keepalive(PyObject *self, PyObject *args)
 {
-    int timeout;
-    if (!PyArg_ParseTuple(args, "i", &timeout))
+    int on;
+    if (!PyArg_ParseTuple(args, "i", &on))
         return NULL;
-    if(timeout < 0){
-        PyErr_SetString(PyExc_ValueError, "must be timeout value");
+    if(on < 0){
+        PyErr_SetString(PyExc_ValueError, "must be 0 or 1");
         return NULL;
     }
-    if(timeout == 0){
-        keep_alive_timeout = 5;
-    }else{
-        keep_alive_timeout = timeout;
-    }
-    is_keep_alive = timeout;
+    is_keep_alive = on;
     Py_RETURN_NONE;
 }
 
 PyObject *
 meinheld_get_keepalive(PyObject *self, PyObject *args)
 {
-    return Py_BuildValue("i", keep_alive_timeout);
+    return Py_BuildValue("i", is_keep_alive);
 }
 
 
@@ -1077,8 +1073,8 @@ static PyMethodDef WsMethods[] = {
     {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."},
     {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."},
 
-    {"set_keepalive_timeout", meinheld_set_keepalive, METH_VARARGS, "set keep-alive timeout. eg 5. default 0. (disable keep-alive)"},
-    {"get_keepalive_timeout", meinheld_get_keepalive, METH_VARARGS, "return keep-alive timeout."},
+    {"set_keepalive", meinheld_set_keepalive, METH_VARARGS, "set keep-alive support. default 0. (disable keep-alive)"},
+    {"get_keepalive", meinheld_get_keepalive, METH_VARARGS, "return keep-alive support."},
     
     {"set_max_content_length", meinheld_set_max_content_length, METH_VARARGS, "set max_content_length"},
     {"get_max_content_length", meinheld_get_max_content_length, METH_VARARGS, "return max_content_length"},
