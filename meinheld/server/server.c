@@ -503,13 +503,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     return;
                 }
 
-                if(cli->upgrade){
-                    //WebSocket Key
-                    char *key = buf + nread + 1;
-                    PyObject *body = PyString_FromStringAndSize(key, r - nread);
-                    cli->body = body;
-
-                }else if(!cli->upgrade && nread != r){
+                if(!cli->upgrade && nread != r){
                     // parse error
 #ifdef DEBUG
                     printf("fd %d parse error %d \n", cli->fd, cli->bad_request_code);
@@ -525,6 +519,13 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #endif
                
                 if(parser_finish(cli) > 0){
+                    if(cli->upgrade){
+                        //WebSocket Key
+                        char *key = buf + nread + 1;
+                        PyObject *body = PyString_FromStringAndSize(key, r - nread);
+                        cli->body = body;
+
+                    }
                     finish = 1;
                 }
                 break;
