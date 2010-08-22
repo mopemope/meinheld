@@ -66,11 +66,11 @@ write_log(const char *new_path, int fd, const char *data, size_t len)
 int 
 write_access_log(client_t *cli, int log_fd, const char *log_path)
 {
-    char buf[1024];
+    char buf[1024*4];
     if(log_fd > 0){
         
         PyObject *obj;
-        char *method, *path, *version, *ua;
+        char *method, *path, *version, *referer, *ua;
         
         obj = PyDict_GetItemString(cli->environ, "REQUEST_METHOD");
         if(obj){
@@ -100,10 +100,17 @@ write_access_log(client_t *cli, int log_fd, const char *log_path)
             ua = "-";
         }
 
+        obj = PyDict_GetItemString(cli->environ, "HTTP_REFERER");
+        if(obj){
+            referer = PyString_AS_STRING(obj);
+        }else{
+            referer = "-";
+        }
+
         //update
         cache_time_update();
         
-        sprintf(buf, "%s - - [%s] \"%s %s %s\" %d %d \"-\" \"%s\"\n", 
+        sprintf(buf, "%s - - [%s] \"%s %s %s\" %d %d \"%s\" \"%s\"\n", 
                cli->remote_addr,
                http_log_time,
                method,
@@ -111,6 +118,7 @@ write_access_log(client_t *cli, int log_fd, const char *log_path)
                version,
                cli->status_code,
                cli->write_bytes,
+               referer,
                ua);
         return write_log(log_path, log_fd, buf, strlen(buf));
     }
