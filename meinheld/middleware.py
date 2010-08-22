@@ -15,10 +15,9 @@ class SpawnMiddleware(object):
         if not g:
             # new greenlet
             g = greenlet.greenlet(self.app)
-            client.set_greenlet(g)
-        
-        c = Continuation(client)
-        environ[CONTINUATION_KEY] = c
+            client.set_greenlet(g) 
+            c = Continuation(client)
+            environ[CONTINUATION_KEY] = c
 
         return g.switch(environ, start_response)
 
