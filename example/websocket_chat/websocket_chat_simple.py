@@ -45,7 +45,7 @@ def dispatch(environ, start_response):
         return websocket_handle(environ, start_response)
     else:
         print "/"
-        start_response('200 OK', [('Content-Type', 'text/html'), ('Content-Length', '814')])
+        start_response('200 OK', [('Content-Type', 'text/html')])
         ret = [open(os.path.join(
                      os.path.dirname(__file__), 
                      'templates/websocket_chat.html')).read()]

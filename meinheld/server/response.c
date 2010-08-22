@@ -180,6 +180,38 @@ writev_bucket(write_bucket *data)
     return 1;
 }
 
+static inline void
+auto_set_content_length(client_t *client, write_bucket *bucket, char *data, size_t datalen )
+{
+    PyObject *header, *length;
+    char *value;
+    Py_ssize_t valuelen;
+
+    if(client->headers && !client->content_length_set){
+        if (PySequence_Check(client->response)) {
+            if (PySequence_Size(client->response) == 1) {
+                client->content_length_set = 1;
+#ifdef DEBUG
+                printf("set content_length %d \n", datalen);
+#endif
+                length = PyString_FromFormat("%zu", datalen);
+
+                header = Py_BuildValue("(sO)", "Content-Length", length);
+                Py_DECREF(length);
+
+                PyList_Append(client->headers, header);
+                Py_DECREF(header); 
+                PyString_AsStringAndSize(length, &value, &valuelen);
+                add_header(bucket, "Content-Length", 14, value, valuelen);
+            }
+
+            if (PyErr_Occurred()){
+                PyErr_Clear();
+            }
+        }
+    }
+}
+
 static inline int
 write_headers(client_t *client, char *data, size_t datalen)
 {
@@ -293,6 +325,12 @@ write_headers(client_t *client, char *data, size_t datalen)
         }
         
     }
+    //header done 
+    
+    // check content_length_set
+    // auto set content_length
+    auto_set_content_length(client, bucket, data, datalen); 
+
     set2bucket(bucket, CRLF, 2);
     if(data){
         set2bucket(bucket, data, datalen);
