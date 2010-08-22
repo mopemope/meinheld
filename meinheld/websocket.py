@@ -99,9 +99,8 @@ class WebSocketMiddleware(object):
             # new greenlet
             g = greenlet.greenlet(self.app)
             client.set_greenlet(g)
-        
-        c = Continuation(client)
-        environ[CONTINUATION_KEY] = c
+            c = Continuation(client)
+            environ[CONTINUATION_KEY] = c
 
         result = self.setup(environ)
         try:
