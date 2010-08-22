@@ -1,8 +1,9 @@
 0.3
 =======
 
-* support keep-alive (use set_keep_alive_timeout)
+* support keep-alive (use set_keep_alive)
 * support websocket(experimental)
+* various bug fixes
 
 
 0.2.1
