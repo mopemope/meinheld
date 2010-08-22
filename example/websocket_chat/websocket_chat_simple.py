@@ -34,8 +34,7 @@ def websocket_handle(environ, start_response):
                 break
             for p in participants:
                 print "send message %s" % m
-                a = p.send(m)
-                print "%s" % a
+                p.send(m)
     finally:
         participants.remove(ws)
     return [""]

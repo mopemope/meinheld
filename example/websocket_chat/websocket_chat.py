@@ -17,6 +17,7 @@ def index():
 
 @app.route('/chat')
 def chat():
+    print request.environ
     ws = request.environ.get('wsgi.websocket')
     participants.add(ws)
     try:
@@ -28,8 +29,7 @@ def chat():
                 break
             for p in participants:
                 print "send message %s" % m
-                a = p.send(m)
-                print "%s" % a
+                p.send(m)
     finally:
         participants.remove(ws)
     return ""
