@@ -415,7 +415,7 @@ prepare_call_wsgi(client_t *client)
         //Py_DECREF(object);
         Py_DECREF(input);
     }
-    if(keep_alive_timeout){
+    if(is_keep_alive){
         //support keep-alive
         c = PyDict_GetItemString(client->environ, "HTTP_CONNECTION");
         if(c){
