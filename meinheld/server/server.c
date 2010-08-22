@@ -768,10 +768,21 @@ meinheld_access_log(PyObject *self, PyObject *args)
 {   
     if (!PyArg_ParseTuple(args, "s:access_log", &log_path))
         return NULL;
+    
 
     if(log_fd > 0){
         close(log_fd);
     }
+    
+    if(!strcasecmp(log_path, "stdout")){
+        log_fd = 1;
+        Py_RETURN_NONE;
+    }
+    if(!strcasecmp(log_path, "stderr")){
+        log_fd = 2;
+        Py_RETURN_NONE;
+    }
+
     log_fd = open_log_file(log_path);
     if(log_fd < 0){
         PyErr_Format(PyExc_TypeError, "not open file. %s", log_path);
