@@ -182,7 +182,6 @@ class WebSocketWSGI(object):
             raise ValueError("Unknown WebSocket protocol version.") 
         
         r = sock.sendall(handshake_reply)
-        print "handshake %s" % r
         self.handler(ws)
         # Make sure we send the closing frame
         ws._send_closing_frame(True)
@@ -306,7 +305,6 @@ class WebSocket(object):
                 return None
             # no parsed messages, must mean buf needs more data
             delta = self.socket.recv(8096)
-            print "delta %s" % delta
             if delta == '':
                 return None
             self._buf += delta
