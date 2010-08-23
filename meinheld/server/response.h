@@ -6,6 +6,7 @@
 #include <inttypes.h>
 
 #include "server.h"
+#include "client.h"
 #include "time_cache.h"
 
 typedef struct iovec iovec_t;

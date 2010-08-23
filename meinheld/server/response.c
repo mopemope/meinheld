@@ -570,8 +570,14 @@ start_response_write(client_t *client)
     Py_ssize_t buflen;
     
     if(PyIter_Check(client->response)){
+#ifdef DEBUG
+        printf("response type iter \n");
+#endif
         iterator = client->response;
     }else{
+#ifdef DEBUG
+        printf("response type not iter \n");
+#endif
         iterator = PyObject_GetIter(client->response);
         if (PyErr_Occurred()){ 
             write_error_log(__FILE__, __LINE__);

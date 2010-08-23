@@ -33,7 +33,7 @@ typedef enum {
     BODY_TYPE_BUFFER
 } request_body_type;
 
-
+/*
 typedef struct _client {
     int fd;
     char *remote_addr;
@@ -67,6 +67,7 @@ typedef struct _client {
     void *bucket;               //write_data
     uint8_t response_closed;    //response closed flag
 } client_t;
+*/
 
 extern int max_content_length; //max_content_length
 
