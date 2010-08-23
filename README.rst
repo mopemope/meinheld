@@ -155,12 +155,16 @@ and useing high performance event library picoev.
 
 (see http://developer.cybozu.co.jp/kazuho/2009/08/picoev-a-tiny-e.html)
 
+`simple benchmark result here`_
 
 sendfile
 ===========================
 
 meinheld use sendfile(2), over wgsi.file_wrapper.
 
+
+
+.. _simple benchmark result here: http://gist.github.com/544674
 
 
 
