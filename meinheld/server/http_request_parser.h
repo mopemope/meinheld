@@ -1,7 +1,7 @@
 #ifndef HTTP_REQUEST_PARSER_H
 #define HTTP_REQUEST_PARSER_H
 
-#include "server.h"
+#include "client.h"
 #include "buffer.h"
 #include "request.h"
 

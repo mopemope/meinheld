@@ -1,7 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include "server.h"
+#include "client.h"
 #include "time_cache.h"
 
 int
