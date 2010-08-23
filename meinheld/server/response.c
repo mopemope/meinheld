@@ -381,27 +381,30 @@ write_sendfile(int out_fd, int in_fd, size_t count)
 inline void 
 close_response(client_t *client)
 {
-    
-    //send all response
-    //closing reponse object
-    if (client->response && PyObject_HasAttrString(client->response, "close")) {
-        PyObject *close = NULL;
-        PyObject *args = NULL;
-        PyObject *data = NULL;
-        
-        close = PyObject_GetAttrString(client->response, "close");
+    if(!client->response_closed){ 
+        Py_CLEAR(client->response_iter);
+        //send all response
+        //closing reponse object
+        if (client->response && PyObject_HasAttrString(client->response, "close")) {
+            PyObject *close = NULL;
+            PyObject *args = NULL;
+            PyObject *data = NULL;
+            
+            close = PyObject_GetAttrString(client->response, "close");
 
-        args = Py_BuildValue("()");
-        data = PyEval_CallObject(close, args);
+            args = Py_BuildValue("()");
+            data = PyEval_CallObject(close, args);
 
-        Py_DECREF(args);
-        Py_XDECREF(data);
-        Py_DECREF(close);
-        if (PyErr_Occurred()){
-            PyErr_Clear();
+            Py_DECREF(args);
+            Py_XDECREF(data);
+            Py_DECREF(close);
+            if (PyErr_Occurred()){
+                PyErr_Clear();
+            }
         }
+
+        client->response_closed = 1;
     }
-    client->response_closed = 1; 
 
 }
 
@@ -569,20 +572,10 @@ start_response_write(client_t *client)
     char *buf;
     Py_ssize_t buflen;
     
-    if(PyIter_Check(client->response)){
-#ifdef DEBUG
-        printf("response type iter \n");
-#endif
-        iterator = client->response;
-    }else{
-#ifdef DEBUG
-        printf("response type not iter \n");
-#endif
-        iterator = PyObject_GetIter(client->response);
-        if (PyErr_Occurred()){ 
-            write_error_log(__FILE__, __LINE__);
-            return -1;
-        }
+    iterator = PyObject_GetIter(client->response);
+    if (PyErr_Occurred()){ 
+        write_error_log(__FILE__, __LINE__);
+        return -1;
     }
     client->response_iter = iterator;
 
