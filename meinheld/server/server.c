@@ -459,15 +459,13 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }
         r = read(cli->fd, buf, sizeof(buf));
         switch (r) {
-            /*
-            read 0 occured overload
             case 0: 
                 cli->keep_alive = 0;
+                //503??
                 cli->status_code = 503;
                 send_error_page(cli);
                 close_conn(cli, loop);
                 return;
-            */
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
@@ -479,7 +477,6 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     if(errno != ECONNRESET){
                         send_error_page(cli);
                     }else{
-
                         cli->header_done = 1;
                         cli->response_closed = 1;
                     }
@@ -863,6 +860,9 @@ meinheld_run_loop(PyObject *self, PyObject *args)
             Py_XDECREF(watchdog_result);
             i = 0;
         }
+#ifdef DEBUG
+        printf("loop \n");
+#endif
     }
 
     Py_DECREF(wsgi_app);
