@@ -382,7 +382,6 @@ inline void
 close_response(client_t *client)
 {
     if(!client->response_closed){ 
-        Py_CLEAR(client->response_iter);
         //send all response
         //closing reponse object
         if (client->response && PyObject_HasAttrString(client->response, "close")) {
