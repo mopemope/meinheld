@@ -821,7 +821,8 @@ static PyMethodDef FileWrapperObject_method[] = {
 };
 
 PyTypeObject ResponseObjectType = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0)
+	PyObject_HEAD_INIT(NULL)
+    0,
     "meinheld.start_response",             /*tp_name*/
     sizeof(ResponseObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -862,7 +863,8 @@ PyTypeObject ResponseObjectType = {
 };
 
 PyTypeObject FileWrapperType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+	PyObject_HEAD_INIT(&PyType_Type)
+    0,
     "meinheld.file_wrapper",             /*tp_name*/
     sizeof(FileWrapperObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

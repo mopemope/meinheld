@@ -400,7 +400,7 @@ prepare_call_wsgi(client_t *client)
     }else{
         if(client->body_type == BODY_TYPE_BUFFER){
             object = PycStringIO->cgetvalue((PyObject *)client->body);
-            Py_XDECREF(client->body);
+            Py_XDECREF((PyObject *)client->body);
             input = PycStringIO->NewInput(object);
             PyDict_SetItemString((PyObject *)client->environ, "wsgi.input", input);
         }else{

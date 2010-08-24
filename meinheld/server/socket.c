@@ -348,7 +348,8 @@ static PyMethodDef NSocketObject_method[] = {
 
 
 PyTypeObject NSocketObjectType = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0)
+	PyObject_HEAD_INIT(&PyType_Type)
+    0,
     "meinheld.nsocket",             /*tp_name*/
     sizeof(NSocketObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
