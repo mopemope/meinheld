@@ -88,7 +88,8 @@ static PyMemberDef ClientObject_members[] = {
 
 
 PyTypeObject ClientObjectType = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0)
+	PyObject_HEAD_INIT(&PyType_Type)
+    0,
     "meinheld.client",             /*tp_name*/
     sizeof(ClientObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
