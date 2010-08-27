@@ -14,13 +14,11 @@
 #include "client.h"
 #include "socket.h"
 
-#define MAX_FDS 1024 * 8
 #define ACCEPT_TIMEOUT_SECS 1
 #define SHORT_TIMEOUT_SECS 2
 #define WRITE_TIMEOUT_SECS 60 * 5 
 #define READ_LONG_TIMEOUT_SECS 5
 
-#define BACKLOG 1024 * 8
 #define MAX_BUFSIZE 1024 * 8
 #define INPUT_BUF_SIZE 1024 * 8
 
@@ -48,6 +46,10 @@ int max_content_length = 1024 * 1024 * 16; //max_content_length
 
 static char *unix_sock_name = NULL;
 
+static int backlog = 1024 * 4; // backlog size
+static int max_fd = 1024 * 4;  // picoev max_fd
+
+// greenlet hub switch value
 PyObject *hub_switch_value;
 
 
@@ -646,8 +648,8 @@ inet_listen(void)
 
     freeaddrinfo(servinfo); // all done with this structure
     
-    // BACKLOG 1024
-    if (listen(listen_sock, BACKLOG) == -1) {
+    // BACKLOG 
+    if (listen(listen_sock, backlog) == -1) {
         close(listen_sock);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
@@ -705,7 +707,7 @@ unix_listen(char *sock_name)
     umask(old_umask);
 
     // BACKLOG 1024
-    if (listen(listen_sock, BACKLOG) == -1) {
+    if (listen(listen_sock, backlog) == -1) {
         close(listen_sock);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
@@ -835,7 +837,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     setup_server_env();
 
     /* init picoev */
-    picoev_init(MAX_FDS);
+    picoev_init(max_fd);
     /* create loop */
     main_loop = picoev_create_loop(60);
     loop_done = 1;
@@ -905,12 +907,57 @@ meinheld_get_keepalive(PyObject *self, PyObject *args)
     return Py_BuildValue("i", is_keep_alive);
 }
 
+PyObject *
+meinheld_set_backlog(PyObject *self, PyObject *args)
+{
+    int temp;
+    if (!PyArg_ParseTuple(args, "i", &temp))
+        return NULL;
+    if(temp <= 0){
+        PyErr_SetString(PyExc_ValueError, "backlog value out of range ");
+        return NULL;
+    }
+    backlog = temp;
+    Py_RETURN_NONE;
+}
+
+PyObject *
+meinheld_get_backlog(PyObject *self, PyObject *args)
+{
+    return Py_BuildValue("i", backlog);
+}
+
+PyObject *
+meinheld_set_picoev_max_fd(PyObject *self, PyObject *args)
+{
+    int temp;
+    if (!PyArg_ParseTuple(args, "i", &temp))
+        return NULL;
+    if(temp <= 0){
+        PyErr_SetString(PyExc_ValueError, "max_fd value out of range ");
+        return NULL;
+    }
+    max_fd = temp;
+    Py_RETURN_NONE;
+}
+
+PyObject *
+meinheld_get_picoev_max_fd(PyObject *self, PyObject *args)
+{
+    return Py_BuildValue("i", max_fd);
+}
 
 PyObject *
 meinheld_set_max_content_length(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, "i", &max_content_length))
+    int temp;
+    if (!PyArg_ParseTuple(args, "i", &temp))
         return NULL;
+    if(temp <= 0){
+        PyErr_SetString(PyExc_ValueError, "max_content_length value out of range ");
+        return NULL;
+    }
+    max_content_length = temp;
     Py_RETURN_NONE;
 }
 
@@ -1090,6 +1137,12 @@ static PyMethodDef WsMethods[] = {
     {"set_max_content_length", meinheld_set_max_content_length, METH_VARARGS, "set max_content_length"},
     {"get_max_content_length", meinheld_get_max_content_length, METH_VARARGS, "return max_content_length"},
     
+    {"set_backlog", meinheld_set_backlog, METH_VARARGS, "set backlog size"},
+    {"get_backlog", meinheld_get_backlog, METH_VARARGS, "return backlog size"},
+
+    {"set_picoev_max_fd", meinheld_set_picoev_max_fd, METH_VARARGS, "set picoev max fd size"},
+    {"get_picoev_max_fd", meinheld_get_picoev_max_fd, METH_VARARGS, "return picoev max fd size"},
+
     {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"},
     {"stop", meinheld_stop, METH_VARARGS, "stop main loop"},
     // support gunicorn 
