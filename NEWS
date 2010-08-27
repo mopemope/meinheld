@@ -1,3 +1,10 @@
+0.3.2
+=======
+
+* check max_content_length negative
+* add set_backlog 
+* add set_picoev_max_fd
+
 0.3.1
 =======
 
