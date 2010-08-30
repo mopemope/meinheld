@@ -94,7 +94,7 @@ example ::
 
 For more info see http://github.com/mopemope/meinheld/tree/master/example/chat/
 
-Websocket (experimental)
+Websocket 
 ---------------------------------
 
 meinheld support Websocket. use WebSocketMiddleware. 
