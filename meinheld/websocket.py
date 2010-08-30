@@ -103,10 +103,12 @@ class WebSocketMiddleware(object):
             environ[CONTINUATION_KEY] = c
 
         result = self.setup(environ)
+        response = None
         try:
-            return g.switch(environ, start_response)
+            response = g.switch(environ, start_response)
+            return response
         finally:
-            if result:
+            if result and response != -1:
                 ws = environ.get('wsgi.websocket')
                 ws._send_closing_frame(True)
 
