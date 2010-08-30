@@ -4,6 +4,8 @@
 * check max_content_length negative
 * add set_backlog 
 * add set_picoev_max_fd
+* support keep-alivei timeout (use set_keep_alive, set timeout value)
+
 
 0.3.1
 =======
