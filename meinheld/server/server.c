@@ -872,7 +872,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
             i = 0;
         }
 #ifdef DEBUG
-        printf("loop \n");
+        //printf("loop \n");
 #endif
     }
 

@@ -118,6 +118,9 @@ inner_write(NSocketObject *socket)
 #endif
     switch (r) {
        case -1:
+#ifdef DEBUG
+            printf("inner_write err:%d \n", errno);
+#endif
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return NULL;
             }else{
@@ -146,6 +149,9 @@ inner_write_all(NSocketObject *socket)
 #endif
     switch (r) {
        case -1:
+#ifdef DEBUG
+            printf("inner_write_all err:%d \n", errno);
+#endif
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return NULL;
             }else{
@@ -178,6 +184,9 @@ inner_read(NSocketObject *socket)
     //picoev_set_timeout(loop, socket->fd, 5);
     switch (r) {
         case -1:
+#ifdef DEBUG
+            printf("inner_read err:%d \n", errno);
+#endif
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return NULL;
             } else {
@@ -212,6 +221,9 @@ inner_recv(NSocketObject *socket, ssize_t len)
 
         if(PyErr_Occurred()){
             // check socket Error
+#ifdef DEBUG
+            printf("inner_recv error occured fd:%d \n", socket->fd);
+#endif
             return NULL;
         }
     
@@ -219,6 +231,9 @@ inner_recv(NSocketObject *socket, ssize_t len)
 
         if(PyErr_Occurred()){
             // check time out
+#ifdef DEBUG
+            printf("inner_recv timeout error occured fd:%d \n", socket->fd);
+#endif
             return NULL;
         }
     }
@@ -245,6 +260,9 @@ inner_send(NSocketObject *socket, char *buf, ssize_t len)
 
         if(PyErr_Occurred()){
             // check socket Error
+#ifdef DEBUG
+            printf("inner_send error occured fd:%d \n", socket->fd);
+#endif
             return NULL;
         }
     
@@ -252,6 +270,9 @@ inner_send(NSocketObject *socket, char *buf, ssize_t len)
 
         if(PyErr_Occurred()){
             // check time out
+#ifdef DEBUG
+            printf("inner_send error occured fd:%d \n", socket->fd);
+#endif
             return NULL;
         }
     }
@@ -276,6 +297,9 @@ inner_sendall(NSocketObject *socket, char *buf, ssize_t len)
 
         if(PyErr_Occurred()){
             // check socket Error
+#ifdef DEBUG
+            printf("inner_sendall error occured fd:%d \n", socket->fd);
+#endif
             return NULL;
         }
     
@@ -283,6 +307,9 @@ inner_sendall(NSocketObject *socket, char *buf, ssize_t len)
 
         if(PyErr_Occurred()){
             // check time out
+#ifdef DEBUG
+            printf("inner_sendall error occured fd:%d \n", socket->fd);
+#endif
             return NULL;
         }
     }

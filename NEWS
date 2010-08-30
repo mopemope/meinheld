@@ -6,6 +6,7 @@
 * add set_backlog (default 8192)
 * add set_picoev_max_fd (default 8192)
 * support keep-alivei timeout (use set_keepalive method, set timeout value)
+* fix websocket closed bug
 * various bug fixes
 
 
