@@ -5,8 +5,9 @@
 * check max_content_length negative
 * add set_backlog (default 8192)
 * add set_picoev_max_fd (default 8192)
-* support keep-alivei timeout (use set_keepalive method, set timeout value)
+* support keep-alive timeout (use set_keepalive method, set timeout value)
 * fix websocket closed bug
+* enable --keep-alive and --worker-connections option
 * various bug fixes
 
 
