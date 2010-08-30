@@ -4,7 +4,7 @@
 * check max_content_length negative
 * add set_backlog 
 * add set_picoev_max_fd
-* support keep-alivei timeout (use set_keep_alive, set timeout value)
+* support keep-alivei timeout (use set_keepalive, set timeout value)
 
 
 0.3.1
@@ -16,7 +16,7 @@
 0.3
 =======
 
-* support keep-alive (use set_keep_alive)
+* support keep-alive (use set_keepalive)
 * support websocket(experimental)
 * various bug fixes
 
