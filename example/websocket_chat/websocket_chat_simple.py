@@ -44,7 +44,6 @@ def dispatch(environ, start_response):
     if environ['PATH_INFO'] == '/chat':
         return websocket_handle(environ, start_response)
     else:
-        print "/"
         start_response('200 OK', [('Content-Type', 'text/html')])
         ret = [open(os.path.join(
                      os.path.dirname(__file__), 
