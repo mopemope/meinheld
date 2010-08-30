@@ -1,6 +1,6 @@
 0.3.2
 =======
-(bug fix release, release date to be announced)
+(bug fix release, release 2010-08-30)
 
 * check max_content_length negative
 * add set_backlog (default 8192)
