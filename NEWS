@@ -1,10 +1,12 @@
 0.3.2
 =======
+(bug fix release, release date to be announced)
 
 * check max_content_length negative
-* add set_backlog 
-* add set_picoev_max_fd
-* support keep-alivei timeout (use set_keepalive, set timeout value)
+* add set_backlog (default 8192)
+* add set_picoev_max_fd (default 8192)
+* support keep-alivei timeout (use set_keepalive method, set timeout value)
+* various bug fixes
 
 
 0.3.1
