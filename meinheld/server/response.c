@@ -32,16 +32,24 @@ blocking_write(client_t *client, char *data, size_t len)
                 break;
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
-                    //printf("EAGAIN \n");
-                    usleep(500); //TODO try again later
+                    usleep(500);
                     break;
                 }else{
                     // fatal error
                     //close
         
-                    PyErr_SetFromErrno(PyExc_IOError);
-                    write_error_log(__FILE__, __LINE__);
-                    client->keep_alive = 0;
+                    if(errno == EPIPE){
+                        // Connection reset by peer 
+                        client->keep_alive = 0;
+                        client->status_code = 500;
+                        client->header_done = 1;
+                        client->response_closed = 1;
+                        
+                    }else{
+                        PyErr_SetFromErrno(PyExc_IOError);
+                        write_error_log(__FILE__, __LINE__);
+                        client->keep_alive = 0;
+                    }
                     return -1;
                 }
             default:

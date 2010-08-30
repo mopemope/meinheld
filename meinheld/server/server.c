@@ -472,15 +472,24 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
                 } else { /* fatal error */
-                    PyErr_SetFromErrno(PyExc_IOError);
-                    write_error_log(__FILE__, __LINE__); 
-                    cli->keep_alive = 0;
-                    cli->status_code = 500;
-                    if(errno != ECONNRESET){
-                        send_error_page(cli);
-                    }else{
+                    if(cli->keep_alive && errno == ECONNRESET){
+                        
+                        cli->keep_alive = 0;
+                        cli->status_code = 500;
                         cli->header_done = 1;
                         cli->response_closed = 1;
+                        
+                    }else{
+                        PyErr_SetFromErrno(PyExc_IOError);
+                        write_error_log(__FILE__, __LINE__); 
+                        cli->keep_alive = 0;
+                        cli->status_code = 500;
+                        if(errno != ECONNRESET){
+                            send_error_page(cli);
+                        }else{
+                            cli->header_done = 1;
+                            cli->response_closed = 1;
+                        }
                     }
                     close_conn(cli, loop);
                     return;
