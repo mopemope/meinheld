@@ -117,7 +117,12 @@ inner_write(NSocketObject *socket)
     printf("nsocket write fd:%d bytes:%d \n", socket->fd, r);
 #endif
     switch (r) {
-       case -1:
+        case 0:
+            // Connection reset by peer
+            free_buffer(socket->send_buf);
+            PyErr_SetString(PyExc_IOError, "Connection reset by peer");
+            return NULL;
+        case -1:
 #ifdef DEBUG
             printf("inner_write err:%d \n", errno);
 #endif
@@ -148,7 +153,12 @@ inner_write_all(NSocketObject *socket)
     printf("nsocket write fd:%d bytes:%d \n", socket->fd, r);
 #endif
     switch (r) {
-       case -1:
+        case 0:
+            // Connection reset by peer
+            free_buffer(socket->send_buf);
+            PyErr_SetString(PyExc_IOError, "Connection reset by peer");
+            return NULL;
+        case -1:
 #ifdef DEBUG
             printf("inner_write_all err:%d \n", errno);
 #endif
@@ -183,6 +193,11 @@ inner_read(NSocketObject *socket)
     // update timeout
     //picoev_set_timeout(loop, socket->fd, 5);
     switch (r) {
+        case 0:
+            // Connection reset by peer
+            free_buffer(socket->recv_buf);
+            PyErr_SetString(PyExc_IOError, "Connection reset by peer");
+            return NULL;
         case -1:
 #ifdef DEBUG
             printf("inner_read err:%d \n", errno);
