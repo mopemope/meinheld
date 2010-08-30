@@ -17,7 +17,6 @@ def index():
 
 @app.route('/chat')
 def chat():
-    print request.environ
     ws = request.environ.get('wsgi.websocket')
     participants.add(ws)
     try:
