@@ -43,7 +43,7 @@ class WebSocketMiddleware(object):
 
         # Get the underlying socket and wrap a WebSocket class around it
         client = environ[CLIENT_KEY]
-        sock = server._get_socket_fromfd(client.get_fd(), client)
+        sock = server._get_socket_fromfd(client.get_fd())
         ws = WebSocket(sock, environ, protocol_version)
         
         # If it's new-version, we need to work out our challenge response
