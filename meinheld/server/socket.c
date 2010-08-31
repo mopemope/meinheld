@@ -68,6 +68,9 @@ NSocketObject_New(int fd, ClientObject *client)
 static inline void
 NSocketObject_dealloc(NSocketObject* self)
 {
+#ifdef DEBUG
+    printf("NSocketObject_dealloc fd:%d\n", self->fd);
+#endif
     Py_DECREF(self->client);
     PyObject_DEL(self);
 }
