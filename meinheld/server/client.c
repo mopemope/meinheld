@@ -29,6 +29,9 @@ ClientObject_New(client_t* client)
 static inline void
 ClientObject_dealloc(ClientObject* self)
 {
+#ifdef DEBUG
+    printf("ClientObject_dealloc \n");
+#endif
     self->client = NULL;
     Py_XDECREF(self->greenlet);
     PyObject_DEL(self);

@@ -109,7 +109,7 @@ class WebSocketMiddleware(object):
             return response
         finally:
             if result and response != -1:
-                ws = environ.get('wsgi.websocket')
+                ws = environ.pop('wsgi.websocket')
                 ws._send_closing_frame(True)
 
 class WebSocketWSGI(object):
