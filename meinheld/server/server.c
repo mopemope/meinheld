@@ -50,7 +50,8 @@ static int backlog = 1024 * 4; // backlog size
 static int max_fd = 1024 * 4;  // picoev max_fd
 
 // greenlet hub switch value
-PyObject *hub_switch_value;
+PyObject* hub_switch_value;
+PyObject* current_client;
 
 
 static void
@@ -159,6 +160,7 @@ process_resume_wsgi_app(ClientObject *pyclient)
     old_client = start_response->cli;
     start_response->cli = client;
     
+    current_client = pyclient;
     if(PyErr_Occurred()){
         PyErr_Fetch(&err_type, &err_val, &err_tb);
         PyErr_Clear();
@@ -207,6 +209,8 @@ process_wsgi_app(client_t *cli)
         return -1;
     }
     args = Py_BuildValue("(OO)", cli->environ, start);
+
+    current_client = PyDict_GetItemString(cli->environ, "meinheld.client");
 
     res = PyObject_CallObject(wsgi_app, args);
     Py_DECREF(args);
