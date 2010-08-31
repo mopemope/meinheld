@@ -442,6 +442,9 @@ static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     client_t *cli = ( client_t *)(cb_arg);
+    PyObject *body = NULL;
+    char *key = NULL;
+
     if ((events & PICOEV_TIMEOUT) != 0) {
 
 #ifdef DEBUG
@@ -534,8 +537,8 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if(parser_finish(cli) > 0){
                     if(cli->upgrade){
                         //WebSocket Key
-                        char *key = buf + nread + 1;
-                        PyObject *body = PyString_FromStringAndSize(key, r - nread);
+                        key = buf + nread + 1;
+                        body = PyString_FromStringAndSize(key, r - nread);
                         cli->body = body;
 
                     }
