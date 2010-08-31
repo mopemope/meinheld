@@ -39,6 +39,8 @@ extern picoev_loop* main_loop; //main loop
 
 extern PyObject* hub_switch_value;
 
+extern PyObject* current_client;
+
 inline void
 switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj);
 
