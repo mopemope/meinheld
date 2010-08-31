@@ -1131,15 +1131,15 @@ PyObject *
 meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
 {
     int fd;
-    PyObject *temp;
-    if (!PyArg_ParseTuple(args, "iO:_get_socket_fromfd", &fd, &temp)){
+    if (!PyArg_ParseTuple(args, "i:_get_socket_fromfd", &fd)){
         return NULL;
     }
+    /*
     if(!CheckClientObject(temp)){
         PyErr_SetString(PyExc_TypeError, "must be a client object");
         return NULL;
-    }
-    return NSocketObject_New(fd, (ClientObject *)temp);
+    }*/
+    return NSocketObject_New(fd, current_client);
 
 }
 
