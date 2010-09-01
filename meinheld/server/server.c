@@ -112,7 +112,6 @@ clean_cli(client_t *client)
     printf("close environ %p \n", client->environ);
 #endif
 
-    //PyDict_Clear(client->environ);
     Py_CLEAR(client->environ);
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
@@ -347,7 +346,6 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
     switch(ret){
         case -1:
             //Internal Server Error
-            Py_XDECREF(current_client);
             client->bad_request_code = 500;
             send_error_page(client);
             close_conn(client, loop);
@@ -356,7 +354,6 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             // suspend
             return;
         default:
-            Py_XDECREF(current_client);
             break;
     }
 
@@ -397,7 +394,6 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
     switch(ret){
         case -1:
             //Internal Server Error
-            Py_XDECREF(current_client);
             client->bad_request_code = 500;
             send_error_page(client);
             close_conn(client, loop);
@@ -406,7 +402,6 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
             // suspend
             return;
         default:
-            Py_XDECREF(current_client);
             break;
     }
     
