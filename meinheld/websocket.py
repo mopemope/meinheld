@@ -92,25 +92,28 @@ class WebSocketMiddleware(object):
         environ['wsgi.websocket'] = ws
         return True
 
-    def __call__(self, environ, start_response):
-        client = environ[CLIENT_KEY]
-        g = client.get_greenlet()
-        if not g:
-            # new greenlet
-            g = greenlet.greenlet(self.app)
-            client.set_greenlet(g)
-            c = Continuation(client)
-            environ[CONTINUATION_KEY] = c
-
+    def spawn_call(self, environ, start_response):
         result = self.setup(environ)
         response = None
         try:
-            response = g.switch(environ, start_response)
+            response = self.app(environ, start_response)
             return response
         finally:
             if result and response != -1:
                 ws = environ.pop('wsgi.websocket')
                 ws._send_closing_frame(True)
+
+    def __call__(self, environ, start_response):
+        client = environ[CLIENT_KEY]
+        g = client.get_greenlet()
+        if not g:
+            # new greenlet
+            g = greenlet.greenlet(self.spawn_call)
+            client.set_greenlet(g)
+            c = Continuation(client)
+            environ[CONTINUATION_KEY] = c
+
+        return g.switch(environ, start_response)
 
 class WebSocketWSGI(object):
 

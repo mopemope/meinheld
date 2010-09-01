@@ -17,22 +17,41 @@ ClientObject_New(client_t* client)
     if(o == NULL){
         return NULL;
     }
+
+
     o->client = client;
     o->greenlet = NULL;
     o->args = NULL;
     o->kwargs = NULL;
     o->suspended = 0;    
     o->resumed = 0;    
+
+#ifdef DEBUG
+    if(o->client){
+        printf("ClientObject_New pyclient:%p client:%p fd:%d \n", o, o->client, o->client->fd);
+    }else{
+        printf("ClientObject_New pyclient:%p client is null \n", o);
+    }
+#endif
+    
     return (PyObject *)o;
 }
 
 static inline void
 ClientObject_dealloc(ClientObject* self)
 {
+
 #ifdef DEBUG
-    printf("ClientObject_dealloc \n");
+    if(self->client){
+        printf("ClientObject_dealloc pyclient:%p client:%p fd:%d \n", self, self->client, self->client->fd);
+    }else{
+        printf("ClientObject_dealloc pyclient:%p client is null \n", self);
+    }
 #endif
-    self->client = NULL;
+    //self->client = NULL;
+#ifdef DEBUG
+    printf("ClientObject_dealloc greenlet:%p \n", self->greenlet);
+#endif
     Py_XDECREF(self->greenlet);
     PyObject_DEL(self);
 }
