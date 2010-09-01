@@ -52,6 +52,7 @@ static int max_fd = 1024 * 4;  // picoev max_fd
 // greenlet hub switch value
 PyObject* hub_switch_value;
 PyObject* current_client;
+PyObject* timeout_error;
 
 
 static void
@@ -105,10 +106,13 @@ clean_cli(client_t *client)
     Py_CLEAR(client->http_status);
     Py_CLEAR(client->headers);
     Py_CLEAR(client->response_iter);
+    
     Py_CLEAR(client->response);
 #ifdef DEBUG
     printf("close environ %p \n", client->environ);
 #endif
+
+    //PyDict_Clear(client->environ);
     Py_CLEAR(client->environ);
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
@@ -264,6 +268,16 @@ resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+    switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
+}
+
+static void
+timeout_error_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+{
+    ClientObject *pyclient = (ClientObject *)(cb_arg);
+    client_t *client = pyclient->client;
+    picoev_del(loop, client->fd);
+    PyErr_SetString(timeout_error, "timeout");
     switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
 }
 
@@ -1114,8 +1128,11 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
 
         set_so_keepalive(pyclient->client->fd, 1);
-        
-        picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, timeout, timeout_callback, (void *)pyclient);
+        if(timeout){
+            picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, timeout, timeout_error_callback, (void *)pyclient);
+        }else{
+            picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, 60, timeout_callback, (void *)pyclient);
+        }
         return PyGreenlet_Switch(parent, hub_switch_value, NULL);
     }else{
         PyErr_SetString(PyExc_Exception, "already suspended");
@@ -1223,13 +1240,23 @@ static PyMethodDef WsMethods[] = {
 PyMODINIT_FUNC
 initserver(void)
 {
-    (void)Py_InitModule("meinheld.server", WsMethods);
+    PyObject *m;
+    m = Py_InitModule("meinheld.server", WsMethods);
+    if(m == NULL)
+        return
+
     PyType_Ready(&FileWrapperType);
     PyType_Ready(&ClientObjectType);
     PyType_Ready(&NSocketObjectType);
 #ifdef DEBUG
     printf("client size %d \n", sizeof(client_t));
 #endif
+	timeout_error = PyErr_NewException("meinheld.server.timeout",
+					  PyExc_IOError, NULL);
+	if (timeout_error == NULL)
+		return;
+	Py_INCREF(timeout_error);
+	PyModule_AddObject(m, "timeout", timeout_error);
 }
 
 

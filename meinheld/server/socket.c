@@ -24,8 +24,9 @@ setup_sock(int fd)
     int on = 1, r;
     r = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
     assert(r == 0);
-    // 300 + 30 * 4 
-    on = 300;    
+
+    // 60 + 30 * 4 
+    on = 60;    
     r = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &on, sizeof(on));
     assert(r == 0);
     on = 30;

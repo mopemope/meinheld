@@ -8,8 +8,8 @@ class Continuation(object):
     def __init__(self, client):
         self.client = client
 
-    def suspend(self):
-        return server._suspend_client(self.client)
+    def suspend(self, timeout=0):
+        return server._suspend_client(self.client, timeout)
     
     def resume(self, *args, **kwargs):
         return server._resume_client(self.client, args, kwargs)
