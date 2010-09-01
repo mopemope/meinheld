@@ -130,11 +130,15 @@ close_conn(client_t *cli, picoev_loop* loop)
     }
 
     picoev_del(loop, cli->fd);
+
+#ifdef DEBUG
+    printf("picoev_del client:%p fd:%d \n", cli, cli->fd);
+#endif
     clean_cli(cli);
     if(!cli->keep_alive){
         close(cli->fd);
 #ifdef DEBUG
-        printf("close fd %d \n", cli->fd);
+        printf("close client:%p fd:%d \n", cli, cli->fd);
 #endif
     }else{
         disable_cork(cli);
@@ -307,7 +311,6 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             // suspend
             return;
         default:
-            pyclient->client = NULL;
             break;
     }
 
