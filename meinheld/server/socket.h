@@ -35,4 +35,7 @@ enable_cork(client_t *client);
 inline void 
 disable_cork(client_t *client);
 
+inline void 
+set_so_keepalive(int fd, int flag);
+
 #endif

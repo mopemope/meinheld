@@ -106,6 +106,9 @@ clean_cli(client_t *client)
     Py_CLEAR(client->headers);
     Py_CLEAR(client->response_iter);
     Py_CLEAR(client->response);
+#ifdef DEBUG
+    printf("close environ %p \n", client->environ);
+#endif
     Py_CLEAR(client->environ);
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
@@ -215,7 +218,9 @@ process_wsgi_app(client_t *cli)
     args = Py_BuildValue("(OO)", cli->environ, start);
 
     current_client = PyDict_GetItemString(cli->environ, "meinheld.client");
-
+#ifdef DEBUG
+    printf("start environ %p \n", cli->environ);
+#endif
     res = PyObject_CallObject(wsgi_app, args);
     Py_DECREF(args);
     
@@ -262,6 +267,31 @@ resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
 }
 
+static void
+timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+{
+#ifdef DEBUG
+    printf("timeout_callback \n");
+#endif
+    ClientObject *pyclient = (ClientObject *)(cb_arg);
+    client_t *client = pyclient->client;
+    //next intval 10sec
+    picoev_set_timeout(loop, client->fd, 10);
+    
+    // is_active ??
+    if(write(client->fd, "", 0) < 0){
+        //resume       
+        pyclient->suspended = 0;
+        pyclient->resumed = 1;
+        picoev_del(loop, client->fd);
+        PyErr_SetFromErrno(PyExc_IOError);
+#ifdef DEBUG
+        printf("closed \n");
+#endif
+        switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
+    }
+}
+
 
 static void
 w_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
@@ -303,6 +333,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
     switch(ret){
         case -1:
             //Internal Server Error
+            Py_XDECREF(current_client);
             client->bad_request_code = 500;
             send_error_page(client);
             close_conn(client, loop);
@@ -311,6 +342,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             // suspend
             return;
         default:
+            Py_XDECREF(current_client);
             break;
     }
 
@@ -351,6 +383,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
     switch(ret){
         case -1:
             //Internal Server Error
+            Py_XDECREF(current_client);
             client->bad_request_code = 500;
             send_error_page(client);
             close_conn(client, loop);
@@ -359,6 +392,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
             // suspend
             return;
         default:
+            Py_XDECREF(current_client);
             break;
     }
     
@@ -1050,8 +1084,9 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     PyObject *temp;
     ClientObject *pyclient;
     PyGreenlet *parent;
+    int timeout;
 
-    if (!PyArg_ParseTuple(args, "O:_suspend_client", &temp)){
+    if (!PyArg_ParseTuple(args, "O|i:_suspend_client", &temp, &timeout)){
         return NULL;
     }
     
@@ -1077,6 +1112,10 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     if(pyclient->client && !(pyclient->suspended)){
         pyclient->suspended = 1;
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
+
+        set_so_keepalive(pyclient->client->fd, 1);
+        
+        picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, timeout, timeout_callback, (void *)pyclient);
         return PyGreenlet_Switch(parent, hub_switch_value, NULL);
     }else{
         PyErr_SetString(PyExc_Exception, "already suspended");

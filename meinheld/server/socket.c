@@ -12,11 +12,29 @@ setup_listen_sock(int fd)
 }
 
 inline void 
+set_so_keepalive(int fd, int flag)
+{
+    int r = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag));
+    assert(r == 0);
+}
+
+inline void 
 setup_sock(int fd)
 {
     int on = 1, r;
     r = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
     assert(r == 0);
+    // 300 + 30 * 4 
+    on = 300;    
+    r = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &on, sizeof(on));
+    assert(r == 0);
+    on = 30;
+    r = setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &on, sizeof(on));
+    assert(r == 0);
+    on = 4;
+    r = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &on, sizeof(on));
+    assert(r == 0);
+    
     r = fcntl(fd, F_SETFL, O_NONBLOCK);
     assert(r == 0);
 }
