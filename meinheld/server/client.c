@@ -50,7 +50,7 @@ ClientObject_dealloc(ClientObject* self)
 #endif
     //self->client = NULL;
 #ifdef DEBUG
-    printf("ClientObject_dealloc greenlet:%p \n", self->greenlet);
+    printf("XDECREF greenlet:%p \n", self->greenlet);
 #endif
     Py_XDECREF(self->greenlet);
     PyObject_DEL(self);
