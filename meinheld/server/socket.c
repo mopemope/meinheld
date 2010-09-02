@@ -14,8 +14,10 @@ setup_listen_sock(int fd)
 inline void 
 set_so_keepalive(int fd, int flag)
 {
-    int r = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag));
+    int r;
+    r = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &flag, sizeof(flag));
     assert(r == 0);
+
 }
 
 inline void 
