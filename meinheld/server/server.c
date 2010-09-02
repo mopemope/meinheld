@@ -170,7 +170,7 @@ process_resume_wsgi_app(ClientObject *pyclient)
     old_client = start_response->cli;
     start_response->cli = client;
     
-    current_client = pyclient;
+    current_client = (PyObject *)pyclient;
     if(PyErr_Occurred()){
         PyErr_Fetch(&err_type, &err_val, &err_tb);
         PyErr_Clear();
@@ -1194,12 +1194,7 @@ meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "i:_get_socket_fromfd", &fd)){
         return NULL;
     }
-    /*
-    if(!CheckClientObject(temp)){
-        PyErr_SetString(PyExc_TypeError, "must be a client object");
-        return NULL;
-    }*/
-    return NSocketObject_New(fd, current_client);
+    return NSocketObject_New(fd, (ClientObject *)current_client);
 
 }
 
@@ -1240,21 +1235,32 @@ initserver(void)
 {
     PyObject *m;
     m = Py_InitModule("meinheld.server", WsMethods);
-    if(m == NULL)
-        return
+    if(m == NULL){
+        return;
+    }
 
-    PyType_Ready(&FileWrapperType);
-    PyType_Ready(&ClientObjectType);
-    PyType_Ready(&NSocketObjectType);
-#ifdef DEBUG
-    printf("client size %d \n", sizeof(client_t));
-#endif
+    if(PyType_Ready(&FileWrapperType) < 0){ 
+        return;
+    }
+
+    if(PyType_Ready(&ClientObjectType) < 0){
+        return;
+    }
+
+    if(PyType_Ready(&NSocketObjectType) < 0){
+        return;
+    }
+
 	timeout_error = PyErr_NewException("meinheld.server.timeout",
 					  PyExc_IOError, NULL);
 	if (timeout_error == NULL)
 		return;
 	Py_INCREF(timeout_error);
 	PyModule_AddObject(m, "timeout", timeout_error);
+
+#ifdef DEBUG
+    printf("client size %d \n", sizeof(client_t));
+#endif
 }
 
 
