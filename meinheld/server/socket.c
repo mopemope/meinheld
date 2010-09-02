@@ -28,7 +28,7 @@ setup_sock(int fd)
     assert(r == 0);
 
     // 60 + 30 * 4 
-    on = 60;    
+    on = 300;    
     r = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &on, sizeof(on));
     assert(r == 0);
     on = 30;
