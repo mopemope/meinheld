@@ -289,8 +289,8 @@ timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #endif
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
-    //next intval 10sec
-    picoev_set_timeout(loop, client->fd, 10);
+    //next intval 30sec
+    picoev_set_timeout(loop, client->fd, 30);
     
     // is_active ??
     if(write(client->fd, "", 0) < 0){
@@ -1128,7 +1128,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         if(timeout > 0){
             picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, timeout, timeout_error_callback, (void *)pyclient);
         }else{
-            picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, 60, timeout_callback, (void *)pyclient);
+            picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, 300, timeout_callback, (void *)pyclient);
         }
         return PyGreenlet_Switch(parent, hub_switch_value, NULL);
     }else{

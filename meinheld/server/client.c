@@ -52,6 +52,7 @@ ClientObject_dealloc(ClientObject* self)
 #ifdef DEBUG
     printf("XDECREF greenlet:%p \n", self->greenlet);
 #endif
+    
     Py_XDECREF(self->greenlet);
     PyObject_DEL(self);
 }
@@ -73,6 +74,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
         // not set
         Py_RETURN_NONE;
     }
+
     Py_INCREF(temp);
     self->greenlet = (PyGreenlet *)temp;
 
