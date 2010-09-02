@@ -277,6 +277,7 @@ timeout_error_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     client_t *client = pyclient->client;
     picoev_del(loop, client->fd);
     PyErr_SetString(timeout_error, "timeout");
+    set_so_keepalive(client->fd, 0);
     switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
 }
 
@@ -301,6 +302,7 @@ timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #ifdef DEBUG
         printf("closed \n");
 #endif
+        set_so_keepalive(client->fd, 0);
         switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
     }
 }
@@ -1123,7 +1125,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
 
         set_so_keepalive(pyclient->client->fd, 1);
-        if(timeout){
+        if(timeout > 0){
             picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, timeout, timeout_error_callback, (void *)pyclient);
         }else{
             picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, 60, timeout_callback, (void *)pyclient);
@@ -1167,6 +1169,7 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     }
 
     if(pyclient->client && !pyclient->resumed){
+        set_so_keepalive(pyclient->client->fd, 0);
         pyclient->args = switch_args;
         Py_XINCREF(pyclient->args);
     
