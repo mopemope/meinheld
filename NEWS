@@ -1,3 +1,13 @@
+0.3.3
+=======
+(bug fix release)
+
+* chage _get_socket_fromfd arg. (del client)
+* add timeout parameter to Continuation suspend method
+* detect closed socket (use SO_KEEPALIVE)
+* fix leak of spawned method
+
+
 0.3.2
 =======
 (bug fix release, release 2010-08-30)
