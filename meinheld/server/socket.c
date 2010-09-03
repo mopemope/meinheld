@@ -83,6 +83,9 @@ NSocketObject_New(int fd, ClientObject *client)
     o->client = client;
     Py_INCREF(o->client);    
     setup_sock(fd);
+#ifdef DEBUG
+    printf("NSocketObject_New pyclient:%p fd:%d\n", client, fd);
+#endif
     return (PyObject *)o;
 }
 
@@ -90,7 +93,7 @@ static inline void
 NSocketObject_dealloc(NSocketObject* self)
 {
 #ifdef DEBUG
-    printf("NSocketObject_dealloc fd:%d\n", self->fd);
+    printf("NSocketObject_dealloc pyclient:%p fd:%d\n", self->client, self->fd);
 #endif
     Py_DECREF(self->client);
     PyObject_DEL(self);
