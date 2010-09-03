@@ -321,7 +321,7 @@ class WebSocket(object):
         if self.version == 76 and not self.websocket_closed:
             try:
                 self.socket.send("\xff\x00")
-            except IOErr:
+            except IOError:
                 # Sometimes, like when the remote side cuts off the connection,
                 # we don't care about this.
                 if not ignore_send_errors: #pragma NO COVER
