@@ -29,7 +29,12 @@ def message_update():
     cursor = session.get('cursor')
     if not cache or cursor == cache[-1]['id']:
         waiters.append(c)
-        c.suspend()
+        try:
+            c.suspend(60)
+        except:
+            waiters.remove(c)
+            raise
+
 
     assert cursor != cache[-1]['id'], cursor
     try:
