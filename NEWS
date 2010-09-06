@@ -1,6 +1,6 @@
 0.3.3
 =======
-(bug fix release)
+(bug fix release, release 2010-09-06)
 
 * chage _get_socket_fromfd arg. (del client)
 * add timeout parameter to Continuation suspend method
