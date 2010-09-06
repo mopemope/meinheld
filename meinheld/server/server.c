@@ -259,6 +259,8 @@ inline void
 switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj)
 {
     ClientObject *pyclient = (ClientObject *)obj;
+    
+    //clear event
     picoev_del(loop, fd);
     // resume
     resume_wsgi_app(pyclient, loop);
@@ -277,7 +279,6 @@ resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     }else if ((events & PICOEV_WRITE) != 0) {
         //None
     }
-    picoev_del(loop, client->fd);
     switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
 }
 
@@ -293,7 +294,6 @@ timeout_error_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #endif
         pyclient->suspended = 0;
         pyclient->resumed = 1;
-        picoev_del(loop, client->fd);
         PyErr_SetString(timeout_error, "timeout");
         set_so_keepalive(client->fd, 0);
         switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
@@ -317,7 +317,6 @@ timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             //resume       
             pyclient->suspended = 0;
             pyclient->resumed = 1;
-            picoev_del(loop, client->fd);
             PyErr_SetFromErrno(PyExc_IOError);
 #ifdef DEBUG
             printf("closed \n");
@@ -401,6 +400,8 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
 #ifdef DEBUG
             printf("set write callback %d \n", ret);
 #endif
+            //clear event
+            picoev_del(loop, client->fd);
             picoev_add(loop, client->fd, PICOEV_WRITE, WRITE_TIMEOUT_SECS, w_callback, (void *)client);
             return;
         default:
@@ -448,6 +449,8 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
 #ifdef DEBUG
             printf("set write callback %d \n", ret);
 #endif
+            //clear event
+            picoev_del(loop, client->fd);
             picoev_add(loop, client->fd, PICOEV_WRITE, WRITE_TIMEOUT_SECS, w_callback, (void *)client);
             return;
         default:
@@ -1115,6 +1118,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
 {
     PyObject *temp;
     ClientObject *pyclient;
+    client_t *client;
     PyGreenlet *parent;
     int timeout;
 
@@ -1129,7 +1133,8 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     }
 
     pyclient = (ClientObject *)temp;
-    
+    client = pyclient->client;
+
     if(!pyclient->greenlet){
         PyErr_SetString(PyExc_ValueError, "greenlet is not set");
         return NULL;
@@ -1141,19 +1146,21 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         return NULL;
     }
     
-    if(pyclient->client && !(pyclient->suspended)){
+    if(client && !(pyclient->suspended)){
         pyclient->suspended = 1;
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
 
-        set_so_keepalive(pyclient->client->fd, 1);
+        set_so_keepalive(client->fd, 1);
 #ifdef DEBUG
-        printf("meinheld_suspend_client pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
-        printf("meinheld_suspend_client active ? %d \n", picoev_is_active(main_loop, pyclient->client->fd));
+        printf("meinheld_suspend_client pyclient:%p client:%p fd:%d \n", pyclient, client, client->fd);
+        printf("meinheld_suspend_client active ? %d \n", picoev_is_active(main_loop, client->fd));
 #endif
+        //clear event
+        picoev_del(main_loop, client->fd);
         if(timeout > 0){
-            picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, timeout, timeout_error_callback, (void *)pyclient);
+            picoev_add(main_loop, client->fd, PICOEV_TIMEOUT, timeout, timeout_error_callback, (void *)pyclient);
         }else{
-            picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, 300, timeout_callback, (void *)pyclient);
+            picoev_add(main_loop, client->fd, PICOEV_TIMEOUT, 300, timeout_callback, (void *)pyclient);
         }
         return PyGreenlet_Switch(parent, hub_switch_value, NULL);
     }else{
@@ -1181,7 +1188,8 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     }
 
     pyclient = (ClientObject *)temp;
-    
+    client = pyclient->client;
+
     if(!pyclient->greenlet){
         PyErr_SetString(PyExc_ValueError, "greenlet is not set");
         return NULL;
@@ -1200,7 +1208,6 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     
         pyclient->kwargs = switch_kwargs;
         Py_XINCREF(pyclient->kwargs);
-        client = pyclient->client;
 
         pyclient->suspended = 0;
         pyclient->resumed = 1;
@@ -1208,8 +1215,9 @@ meinheld_resume_client(PyObject *self, PyObject *args)
         printf("meinheld_resume_client pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
         printf("meinheld_resume_client active ? %d \n", picoev_is_active(main_loop, pyclient->client->fd));
 #endif
+        //clear event
         picoev_del(main_loop, client->fd);
-        picoev_add(main_loop, client->fd, PICOEV_WRITE, 60, resume_callback, (void *)pyclient);
+        picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)pyclient);
     }else{
         PyErr_SetString(PyExc_Exception, "already resumed");
         return NULL;
