@@ -278,6 +278,9 @@ timeout_error_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+#ifdef DEBUG
+    printf("timeout_error_callback pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
+#endif
     picoev_del(loop, client->fd);
     PyErr_SetString(timeout_error, "timeout");
     set_so_keepalive(client->fd, 0);
@@ -287,11 +290,11 @@ timeout_error_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static void
 timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
-#ifdef DEBUG
-    printf("timeout_callback \n");
-#endif
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+#ifdef DEBUG
+    printf("timeout_callback pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
+#endif
     //next intval 30sec
     picoev_set_timeout(loop, client->fd, 30);
     
