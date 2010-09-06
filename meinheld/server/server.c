@@ -112,9 +112,6 @@ clean_cli(client_t *client)
     printf("close environ %p \n", client->environ);
 #endif
     
-    // force clear
-    PyDict_Clear(client->environ);
-    
     Py_CLEAR(client->environ);
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
@@ -1142,7 +1139,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
 
     if(pyclient->resumed == 1){
         //call later
-        PyErr_SetString(PyExc_Exception, "not called resume ");
+        PyErr_SetString(PyExc_IOError, "not called resume");
         return NULL;
     }
     
@@ -1197,7 +1194,7 @@ meinheld_resume_client(PyObject *self, PyObject *args)
 
     if(!pyclient->suspended){
         // not suspend
-        PyErr_SetString(PyExc_Exception, "not suspended");
+        PyErr_SetString(PyExc_IOError, "not suspended or dead ");
         return NULL;
     }
 
