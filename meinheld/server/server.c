@@ -112,6 +112,9 @@ clean_cli(client_t *client)
     printf("close environ %p \n", client->environ);
 #endif
     
+    // force clear
+    PyDict_Clear(client->environ);
+    
     Py_CLEAR(client->environ);
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
