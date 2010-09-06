@@ -270,6 +270,14 @@ resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+    if ((events & PICOEV_TIMEOUT) != 0) {
+        PyErr_SetString(timeout_error, "timeout");
+        set_so_keepalive(client->fd, 0);
+        
+    }else if ((events & PICOEV_WRITE) != 0) {
+        //None
+    }
+    picoev_del(loop, client->fd);
     switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
 }
 
@@ -278,13 +286,18 @@ timeout_error_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+    
+    if ((events & PICOEV_TIMEOUT) != 0) {
 #ifdef DEBUG
-    printf("timeout_error_callback pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
+        printf("timeout_error_callback pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
 #endif
-    picoev_del(loop, client->fd);
-    PyErr_SetString(timeout_error, "timeout");
-    set_so_keepalive(client->fd, 0);
-    switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
+        pyclient->suspended = 0;
+        pyclient->resumed = 1;
+        picoev_del(loop, client->fd);
+        PyErr_SetString(timeout_error, "timeout");
+        set_so_keepalive(client->fd, 0);
+        switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
+    }
 }
 
 static void
@@ -292,24 +305,26 @@ timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+    if ((events & PICOEV_TIMEOUT) != 0) {
 #ifdef DEBUG
-    printf("timeout_callback pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
+        printf("timeout_callback pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
 #endif
-    //next intval 30sec
-    picoev_set_timeout(loop, client->fd, 30);
-    
-    // is_active ??
-    if(write(client->fd, "", 0) < 0){
-        //resume       
-        pyclient->suspended = 0;
-        pyclient->resumed = 1;
-        picoev_del(loop, client->fd);
-        PyErr_SetFromErrno(PyExc_IOError);
+        //next intval 30sec
+        picoev_set_timeout(loop, client->fd, 30);
+        
+        // is_active ??
+        if(write(client->fd, "", 0) < 0){
+            //resume       
+            pyclient->suspended = 0;
+            pyclient->resumed = 1;
+            picoev_del(loop, client->fd);
+            PyErr_SetFromErrno(PyExc_IOError);
 #ifdef DEBUG
-        printf("closed \n");
+            printf("closed \n");
 #endif
-        set_so_keepalive(client->fd, 0);
-        switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
+            set_so_keepalive(client->fd, 0);
+            switch_wsgi_app(loop, client->fd, (PyObject *)pyclient); 
+        }
     }
 }
 
@@ -1131,6 +1146,10 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
 
         set_so_keepalive(pyclient->client->fd, 1);
+#ifdef DEBUG
+        printf("meinheld_suspend_client pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
+        printf("meinheld_suspend_client active ? %d \n", picoev_is_active(main_loop, pyclient->client->fd));
+#endif
         if(timeout > 0){
             picoev_add(main_loop, pyclient->client->fd, PICOEV_TIMEOUT, timeout, timeout_error_callback, (void *)pyclient);
         }else{
@@ -1185,7 +1204,12 @@ meinheld_resume_client(PyObject *self, PyObject *args)
 
         pyclient->suspended = 0;
         pyclient->resumed = 1;
-        picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, resume_callback, (void *)pyclient);
+#ifdef DEBUG
+        printf("meinheld_resume_client pyclient:%p client:%p fd:%d \n", pyclient, pyclient->client, pyclient->client->fd);
+        printf("meinheld_resume_client active ? %d \n", picoev_is_active(main_loop, pyclient->client->fd));
+#endif
+        picoev_del(main_loop, client->fd);
+        picoev_add(main_loop, client->fd, PICOEV_WRITE, 60, resume_callback, (void *)pyclient);
     }else{
         PyErr_SetString(PyExc_Exception, "already resumed");
         return NULL;
