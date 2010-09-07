@@ -1,5 +1,7 @@
 #include "socket.h"
 
+static inline PyObject * 
+NSocketObject_close(NSocketObject *socket, PyObject *args);
 
 inline void 
 setup_listen_sock(int fd)
@@ -72,21 +74,71 @@ CheckNSocketObject(PyObject *obj)
     return 1;
 }
 
-inline PyObject* 
-NSocketObject_New(int fd, ClientObject *client)
+static inline NSocketObject*
+new_NSocketObject(int fd, int family, int type, int proto)
 {
-    NSocketObject *o = PyObject_NEW(NSocketObject, &NSocketObjectType);
-    if(o == NULL){
-        return NULL;
+	NSocketObject *sock;
+	sock = (NSocketObject *)PyType_GenericNew(&NSocketObjectType, NULL, NULL);
+	if (sock != NULL){
+		//init_sockobject(s, fd, family, type, proto);
     }
-    o->fd = fd;
-    o->client = client;
-    Py_INCREF(o->client);    
-    setup_sock(fd);
-#ifdef DEBUG
-    printf("NSocketObject_New pyclient:%p fd:%d\n", client, fd);
-#endif
-    return (PyObject *)o;
+    sock->fd = fd;
+    sock->client = (ClientObject *)current_client;
+    Py_INCREF(sock->client);
+    setup_sock(sock->fd);
+	return sock;
+}
+
+static inline PyObject* 
+NSocketObject_new(PyTypeObject *type, PyObject *args, PyObject *kwarg)
+{
+	return type->tp_alloc(type, 0);
+}
+
+static inline int
+NSocketObject_init(PyObject *self, PyObject *args, PyObject *kwds)
+{
+	int  fd;
+	int family = AF_INET;
+    int type = SOCK_STREAM;
+    int proto = 0;
+    NSocketObject *sock = (NSocketObject *)self;
+    ;
+	static char *keywords[] = {"family", "type", "proto", 0};
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iii:socket", keywords, &family, &type, &proto)){
+		return -1;
+    }
+
+	fd = socket(family, type, proto);
+
+	if (fd < 0) {
+        //TODO Error
+		return -1;
+	}
+    sock->fd = fd;
+    sock->client = (ClientObject *)current_client;
+    Py_INCREF(sock->client);
+    setup_sock(sock->fd);
+	return 0;
+
+}
+
+inline PyObject* 
+NSocketObject_fromfd(PyObject *args)
+{
+	NSocketObject *sock;
+	int fd, family, type, proto = 0;
+	if (!PyArg_ParseTuple(args, "iii|i:fromfd", &fd, &family, &type, &proto)){
+		return NULL;
+    }
+	//fd = dup(fd);
+	if (fd < 0){
+        //TODO Error
+		return NULL;
+    }
+	sock = new_NSocketObject(fd, family, type, proto);
+	return (PyObject *) sock;
 }
 
 static inline void
@@ -96,7 +148,10 @@ NSocketObject_dealloc(NSocketObject* self)
     printf("NSocketObject_dealloc pyclient:%p fd:%d\n", self->client, self->fd);
 #endif
     Py_DECREF(self->client);
-    PyObject_DEL(self);
+    if(self->fd != -1){
+        NSocketObject_close(self, NULL);
+    }
+	Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 
@@ -391,9 +446,7 @@ NSocketObject_sendall(NSocketObject *socket, PyObject *args)
 static inline PyObject * 
 NSocketObject_close(NSocketObject *socket, PyObject *args)
 {
-    if(socket->fd != socket->client->client->fd){
-        close(socket->fd);
-    }
+    close(socket->fd);
     Py_RETURN_NONE;
 }
 
@@ -425,10 +478,10 @@ PyTypeObject NSocketObjectType = {
     0,                         /*tp_hash */
     0,                         /*tp_call*/
     0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
+	PyObject_GenericGetAttr,		/* tp_getattro */
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT,        /*tp_flags*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,        /*tp_flags*/
     "io raw socket ",                 /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
@@ -444,14 +497,16 @@ PyTypeObject NSocketObjectType = {
     0,                         /* tp_descr_get */
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
-    0,                      /* tp_init */
-    0,                         /* tp_alloc */
-    0,                           /* tp_new */
+    NSocketObject_init,                      /* tp_init */
+    PyType_GenericAlloc,                         /* tp_alloc */
+    NSocketObject_new,                           /* tp_new */
+	PyObject_Del,				/* tp_free */
 };
 
 inline void 
 setup_nsocket(void)
 {
     PyGreenlet_Import();
+
 }
 

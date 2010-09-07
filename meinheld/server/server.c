@@ -1228,15 +1228,16 @@ meinheld_resume_client(PyObject *self, PyObject *args)
 PyObject *
 meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
 {
+    /*
     int fd;
     if (!PyArg_ParseTuple(args, "i:_get_socket_fromfd", &fd)){
         return NULL;
-    }
+    }*/
     if(!((ClientObject *)current_client)->greenlet){
         PyErr_SetString(PyExc_ValueError, "greenlet is not set");
         return NULL;
     }
-    return NSocketObject_New(fd, (ClientObject *)current_client);
+    return NSocketObject_fromfd(args);
 
 }
 

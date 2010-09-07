@@ -15,7 +15,7 @@ typedef struct {
 extern PyTypeObject NSocketObjectType;
 
 inline PyObject* 
-NSocketObject_New(int fd, ClientObject *client);
+NSocketObject_fromfd(PyObject *args);
 
 inline int 
 CheckNSocketObject(PyObject *obj);
