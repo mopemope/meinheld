@@ -1,6 +1,7 @@
 import collections
 import string
 import struct
+import socket
 
 try:
     from hashlib import md5
@@ -43,7 +44,8 @@ class WebSocketMiddleware(object):
 
         # Get the underlying socket and wrap a WebSocket class around it
         client = environ[CLIENT_KEY]
-        sock = server._get_socket_fromfd(client.get_fd())
+        sock = server._get_socket_fromfd(client.get_fd(), socket.AF_INET,
+                socket.SOCK_STREAM)
         ws = WebSocket(sock, environ, protocol_version)
         
         # If it's new-version, we need to work out our challenge response
@@ -140,7 +142,8 @@ class WebSocketWSGI(object):
 
         # Get the underlying socket and wrap a WebSocket class around it
         client = environ[CLIENT_KEY]
-        sock = server._get_socket_fromfd(client.get_fd(), client)
+        sock = server._get_socket_fromfd(client.get_fd(), socket.AF_INET,
+                socket.SOCK_STREAM)
         ws = WebSocket(sock, environ, self.protocol_version)
         
         # If it's new-version, we need to work out our challenge response
