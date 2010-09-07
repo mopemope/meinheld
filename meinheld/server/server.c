@@ -1294,7 +1294,12 @@ initserver(void)
         return;
     }
 
-	timeout_error = PyErr_NewException("meinheld.server.timeout",
+    Py_INCREF(&NSocketObjectType);
+	if (PyModule_AddObject(m, "_socket", (PyObject *)&NSocketObjectType) != 0){
+	    return;
+    }
+
+    timeout_error = PyErr_NewException("meinheld.server.timeout",
 					  PyExc_IOError, NULL);
 	if (timeout_error == NULL)
 		return;
