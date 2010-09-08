@@ -215,7 +215,8 @@ static inline int
 process_wsgi_app(client_t *cli)
 {
     PyObject *args = NULL, *start = NULL, *res = NULL;
-    
+    PyGreenlet *greenlet;
+    ClientObject *pyclient;
     start = create_start_response(cli);
 
     if(!start){
@@ -224,11 +225,22 @@ process_wsgi_app(client_t *cli)
     args = Py_BuildValue("(OO)", cli->environ, start);
 
     current_client = PyDict_GetItemString(cli->environ, "meinheld.client");
+    pyclient = (ClientObject *)current_client;
+
 #ifdef DEBUG
     printf("start environ %p \n", cli->environ);
 #endif
-    res = PyObject_CallObject(wsgi_app, args);
+
+    //new greenlet
+    greenlet = PyGreenlet_New(wsgi_app, NULL);
+    // set_greenlet
+    pyclient->greenlet = greenlet;
+    Py_INCREF(pyclient->greenlet);
+
+    res = PyGreenlet_Switch(greenlet, args, NULL);
+    //res = PyObject_CallObject(wsgi_app, args);
     Py_DECREF(args);
+    Py_DECREF(greenlet);
     
 
     //check response & PyErr_Occurred
