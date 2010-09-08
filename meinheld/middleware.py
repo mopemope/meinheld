@@ -3,7 +3,7 @@ from meinheld.common import Continuation, CLIENT_KEY, CONTINUATION_KEY
 from meinheld.websocket import WebSocketMiddleware
 
 
-class SpawnMiddleware(object):
+class ContinuationMiddleware(object):
 
     def __init__(self, app):
         self.app = app

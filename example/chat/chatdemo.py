@@ -70,4 +70,4 @@ def message_new():
 
 if __name__ == "__main__":
     server.listen(("0.0.0.0", 8000))
-    server.run(middleware.SpawnMiddleware(app))
+    server.run(middleware.ContinuationMiddleware(app))

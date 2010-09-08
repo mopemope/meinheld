@@ -59,7 +59,7 @@ Continuation
 
 meinheld provide simple continuation API (based on greenlet).
 
-to enable continuation, use SpawnMiddleware. get Continuation from wsgi environ.
+to enable continuation, use ContinuationMiddleware. get Continuation from wsgi environ.
 
 Continuation Object has couple method, suspend and resume.
 
@@ -90,7 +90,7 @@ example ::
 
 
     server.listen(("0.0.0.0", 8000))
-    server.run(middleware.SpawnMiddleware(hello_world))
+    server.run(middleware.ContinuationMiddleware(hello_world))
 
 For more info see http://github.com/mopemope/meinheld/tree/master/example/chat/
 
