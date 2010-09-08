@@ -12,7 +12,7 @@
 #include "response.h"
 #include "log.h"
 #include "client.h"
-#include "socket.h"
+#include "util.h"
 
 #define ACCEPT_TIMEOUT_SECS 1
 #define SHORT_TIMEOUT_SECS 2
@@ -689,7 +689,6 @@ setup_server_env(void)
     setup_static_env(server_name, server_port);
     setup_start_response();
     setup_client();
-    setup_nsocket();
     PycString_IMPORT;
     PyGreenlet_Import();
     hub_switch_value = Py_BuildValue("(i)", -1);
@@ -1237,6 +1236,7 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+/*
 PyObject *
 meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
 {
@@ -1245,6 +1245,54 @@ meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
         return NULL;
     }
     return NSocketObject_fromfd_nodup(args);
+}*/
+
+static inline void
+trampolin_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+{
+    ClientObject *pyclient = (ClientObject *)cb_arg;
+
+    if ((events & PICOEV_TIMEOUT) != 0) {
+        PyErr_SetString(PyExc_IOError, "timeout");
+        switch_wsgi_app(loop, fd, (PyObject *)pyclient);
+    } else if ((events & PICOEV_WRITE) != 0 ||  (events & PICOEV_READ) != 0) {
+        switch_wsgi_app(loop, fd, (PyObject *)pyclient);
+    }
+}
+
+static inline PyObject*
+meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    PyGreenlet *current, *parent;
+    ClientObject *pyclient;
+    int fd, event, timeout = 0;
+    PyObject *read = Py_None, *write = Py_None;
+
+	static char *keywords[] = {"read", "write", "timeout", 0};
+	
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:socket", keywords, &fd, &read, &write, &timeout)){
+		return NULL;
+    }
+    if(PyObject_IsTrue(read) && PyObject_IsTrue(write)){
+        event = PICOEV_READWRITE;
+    }else if(PyObject_IsTrue(read)){
+        event = PICOEV_READ;
+    }else if(PyObject_IsTrue(write)){
+        event = PICOEV_WRITE;
+    }else{
+        event = PICOEV_TIMEOUT;
+    }
+
+    pyclient =(ClientObject *) current_client;
+    
+    picoev_del(main_loop, fd);
+    picoev_add(main_loop, fd, event, timeout, trampolin_switch_callback, (void *)pyclient);
+   
+    // switch to hub
+    current = pyclient->greenlet;
+    parent = PyGreenlet_GET_PARENT(current);
+    return PyGreenlet_Switch(parent, hub_switch_value, NULL);
+
 }
 
 
@@ -1275,7 +1323,10 @@ static PyMethodDef WsMethods[] = {
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
-    {"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
+    //{"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
+    
+    {"trampolin", meinheld_trampolin, METH_VARARGS | METH_KEYWORDS, "trampolin"},
+
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -1295,7 +1346,8 @@ initserver(void)
     if(PyType_Ready(&ClientObjectType) < 0){
         return;
     }
-
+    
+    /*
     if(PyType_Ready(&NSocketObjectType) < 0){
         return;
     }
@@ -1303,7 +1355,7 @@ initserver(void)
     Py_INCREF(&NSocketObjectType);
 	if (PyModule_AddObject(m, "_socket", (PyObject *)&NSocketObjectType) != 0){
 	    return;
-    }
+    }*/
 
     timeout_error = PyErr_NewException("meinheld.server.timeout",
 					  PyExc_IOError, NULL);
