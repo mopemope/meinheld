@@ -130,17 +130,23 @@ except AttributeError:
 # XXX: implement blocking functions that are not yet implemented
 # XXX: add test that checks that socket.__all__ matches gevent.socket.__all__ on all supported platforms
 
-from meinheld import server
+from meinheld import server, cancel_wait
 
 
 def wait_read(fileno, timeout=None):
-    meinheld.trampolin(fileno, read=True, timeout=timeout)
+    if not timeout:
+        timeout = 0
+    server.trampolin(fileno, read=True, timeout=int(timeout))
 
 def wait_write(fileno, timeout=None):
-    meinheld.trampolin(fileno, write=True, timeout=timeout)
+    if not timeout:
+        timeout = 0
+    server.trampolin(fileno, write=True, timeout=int(timeout))
 
 def wait_readwrite(fileno, timeout=None):
-    meinheld.trampolin(fileno, read=True, write=True, timeout=timeout)
+    if not timeout:
+        timeout = 0
+    server.trampolin(fileno, read=True, write=True, timeout=int(timeout))
 
 
 if sys.version_info[:2] <= (2, 4):
@@ -247,6 +253,7 @@ class socket(object):
         return socket(_sock=client_socket), address
 
     def close(self):
+        cancel_wait(self._sock.fileno())
         self._sock = _closedsocket()
         dummy = self._sock._dummy
         for method in _delegate_methods:
@@ -448,6 +455,7 @@ class socket(object):
         return self.timeout
 
     def shutdown(self, how):
+        cancel_wait(self._sock.fileno())
         self._sock.shutdown(how)
 
     family = property(lambda self: self._sock.family, doc="the socket family")

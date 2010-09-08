@@ -1237,7 +1237,7 @@ meinheld_resume_client(PyObject *self, PyObject *args)
 }
 
 PyObject *
-meinheld_cancel_event(PyObject *self, PyObject *args)
+meinheld_cancel_wait(PyObject *self, PyObject *args)
 {
     int fd;
     if (!PyArg_ParseTuple(args, "i:cancel_event", &fd))
@@ -1268,9 +1268,9 @@ meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
     int fd, event, timeout = 0;
     PyObject *read = Py_None, *write = Py_None;
 
-	static char *keywords[] = {"read", "write", "timeout", 0};
+	static char *keywords[] = {"fileno", "read", "write", "timeout", NULL};
 	
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:socket", keywords, &fd, &read, &write, &timeout)){
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:trampolin", keywords, &fd, &read, &write, &timeout)){
 		return NULL;
     }
     if(PyObject_IsTrue(read) && PyObject_IsTrue(write)){
@@ -1323,7 +1323,7 @@ static PyMethodDef WsMethods[] = {
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
-    {"cancel_event", meinheld_cancel_event, METH_VARARGS, "cancel event"},
+    {"cancel_wait", meinheld_cancel_wait, METH_VARARGS, "cancel wait"},
     {"trampolin", meinheld_trampolin, METH_VARARGS | METH_KEYWORDS, "trampolin"},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
