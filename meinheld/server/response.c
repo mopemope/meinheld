@@ -1,6 +1,5 @@
 #include "response.h"
 #include "log.h"
-#include "socket.h"
 
 #define CRLF "\r\n"
 #define DELIM ": "
