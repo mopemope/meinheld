@@ -124,22 +124,37 @@ NSocketObject_init(PyObject *self, PyObject *args, PyObject *kwds)
 
 }
 
-inline PyObject* 
-NSocketObject_fromfd(PyObject *args)
+static inline PyObject* 
+inner_fromfd(PyObject *args, int use_dup)
 {
 	NSocketObject *sock;
 	int fd, family, type, proto = 0;
 	if (!PyArg_ParseTuple(args, "iii|i:fromfd", &fd, &family, &type, &proto)){
 		return NULL;
     }
-	//fd = dup(fd);
-	if (fd < 0){
-        //TODO Error
-		return NULL;
+	if(use_dup){
+        fd = dup(fd);
+        if (fd < 0){
+            //TODO Error
+            return NULL;
+        }
     }
 	sock = new_NSocketObject(fd, family, type, proto);
 	return (PyObject *) sock;
 }
+
+inline PyObject* 
+NSocketObject_fromfd(PyObject *args)
+{
+	return inner_fromfd(args, 1);
+}
+
+inline PyObject* 
+NSocketObject_fromfd_nodup(PyObject *args)
+{
+	return inner_fromfd(args, 0);
+}
+
 
 static inline void
 NSocketObject_dealloc(NSocketObject* self)
