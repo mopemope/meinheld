@@ -96,10 +96,23 @@ ClientObject_get_fd(ClientObject *self, PyObject *args)
     return Py_BuildValue("i", self->client->fd);
 }
 
+static inline PyObject *
+ClientObject_set_closed(ClientObject *self, PyObject *args)
+{
+    int closed;
+
+    if (!PyArg_ParseTuple(args, "i:set_closed", &closed)){
+        return NULL;
+    }
+    self->client->response_closed = closed;
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef ClientObject_method[] = {
     { "set_greenlet",      (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0 },
     { "get_greenlet",      (PyCFunction)ClientObject_get_greenlet, METH_NOARGS, 0 },
     {"get_fd", (PyCFunction)ClientObject_get_fd, METH_VARARGS, "get fd"},
+    {"set_closed", (PyCFunction)ClientObject_set_closed, METH_VARARGS, "set response closed"},
     { NULL, NULL}
 };
 

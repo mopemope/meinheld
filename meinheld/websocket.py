@@ -8,9 +8,11 @@ try:
 except ImportError: #pragma NO COVER
     from md5 import md5
 
-from meinheld import server
+from meinheld import server, patch
 from meinheld.common import Continuation, CLIENT_KEY, CONTINUATION_KEY
-import greenlet
+patch.patch_socket()
+
+import socket
 
 class WebSocketMiddleware(object):
 
@@ -44,8 +46,7 @@ class WebSocketMiddleware(object):
 
         # Get the underlying socket and wrap a WebSocket class around it
         client = environ[CLIENT_KEY]
-        sock = server._get_socket_fromfd(client.get_fd(), socket.AF_INET,
-                socket.SOCK_STREAM)
+        sock = socket.fromfd(client.get_fd(), socket.AF_INET, socket.SOCK_STREAM)
         ws = WebSocket(sock, environ, protocol_version)
         
         # If it's new-version, we need to work out our challenge response
@@ -104,6 +105,8 @@ class WebSocketMiddleware(object):
             if result and response != -1:
                 ws = environ.pop('wsgi.websocket')
                 ws._send_closing_frame(True)
+                client = environ[CLIENT_KEY]
+                client.set_closed(1)
 
     def __call__(self, environ, start_response):
         client = environ[CLIENT_KEY]
@@ -330,6 +333,6 @@ class WebSocket(object):
         """Forcibly close the websocket; generally it is preferable to
         return from the handler method."""
         self._send_closing_frame()
-        #self.socket.shutdown(True)
+        self.socket.shutdown(True)
         self.socket.close()
 
