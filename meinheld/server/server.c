@@ -1236,16 +1236,16 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-/*
 PyObject *
-meinheld_get_socket_fromfd(PyObject *self, PyObject *args)
+meinheld_cancel_event(PyObject *self, PyObject *args)
 {
-    if(!((ClientObject *)current_client)->greenlet){
-        PyErr_SetString(PyExc_ValueError, "greenlet is not set");
+    int fd;
+    if (!PyArg_ParseTuple(args, "i:cancel_event", &fd))
         return NULL;
-    }
-    return NSocketObject_fromfd_nodup(args);
-}*/
+
+    picoev_del(main_loop, fd);
+    Py_RETURN_NONE;
+}
 
 static inline void
 trampolin_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
@@ -1323,8 +1323,7 @@ static PyMethodDef WsMethods[] = {
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
-    //{"_get_socket_fromfd", meinheld_get_socket_fromfd, METH_VARARGS, "get socket fromfd"},
-    
+    {"cancel_event", meinheld_cancel_event, METH_VARARGS, "cancel event"},
     {"trampolin", meinheld_trampolin, METH_VARARGS | METH_KEYWORDS, "trampolin"},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
