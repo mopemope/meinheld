@@ -17,6 +17,9 @@ extern PyTypeObject NSocketObjectType;
 inline PyObject* 
 NSocketObject_fromfd(PyObject *args);
 
+inline PyObject* 
+NSocketObject_fromfd_nodup(PyObject *args);
+
 inline int 
 CheckNSocketObject(PyObject *obj);
 
