@@ -1,5 +1,6 @@
 #include "response.h"
 #include "log.h"
+#include "util.h"
 
 #define CRLF "\r\n"
 #define DELIM ": "
