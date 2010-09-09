@@ -1,8 +1,12 @@
 0.4
 =======
+(New feature release. rerelease 2010-09-09)
 
-* 
-* 
+* add io trampolin
+* support greening socket
+* monkeypatchi utility
+* embed greenlet 
+* rename SpawnMiddleware -> ContinuationMiddleware
 
 
 0.3.3
