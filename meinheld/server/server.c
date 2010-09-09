@@ -1131,9 +1131,13 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     ClientObject *pyclient;
     client_t *client;
     PyGreenlet *parent;
-    int timeout;
+    int timeout = 0;
 
     if (!PyArg_ParseTuple(args, "O|i:_suspend_client", &temp, &timeout)){
+        return NULL;
+    }
+    if(timeout < 0){
+        PyErr_SetString(PyExc_ValueError, "timeout value out of range ");
         return NULL;
     }
     
@@ -1240,9 +1244,14 @@ PyObject *
 meinheld_cancel_wait(PyObject *self, PyObject *args)
 {
     int fd;
-    if (!PyArg_ParseTuple(args, "i:cancel_event", &fd))
+    if (!PyArg_ParseTuple(args, "i:cancel_event", &fd)){
         return NULL;
+    }
 
+    if(fd < 0){
+        PyErr_SetString(PyExc_ValueError, "fileno value out of range ");
+        return NULL;
+    }
     picoev_del(main_loop, fd);
     Py_RETURN_NONE;
 }
@@ -1273,6 +1282,17 @@ meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:trampolin", keywords, &fd, &read, &write, &timeout)){
 		return NULL;
     }
+    
+    if(fd < 0){
+        PyErr_SetString(PyExc_ValueError, "fileno value out of range ");
+        return NULL;
+    }
+    
+    if(timeout < 0){
+        PyErr_SetString(PyExc_ValueError, "timeout value out of range ");
+        return NULL;
+    }
+
     if(PyObject_IsTrue(read) && PyObject_IsTrue(write)){
         event = PICOEV_READWRITE;
     }else if(PyObject_IsTrue(read)){
@@ -1281,6 +1301,10 @@ meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
         event = PICOEV_WRITE;
     }else{
         event = PICOEV_TIMEOUT;
+        if(timeout <= 0){
+            PyErr_SetString(PyExc_ValueError, "timeout value out of range ");
+            return NULL;
+        }
     }
 
     pyclient =(ClientObject *) current_client;
