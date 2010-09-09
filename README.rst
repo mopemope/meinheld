@@ -143,6 +143,17 @@ example ::
         server.run(middleware.WebSocketMiddleware(app))
 
 
+Monkey Patching 
+---------------------------------
+
+meinheld provide monkeypatch utilityi.This patch replace standard socket module.
+
+example ::
+    
+    from meinheld import patch
+    patch.patch_all()
+
+For more info see http://github.com/mopemope/meinheld/tree/master/example/patch/
 
 Performance
 ------------------------------
