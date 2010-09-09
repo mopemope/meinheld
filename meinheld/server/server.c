@@ -1345,16 +1345,6 @@ initserver(void)
     if(PyType_Ready(&ClientObjectType) < 0){
         return;
     }
-    
-    /*
-    if(PyType_Ready(&NSocketObjectType) < 0){
-        return;
-    }
-
-    Py_INCREF(&NSocketObjectType);
-	if (PyModule_AddObject(m, "_socket", (PyObject *)&NSocketObjectType) != 0){
-	    return;
-    }*/
 
     timeout_error = PyErr_NewException("meinheld.server.timeout",
 					  PyExc_IOError, NULL);

@@ -57,25 +57,13 @@ import time
 import random
 import re
 
-is_windows = sys.platform == 'win32'
-
-if is_windows:
-    # no such thing as WSAEPERM or error code 10001 according to winsock.h or MSDN
-    from errno import WSAEINVAL as EINVAL
-    from errno import WSAEWOULDBLOCK as EWOULDBLOCK
-    from errno import WSAEINPROGRESS as EINPROGRESS
-    from errno import WSAEALREADY as EALREADY
-    from errno import WSAEISCONN as EISCONN
-    from gevent.win32util import formatError as strerror
-    EAGAIN = EWOULDBLOCK
-else:
-    from errno import EINVAL
-    from errno import EWOULDBLOCK
-    from errno import EINPROGRESS
-    from errno import EALREADY
-    from errno import EAGAIN
-    from errno import EISCONN
-    from os import strerror
+from errno import EINVAL
+from errno import EWOULDBLOCK
+from errno import EINPROGRESS
+from errno import EALREADY
+from errno import EAGAIN
+from errno import EISCONN
+from os import strerror
 
 try:
     from errno import EBADF
@@ -128,7 +116,7 @@ except AttributeError:
 
 # XXX: import other non-blocking stuff, like ntohl
 # XXX: implement blocking functions that are not yet implemented
-# XXX: add test that checks that socket.__all__ matches gevent.socket.__all__ on all supported platforms
+# XXX: add test that checks that socket.__all__ matches meinheld.socket.__all__ on all supported platforms
 
 from meinheld import server, cancel_wait
 
@@ -493,15 +481,14 @@ try:
 except AttributeError:
     _GLOBAL_DEFAULT_TIMEOUT = object()
 
-"""
 _have_ssl = False
 
 try:
-    from gevent.ssl import sslwrap_simple as ssl, SSLError as sslerror
+    from meinheld.ssl import sslwrap_simple as ssl, SSLError as sslerror
     _have_ssl = True
 except ImportError:
     try:
-        from gevent.sslold import ssl, sslerror
+        from meinheld.sslold import ssl, sslerror
         _have_ssl = True
     except ImportError:
         pass
@@ -509,5 +496,4 @@ except ImportError:
 if not _have_ssl:
     __all__.remove('ssl')
     __all__.remove('sslerror')
-"""
 
