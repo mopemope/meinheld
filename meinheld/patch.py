@@ -1,5 +1,5 @@
 # Copyright (c) 2009-2010 Denis Bilenko. See LICENSE for details.
-
+print "import"
 import sys
 
 noisy = True
