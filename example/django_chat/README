@@ -1,4 +1,8 @@
-An example of AJAX chat taken from Tornado demos and converted to use django and gevent.
+An example of AJAX chat taken from Tornado demos and converted to use django
+and meinheld.
 
 To start the server, run
 $ python run.py
+
+ヒャッハー
+
