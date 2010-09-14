@@ -7,6 +7,8 @@ Thus this is yet an another asynchronous web server like fapws3, tornado.
 
 And meinheld is a WSGI compliant web server.
 
+You can also join us in `meinheld mailing list`_
+
 Require
 ---------------------------------
 
@@ -176,6 +178,7 @@ meinheld use sendfile(2), over wgsi.file_wrapper.
 
 
 .. _simple benchmark result here: http://gist.github.com/544674
+.. _meinheld mailing list: http://groups.google.com/group/meinheld
 
 
 
