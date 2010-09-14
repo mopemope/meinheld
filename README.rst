@@ -179,7 +179,7 @@ meinheld use sendfile(2), over wgsi.file_wrapper.
 
 .. _simple benchmark result here: http://gist.github.com/544674
 .. _meinheld mailing list: http://groups.google.com/group/meinheld
-.. _`#meinheld`: http://webchat.freenode.net/?channels=meinheld
+.. _#meinheld: http://webchat.freenode.net/?channels=meinheld
 .. _freenode: http://freenode.net
 
 
