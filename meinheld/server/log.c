@@ -1,13 +1,13 @@
 #include "log.h"
 #include <sys/file.h>
 
-int
+inline int
 open_log_file(const char *path)
 {
     return open(path, O_CREAT|O_APPEND|O_WRONLY, 0744);
 }
 
-void
+inline void
 write_error_log(char *file_name, int line)
 {
     char buf[64];
@@ -63,7 +63,7 @@ write_log(const char *new_path, int fd, const char *data, size_t len)
     return fd;
 }
 
-int 
+inline int 
 write_access_log(client_t *cli, int log_fd, const char *log_path)
 {
     char buf[1024*4];

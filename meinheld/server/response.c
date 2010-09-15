@@ -282,8 +282,8 @@ write_headers(client_t *client, char *data, size_t datalen)
                 goto error;
             }
             
-            object1 = PyTuple_GetItem(tuple, 0);
-            object2 = PyTuple_GetItem(tuple, 1);
+            object1 = PyTuple_GET_ITEM(tuple, 0);
+            object2 = PyTuple_GET_ITEM(tuple, 1);
             
             if (PyString_Check(object1)) {
                 PyString_AsStringAndSize(object1, &name, &namelen);
@@ -417,7 +417,7 @@ close_response(client_t *client)
 
 
 static inline int
-processs_sendfile(client_t *client)
+processs_sendfile(register client_t *client)
 {
     PyObject *filelike = NULL;
     FileWrapperObject *filewrap = NULL;
@@ -465,13 +465,13 @@ processs_sendfile(client_t *client)
 }
 
 static inline int
-processs_write(client_t *client)
+processs_write(register client_t *client)
 {
-    PyObject *iterator = NULL;
+    register PyObject *iterator = NULL;
     register PyObject *item;
     char *buf;
     Py_ssize_t buflen;
-    write_bucket *bucket;
+    register write_bucket *bucket;
     int ret;
 
     iterator = client->response_iter;
