@@ -1359,7 +1359,7 @@ static PyMethodDef WsMethods[] = {
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
     {"cancel_wait", meinheld_cancel_wait, METH_VARARGS, "cancel wait"},
-    {"trampolin", meinheld_trampolin, METH_VARARGS | METH_KEYWORDS, "trampolin"},
+    {"trampolin", (PyCFunction)meinheld_trampolin, METH_VARARGS | METH_KEYWORDS, "trampolin"},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
