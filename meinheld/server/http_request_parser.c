@@ -566,7 +566,6 @@ headers_complete_cb (http_parser *p)
     }
     
     PyDict_SetItem(env, request_method_key, obj);
-    //Py_DECREF(obj);
 
     PyMem_Free(req);
     client->req = NULL;
