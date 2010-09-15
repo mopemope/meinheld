@@ -1,3 +1,9 @@
+0.4.1
+=======
+(bug fix release)
+
+* performance optimize (re-use environ key)
+
 0.4
 =======
 (New feature release. rerelease 2010-09-09)
