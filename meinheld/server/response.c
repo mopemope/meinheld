@@ -148,7 +148,7 @@ static inline int
 writev_bucket(write_bucket *data)
 {
     size_t w;
-    int i = 0;
+    register int i = 0;
     w = writev(data->fd, data->iov, data->iov_cnt);
     if(w == -1){
         //error
@@ -227,9 +227,9 @@ write_headers(client_t *client, char *data, size_t datalen)
         return 1;
     }
     write_bucket *bucket; 
-    uint32_t i = 0, hlen = 0;
-    PyObject *headers = NULL;
-    PyObject *object = NULL;
+    register uint32_t i = 0, hlen = 0;
+    register PyObject *headers = NULL;
+    register PyObject *object = NULL;
     char *name = NULL;
     Py_ssize_t namelen;
     char *value = NULL;
