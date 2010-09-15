@@ -515,7 +515,7 @@ prepare_call_wsgi(client_t *client)
         c = PyDict_GetItemString(client->environ, "HTTP_CONNECTION");
         if(c){
             val = PyString_AS_STRING(c);
-            if(!strncasecmp(val, "keep-alive", 11)){
+            if(!strcasecmp(val, "keep-alive")){
                 client->keep_alive = 1;
             }else{
                 client->keep_alive = 0;
@@ -880,11 +880,11 @@ meinheld_access_log(PyObject *self, PyObject *args)
         close(log_fd);
     }
     
-    if(!strncasecmp(log_path, "stdout", 7)){
+    if(!strcasecmp(log_path, "stdout")){
         log_fd = 1;
         Py_RETURN_NONE;
     }
-    if(!strncasecmp(log_path, "stderr", 7)){
+    if(!strcasecmp(log_path, "stderr")){
         log_fd = 2;
         Py_RETURN_NONE;
     }
