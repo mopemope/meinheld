@@ -54,6 +54,7 @@ PyObject* hub_switch_value;
 PyObject* current_client;
 PyObject* timeout_error;
 
+static PyObject *client_key = NULL; //meinheld.client
 static PyObject *wsgi_input_key = NULL; //wsgi.input key
 static PyObject *empty_string = NULL; //""
 
@@ -226,7 +227,7 @@ process_wsgi_app(client_t *cli)
     }
     args = Py_BuildValue("(OO)", cli->environ, start);
 
-    current_client = PyDict_GetItemString(cli->environ, "meinheld.client");
+    current_client = PyDict_GetItem(cli->environ, client_key);
     pyclient = (ClientObject *)current_client;
 
 #ifdef DEBUG
@@ -696,6 +697,7 @@ setup_server_env(void)
     PyGreenlet_Import();
     
     hub_switch_value = Py_BuildValue("(i)", -1);
+    client_key = PyString_FromString("meinheld.client");
     wsgi_input_key = PyString_FromString("wsgi.input");
     empty_string = PyString_FromString("");
 }
@@ -983,6 +985,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     clear_static_env();
 
     Py_DECREF(hub_switch_value);
+    Py_DECREF(client_key);
     Py_DECREF(wsgi_input_key);
     Py_DECREF(empty_string);
 
