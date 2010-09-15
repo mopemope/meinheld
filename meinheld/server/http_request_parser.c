@@ -72,6 +72,8 @@ static PyObject *server_name_key;
 static PyObject *server_name_val;
 static PyObject *server_port_key;
 static PyObject *server_port_val;
+static PyObject *remote_addr_key;
+static PyObject *remote_port_key;
 
 static PyObject *server_protocol_key;
 static PyObject *path_info_key;
@@ -80,6 +82,26 @@ static PyObject *query_string_key;
 static PyObject *fragment_key;
 static PyObject *request_method_key;
 static PyObject *client_key;
+
+static PyObject *http_method_delete;
+static PyObject *http_method_get;
+static PyObject *http_method_head;
+static PyObject *http_method_post;
+static PyObject *http_method_put;
+static PyObject *http_method_connect;
+static PyObject *http_method_options;
+static PyObject *http_method_trace;
+static PyObject *http_method_copy;
+static PyObject *http_method_lock;
+static PyObject *http_method_mkcol;
+static PyObject *http_method_move;
+static PyObject *http_method_propfind;
+static PyObject *http_method_proppatch;
+static PyObject *http_method_unlock;
+static PyObject *http_method_report;
+static PyObject *http_method_mkactivity;
+static PyObject *http_method_checkout;
+static PyObject *http_method_merge;
 
 
 static inline void
@@ -482,69 +504,69 @@ headers_complete_cb (http_parser *p)
      
     switch(p->method){
         case HTTP_DELETE:
-            obj = PyString_FromStringAndSize("DELETE", 6);
+            obj = http_method_delete;
             break;
         case HTTP_GET:
-            obj = PyString_FromStringAndSize("GET", 3);
+            obj = http_method_get;
             break;
         case HTTP_HEAD:
-            obj = PyString_FromStringAndSize("HEAD", 4);
+            obj = http_method_head;
             break;
         case HTTP_POST:
-            obj = PyString_FromStringAndSize("POST", 4);
+            obj = http_method_post;
             break;
         case HTTP_PUT:
-            obj = PyString_FromStringAndSize("PUT", 3);
+            obj = http_method_put;
             break;
         case HTTP_CONNECT:
-            obj = PyString_FromStringAndSize("CONNECT", 7);
+            obj = http_method_connect;
             break;
         case HTTP_OPTIONS:
-            obj = PyString_FromStringAndSize("OPTIONS", 7);
+            obj = http_method_options;
             break;
         case  HTTP_TRACE:
-            obj = PyString_FromStringAndSize("TRACE", 5);
+            obj = http_method_trace;
             break;
         case HTTP_COPY:
-            obj = PyString_FromStringAndSize("COPY", 4);
+            obj = http_method_copy;
             break;
         case HTTP_LOCK:
-            obj = PyString_FromStringAndSize("LOCK", 4);
+            obj = http_method_lock;
             break;
         case HTTP_MKCOL:
-            obj = PyString_FromStringAndSize("MKCOL", 5);
+            obj = http_method_mkcol;
             break;
         case HTTP_MOVE:
-            obj = PyString_FromStringAndSize("MOVE", 4);
+            obj = http_method_move;
             break;
         case HTTP_PROPFIND:
-            obj = PyString_FromStringAndSize("PROPFIND", 8);
+            obj = http_method_propfind;
             break;
         case HTTP_PROPPATCH:
-            obj = PyString_FromStringAndSize("PROPPATCH", 9);
+            obj = http_method_proppatch;
             break;
         case HTTP_UNLOCK:
-            obj = PyString_FromStringAndSize("UNLOCK", 6);
+            obj = http_method_unlock;
             break;
         case HTTP_REPORT:
-            obj = PyString_FromStringAndSize("REPORT", 6);
+            obj = http_method_report;
             break;
         case HTTP_MKACTIVITY:
-            obj = PyString_FromStringAndSize("MKACTIVITY", 10);
+            obj = http_method_mkactivity;
             break;
         case HTTP_CHECKOUT:
-            obj = PyString_FromStringAndSize("CHECKOUT", 8);
+            obj = http_method_checkout;
             break;
         case HTTP_MERGE:
-            obj = PyString_FromStringAndSize("MERGE", 5);
+            obj = http_method_merge;
             break;
         default:
-            obj = PyString_FromStringAndSize("GET", 3);
+            obj = http_method_get;
             break;
     }
     
     PyDict_SetItem(env, request_method_key, obj);
-    Py_DECREF(obj);
+    //Py_DECREF(obj);
 
     PyMem_Free(req);
     client->req = NULL;
@@ -607,11 +629,11 @@ init_parser(client_t *cli, const char *name, const short port)
     PyDict_SetItem(cli->environ, file_wrapper_key, file_wrapper_val);
      
     object = PyString_FromString(cli->remote_addr);
-    PyDict_SetItemString(cli->environ, "REMOTE_ADDR", object);
+    PyDict_SetItem(cli->environ, remote_addr_key, object);
     Py_DECREF(object);
 
     object = PyString_FromFormat("%d", cli->remote_port);
-    PyDict_SetItemString(cli->environ, "REMOTE_PORT", object);
+    PyDict_SetItem(cli->environ, remote_port_key, object);
     Py_DECREF(object);
     
 
@@ -673,6 +695,9 @@ setup_static_env(char *name, int port)
     
     server_port_val = PyString_FromFormat("%d", port);
     server_port_key = PyString_FromString("SERVER_PORT");
+
+    remote_addr_key = PyString_FromString("REMOTE_ADDR");
+    remote_port_key = PyString_FromString("REMOTE_PORT");
     
     server_protocol_key = PyString_FromString("SERVER_PROTOCOL");
     path_info_key = PyString_FromString("PATH_INFO");
@@ -682,6 +707,27 @@ setup_static_env(char *name, int port)
     request_method_key = PyString_FromString("REQUEST_METHOD");
     client_key = PyString_FromString("meinheld.client");
 
+
+    http_method_delete = PyString_FromStringAndSize("DELETE", 6);
+    http_method_get = PyString_FromStringAndSize("GET", 3);
+    http_method_head = PyString_FromStringAndSize("HEAD", 4);
+    http_method_post = PyString_FromStringAndSize("POST", 4);
+    http_method_put = PyString_FromStringAndSize("PUT", 3);
+    http_method_connect = PyString_FromStringAndSize("CONNECT", 7);
+    http_method_options = PyString_FromStringAndSize("OPTIONS", 7);
+    http_method_trace = PyString_FromStringAndSize("TRACE", 5);
+    http_method_copy = PyString_FromStringAndSize("COPY", 4);
+    http_method_lock = PyString_FromStringAndSize("LOCK", 4);
+    http_method_mkcol = PyString_FromStringAndSize("MKCOL", 5);
+    http_method_move = PyString_FromStringAndSize("MOVE", 4);
+    http_method_propfind= PyString_FromStringAndSize("PROPFIND", 8);
+    http_method_proppatch = PyString_FromStringAndSize("PROPPATCH", 9);
+    http_method_unlock = PyString_FromStringAndSize("UNLOCK", 6);
+    http_method_report = PyString_FromStringAndSize("REPORT", 6);
+    http_method_mkactivity = PyString_FromStringAndSize("MKACTIVITY", 10);
+    http_method_checkout = PyString_FromStringAndSize("CHECKOUT", 8);
+    http_method_merge = PyString_FromStringAndSize("MERGE", 5);
+    
     PycString_IMPORT;
 }
 
@@ -709,6 +755,8 @@ clear_static_env(void)
     Py_DECREF(server_name_val);
     Py_DECREF(server_port_key);
     Py_DECREF(server_port_val);
+    Py_DECREF(remote_addr_key);
+    Py_DECREF(remote_port_key);
 
     Py_DECREF(server_protocol_key);
     Py_DECREF(path_info_key);
@@ -717,5 +765,26 @@ clear_static_env(void)
     Py_DECREF(fragment_key);
     Py_DECREF(request_method_key);
     Py_DECREF(client_key);
+
+    Py_DECREF(http_method_delete);
+    Py_DECREF(http_method_get);
+    Py_DECREF(http_method_head);
+    Py_DECREF(http_method_post);
+    Py_DECREF(http_method_put);
+    Py_DECREF(http_method_connect);
+    Py_DECREF(http_method_options);
+    Py_DECREF(http_method_trace);
+    Py_DECREF(http_method_copy);
+    Py_DECREF(http_method_lock);
+    Py_DECREF(http_method_mkcol);
+    Py_DECREF(http_method_move);
+    Py_DECREF(http_method_propfind);
+    Py_DECREF(http_method_proppatch);
+    Py_DECREF(http_method_unlock);
+    Py_DECREF(http_method_report);
+    Py_DECREF(http_method_mkactivity);
+    Py_DECREF(http_method_checkout);
+    Py_DECREF(http_method_merge);
+
 }
 
