@@ -310,11 +310,11 @@ write_headers(client_t *client, char *data, size_t datalen)
                 goto error;
             }
 
-            if (!strncasecmp(name, "Server", 7) || !strncasecmp(name, "Date", 5)) {
+            if (!strcasecmp(name, "Server") || !strcasecmp(name, "Date")) {
                 continue;
             }
             
-            if (!strncasecmp(name, "Content-Length", 15)) {
+            if (!strcasecmp(name, "Content-Length")) {
                 char *v = value;
                 long l = 0;
 
