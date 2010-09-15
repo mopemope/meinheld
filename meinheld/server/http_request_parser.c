@@ -73,6 +73,15 @@ static PyObject *server_name_val;
 static PyObject *server_port_key;
 static PyObject *server_port_val;
 
+static PyObject *server_protocol_key;
+static PyObject *path_info_key;
+static PyObject *request_uri_key;
+static PyObject *query_string_key;
+static PyObject *fragment_key;
+static PyObject *request_method_key;
+static PyObject *client_key;
+
+
 static inline void
 key_upper(char *s, const char *key, size_t len)
 {
@@ -431,30 +440,30 @@ headers_complete_cb (http_parser *p)
         return -1;
     }
     obj = PyString_FromFormat("HTTP/%u.%u", p->http_major, p->http_minor);
-    PyDict_SetItemString(env, "SERVER_PROTOCOL", obj);
+    PyDict_SetItem(env, server_protocol_key, obj);
     Py_DECREF(obj);
     
     if(req->path){
         obj = getPyString(req->path); 
-        PyDict_SetItemString(env, "PATH_INFO", obj);
+        PyDict_SetItem(env, path_info_key, obj);
         Py_DECREF(obj);
         req->path = NULL;
     }
     if(req->uri){
         obj = getPyString(req->uri); 
-        PyDict_SetItemString(env, "REQUEST_URI", obj);
+        PyDict_SetItem(env, request_uri_key, obj);
         Py_DECREF(obj);
         req->uri = NULL;
     }
     if(req->query_string){
         obj = getPyString(req->query_string); 
-        PyDict_SetItemString(env, "QUERY_STRING", obj);
+        PyDict_SetItem(env, query_string_key, obj);
         Py_DECREF(obj);
         req->query_string = NULL;
     }
     if(req->fragment){
         obj = getPyString(req->fragment); 
-        PyDict_SetItemString(env, "HTTP_FRAGMENT", obj);
+        PyDict_SetItem(env, fragment_key, obj);
         Py_DECREF(obj);
         req->fragment = NULL;
     }
@@ -534,7 +543,7 @@ headers_complete_cb (http_parser *p)
             break;
     }
     
-    PyDict_SetItemString(env, "REQUEST_METHOD", obj);
+    PyDict_SetItem(env, request_method_key, obj);
     Py_DECREF(obj);
 
     PyMem_Free(req);
@@ -543,7 +552,7 @@ headers_complete_cb (http_parser *p)
     
     //keep client data
     obj = ClientObject_New(client);
-    PyDict_SetItemString(env, "meinheld.client", obj);
+    PyDict_SetItem(env, client_key, obj);
     Py_DECREF(obj);
 
     return 0;
@@ -665,6 +674,14 @@ setup_static_env(char *name, int port)
     server_port_val = PyString_FromFormat("%d", port);
     server_port_key = PyString_FromString("SERVER_PORT");
     
+    server_protocol_key = PyString_FromString("SERVER_PROTOCOL");
+    path_info_key = PyString_FromString("PATH_INFO");
+    request_uri_key = PyString_FromString("REQUEST_URI");
+    query_string_key = PyString_FromString("QUERY_STRING");
+    fragment_key = PyString_FromString("HTTP_FRAGMENT");
+    request_method_key = PyString_FromString("REQUEST_METHOD");
+    client_key = PyString_FromString("meinheld.client");
+
     PycString_IMPORT;
 }
 
@@ -692,5 +709,13 @@ clear_static_env(void)
     Py_DECREF(server_name_val);
     Py_DECREF(server_port_key);
     Py_DECREF(server_port_val);
+
+    Py_DECREF(server_protocol_key);
+    Py_DECREF(path_info_key);
+    Py_DECREF(request_uri_key);
+    Py_DECREF(query_string_key);
+    Py_DECREF(fragment_key);
+    Py_DECREF(request_method_key);
+    Py_DECREF(client_key);
 }
 
