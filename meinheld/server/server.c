@@ -54,6 +54,8 @@ PyObject* hub_switch_value;
 PyObject* current_client;
 PyObject* timeout_error;
 
+static PyObject *wsgi_input_key = NULL; //wsgi.input key
+static PyObject *empty_string = NULL; //""
 
 static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
@@ -484,7 +486,7 @@ prepare_call_wsgi(client_t *client)
         fflush(tmp);
         rewind(tmp);
         input = PyFile_FromFile(tmp, "<tmpfile>", "r", fclose);
-        PyDict_SetItemString((PyObject *)client->environ, "wsgi.input", input);
+        PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
         Py_DECREF(input);
         client->body = NULL;
     }else{
@@ -492,15 +494,16 @@ prepare_call_wsgi(client_t *client)
             object = PycStringIO->cgetvalue((PyObject *)client->body);
             Py_XDECREF((PyObject *)client->body);
             input = PycStringIO->NewInput(object);
-            PyDict_SetItemString((PyObject *)client->environ, "wsgi.input", input);
+            PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
         }else{
             if(client->body){
                 object = client->body;
             }else{
-                object = PyString_FromString("");
+                object = empty_string;
+                Py_INCREF(empty_string);
             }
             input = PycStringIO->NewInput(object);
-            PyDict_SetItemString((PyObject *)client->environ, "wsgi.input", input);
+            PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
         }
         client->body = object;
         //Py_DECREF(object);
@@ -691,7 +694,10 @@ setup_server_env(void)
     setup_client();
     PycString_IMPORT;
     PyGreenlet_Import();
+    
     hub_switch_value = Py_BuildValue("(i)", -1);
+    wsgi_input_key = PyString_FromString("wsgi.input");
+    empty_string = PyString_FromString("");
 }
 
 static inline int 
