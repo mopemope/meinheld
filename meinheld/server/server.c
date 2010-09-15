@@ -983,6 +983,8 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     clear_static_env();
 
     Py_DECREF(hub_switch_value);
+    Py_DECREF(wsgi_input_key);
+    Py_DECREF(empty_string);
 
     if(unix_sock_name){
         unlink(unix_sock_name);
