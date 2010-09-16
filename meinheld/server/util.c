@@ -27,6 +27,7 @@ setup_sock(int fd)
     assert(r == 0);
 
     // 60 + 30 * 4 
+    /*
     on = 300;    
     r = setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &on, sizeof(on));
     assert(r == 0);
@@ -36,7 +37,7 @@ setup_sock(int fd)
     on = 4;
     r = setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &on, sizeof(on));
     assert(r == 0);
-    
+    */
     r = fcntl(fd, F_SETFL, O_NONBLOCK);
     assert(r == 0);
 }
