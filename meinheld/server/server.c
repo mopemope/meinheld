@@ -957,7 +957,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
         picoev_loop_once(main_loop, 10);
         i++;
         // watchdog slow.... skip check
-        if(watchdog && i > 15){
+        if(watchdog && i > 1){
             watchdog_result = PyObject_CallFunction(watchdog, NULL);
             if(PyErr_Occurred()){
                 PyErr_Print();
