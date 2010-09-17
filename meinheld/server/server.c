@@ -16,8 +16,6 @@
 
 #define ACCEPT_TIMEOUT_SECS 1
 #define SHORT_TIMEOUT_SECS 2
-#define WRITE_TIMEOUT_SECS 60 * 5 
-//#define READ_LONG_TIMEOUT_SECS 3
 
 #define MAX_BUFSIZE 1024 * 8
 #define INPUT_BUF_SIZE 1024 * 8
@@ -363,7 +361,6 @@ w_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     
     } else if ((events & PICOEV_WRITE) != 0) {
         ret = process_body(client);
-        picoev_set_timeout(loop, client->fd, WRITE_TIMEOUT_SECS);
 #ifdef DEBUG
         printf("process_body ret %d \n", ret);
 #endif
@@ -417,7 +414,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
 #endif
             //clear event
             picoev_del(loop, client->fd);
-            picoev_add(loop, client->fd, PICOEV_WRITE, WRITE_TIMEOUT_SECS, w_callback, (void *)client);
+            picoev_add(loop, client->fd, PICOEV_WRITE, 0, w_callback, (void *)client);
             return;
         default:
             // send OK
@@ -466,7 +463,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
 #endif
             //clear event
             picoev_del(loop, client->fd);
-            picoev_add(loop, client->fd, PICOEV_WRITE, WRITE_TIMEOUT_SECS, w_callback, (void *)client);
+            picoev_add(loop, client->fd, PICOEV_WRITE, 0, w_callback, (void *)client);
             return;
         default:
             // send OK
