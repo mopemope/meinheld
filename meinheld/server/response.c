@@ -303,6 +303,13 @@ write_headers(client_t *client, char *data, size_t datalen)
                 goto error;
             }
 
+            if (strchr(name, ':') != 0) {
+                PyErr_Format(PyExc_ValueError, "header name may not contains ':'"
+                             "response header with name '%s' and value '%s'",
+                             name, value);
+                goto error;
+            }
+
             if (strchr(name, '\n') != 0 || strchr(value, '\n') != 0) {
                 PyErr_Format(PyExc_ValueError, "embedded newline in "
                              "response header with name '%s' and value '%s'",
