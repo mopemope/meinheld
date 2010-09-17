@@ -52,9 +52,15 @@ PyObject* hub_switch_value;
 PyObject* current_client;
 PyObject* timeout_error;
 
+/* reuse object */
 static PyObject *client_key = NULL; //meinheld.client
 static PyObject *wsgi_input_key = NULL; //wsgi.input key
 static PyObject *empty_string = NULL; //""
+
+/* gunicorn */
+static int spinner = 0;
+static int tempfile_fd = 0;
+static int ppid = 0;
 
 static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
@@ -820,6 +826,17 @@ unix_listen(char *sock_name)
     return 1;
 }
 
+static inline void
+fast_notify()
+{
+    spinner = (spinner + 1) % 2;
+    fchmod(tempfile_fd, spinner);
+    if(ppid != getppid()){
+        loop_done = 0;
+        tempfile_fd = 0;
+    }
+}
+
 static PyObject *
 meinheld_listen(PyObject *self, PyObject *args)
 {
@@ -957,7 +974,9 @@ meinheld_run_loop(PyObject *self, PyObject *args)
         picoev_loop_once(main_loop, 10);
         i++;
         // watchdog slow.... skip check
-        if(watchdog && i > 1){
+        
+        //if(watchdog && i > 1){
+        if(watchdog){
             watchdog_result = PyObject_CallFunction(watchdog, NULL);
             if(PyErr_Occurred()){
                 PyErr_Print();
@@ -965,6 +984,8 @@ meinheld_run_loop(PyObject *self, PyObject *args)
             }
             Py_XDECREF(watchdog_result);
             i = 0;
+        }else if(tempfile_fd){
+            fast_notify();
         }
 #ifdef DEBUG
         //printf("loop \n");
@@ -1090,6 +1111,19 @@ meinheld_set_listen_socket(PyObject *self, PyObject *args)
         return NULL;
     }
     listen_sock = temp_sock;
+    Py_RETURN_NONE;
+}
+
+PyObject *
+meinheld_set_fastwatchdog(PyObject *self, PyObject *args)
+{
+    int _fd;
+    int _ppid;
+    if (!PyArg_ParseTuple(args, "ii", &_fd, &_ppid))
+        return NULL;
+    
+    tempfile_fd = _fd;
+    ppid = _ppid;
     Py_RETURN_NONE;
 }
 
@@ -1328,6 +1362,8 @@ meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 
+
+
 static PyMethodDef WsMethods[] = {
     {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
     {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."},
@@ -1350,6 +1386,7 @@ static PyMethodDef WsMethods[] = {
     // support gunicorn 
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
+    {"set_fastwatchdog", meinheld_set_fastwatchdog, METH_VARARGS, "set watchdog"},
     {"run", meinheld_run_loop, METH_VARARGS, "set wsgi app, run the main loop"},
     // greenlet and continuation
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
