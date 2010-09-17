@@ -2,7 +2,10 @@
 =======
 (bug fix release)
 
-* performance optimize (re-use environ key)
+* Improve performance optimize (re-use object)
+* Add response header check(':' and status code range)
+* Change some parameter(watchdog interval, timeout)
+
 
 0.4
 =======
@@ -19,7 +22,7 @@
 =======
 (bug fix release, release 2010-09-06)
 
-* chage _get_socket_fromfd arg. (del client)
+* change _get_socket_fromfd arg. (del client)
 * add timeout parameter to Continuation suspend method
 * detect closed socket (use SO_KEEPALIVE)
 * fix leak of spawned method
