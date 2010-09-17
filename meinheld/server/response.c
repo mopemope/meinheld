@@ -744,6 +744,11 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         return NULL;
     }
 
+    if (int_code < 100 || int_code > 999) {
+        PyErr_SetString(PyExc_ValueError, "status code is invalid");
+        return NULL;
+    }
+
     self->cli->status_code = int_code;
 
     Py_XDECREF(self->cli->headers);
