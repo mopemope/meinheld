@@ -1,6 +1,6 @@
 0.4.1
 =======
-(bug fix release)
+(bug fix release, release 2010-09-18)
 
 * Improve performance optimize (re-use object)
 * Add response header check(':' and status code range)
