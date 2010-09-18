@@ -827,7 +827,7 @@ unix_listen(char *sock_name)
 }
 
 static inline void
-fast_notify()
+fast_notify(void)
 {
     spinner = (spinner + 1) % 2;
     fchmod(tempfile_fd, spinner);
