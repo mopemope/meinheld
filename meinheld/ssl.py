@@ -10,6 +10,19 @@ it requires `ssl package`_ to be installed.
 
 .. _`ssl package`: http://pypi.python.org/pypi/ssl
 """
+__implements__ = ['SSLSocket',
+                  'wrap_socket',
+                  'get_server_certificate',
+                  'sslwrap_simple']
+
+__imports__ = ['SSLError',
+               'RAND_status',
+               'RAND_egd',
+               'RAND_add',
+               'cert_time_to_seconds',
+               'get_protocol_name',
+               'DER_cert_to_PEM_cert',
+               'PEM_cert_to_DER_cert']
 
 __ssl__ = __import__('ssl')
 
@@ -19,39 +32,28 @@ except AttributeError:
     _ssl = __ssl__._ssl2
 
 import sys
+import errno
 from meinheld.socket import socket, _fileobject, timeout, wait_read, wait_write, timeout_default
 from meinheld.socket import error as socket_error, EBADF
 
-__implements__ = ['SSLObject', 'wrap_socket', 'get_server_certificate', 'sslwrap_simple']
 
-__all__ = ['SSLError',
-           'CERT_NONE', 'CERT_OPTIONAL', 'CERT_REQUIRED',
-           'PROTOCOL_SSLv2', 'PROTOCOL_SSLv3', 'PROTOCOL_SSLv23', 'PROTOCOL_TLSv1', 'PROTOCOL_NOSSLv2',
-           'RAND_status', 'RAND_egd', 'RAND_add',
-           'SSL_ERROR_ZERO_RETURN',
-           'SSL_ERROR_WANT_READ',
-           'SSL_ERROR_WANT_WRITE',
-           'SSL_ERROR_WANT_X509_LOOKUP',
-           'SSL_ERROR_SYSCALL',
-           'SSL_ERROR_SSL',
-           'SSL_ERROR_WANT_CONNECT',
-           'SSL_ERROR_EOF',
-           'SSL_ERROR_INVALID_ERROR_CODE',
-           'cert_time_to_seconds',
-           'DER_cert_to_PEM_cert',
-           'PEM_cert_to_DER_cert',
-           'get_protocol_name']
-
-for name in __all__:
+for name in __imports__[:]:
     try:
         value = getattr(__ssl__, name)
+        globals()[name] = value
     except AttributeError:
-        continue
-    globals()[name] = value
+        __imports__.remove(name)
+
+for name in dir(__ssl__):
+    if not name.startswith('_'):
+        value = getattr(__ssl__, name)
+        if isinstance(value, (int, long, basestring, tuple)):
+            globals()[name] = value
+            __imports__.append(name)
 
 del name, value
 
-__all__ += __implements__
+__all__ = __implements__ + __imports__
 
 
 class SSLSocket(socket):
@@ -61,10 +63,6 @@ class SSLSocket(socket):
                  ssl_version=PROTOCOL_SSLv23, ca_certs=None,
                  do_handshake_on_connect=True,
                  suppress_ragged_eofs=True):
-        try:
-            sock = sock._sock
-        except AttributeError:
-            pass
         socket.__init__(self, _sock=sock)
 
         if certfile and not keyfile:
@@ -72,26 +70,30 @@ class SSLSocket(socket):
         # see if it's connected
         try:
             socket.getpeername(self)
-        except socket_error:
+        except socket_error, e:
+            if e[0] != errno.ENOTCONN:
+                raise
             # no, no connection yet
             self._sslobj = None
         else:
             # yes, create the SSL object
-            self._sslobj = _ssl.sslwrap(self._sock, server_side,
-                                        keyfile, certfile,
-                                        cert_reqs, ssl_version, ca_certs)
+            if ciphers is None:
+                self._sslobj = _ssl.sslwrap(self._sock, server_side,
+                                            keyfile, certfile,
+                                            cert_reqs, ssl_version, ca_certs)
+            else:
+                self._sslobj = _ssl.sslwrap(self._sock, server_side,
+                                            keyfile, certfile,
+                                            cert_reqs, ssl_version, ca_certs,
+                                            ciphers)
             if do_handshake_on_connect:
-                timeout = self.gettimeout()
-                try:
-                    self.settimeout(None)
-                    self.do_handshake()
-                finally:
-                    self.settimeout(timeout)
+                self.do_handshake()
         self.keyfile = keyfile
         self.certfile = certfile
         self.cert_reqs = cert_reqs
         self.ssl_version = ssl_version
         self.ca_certs = ca_certs
+        self.ciphers = ciphers
         self.do_handshake_on_connect = do_handshake_on_connect
         self.suppress_ragged_eofs = suppress_ragged_eofs
         self._makefile_refs = 0
@@ -343,9 +345,14 @@ class SSLSocket(socket):
         if self._sslobj:
             raise ValueError("attempt to connect already-connected SSLSocket!")
         socket.connect(self, addr)
-        self._sslobj = _ssl.sslwrap(self._sock, False, self.keyfile, self.certfile,
-                                    self.cert_reqs, self.ssl_version,
-                                    self.ca_certs)
+        if self.ciphers is None:
+            self._sslobj = _ssl.sslwrap(self._sock, False, self.keyfile, self.certfile,
+                                        self.cert_reqs, self.ssl_version,
+                                        self.ca_certs)
+        else:
+            self._sslobj = _ssl.sslwrap(self._sock, False, self.keyfile, self.certfile,
+                                        self.cert_reqs, self.ssl_version,
+                                        self.ca_certs, self.ciphers)
         if self.do_handshake_on_connect:
             self.do_handshake()
 
@@ -362,7 +369,8 @@ class SSLSocket(socket):
                           ssl_version=self.ssl_version,
                           ca_certs=self.ca_certs,
                           do_handshake_on_connect=self.do_handshake_on_connect,
-                          suppress_ragged_eofs=self.suppress_ragged_eofs),
+                          suppress_ragged_eofs=self.suppress_ragged_eofs,
+                          ciphers=self.ciphers),
                 addr)
 
     def makefile(self, mode='r', bufsize=-1):
@@ -370,20 +378,21 @@ class SSLSocket(socket):
         works with the SSL connection.  Just use the code
         from the socket module."""
         self._makefile_refs += 1
-        return _fileobject(self, mode, bufsize)
+        return _fileobject(self, mode, bufsize, close=True)
 
 
 def wrap_socket(sock, keyfile=None, certfile=None,
                 server_side=False, cert_reqs=CERT_NONE,
                 ssl_version=PROTOCOL_SSLv23, ca_certs=None,
                 do_handshake_on_connect=True,
-                suppress_ragged_eofs=True):
+                suppress_ragged_eofs=True, ciphers=None):
     """Create a new :class:`SSLSocket` instance."""
     return SSLSocket(sock, keyfile=keyfile, certfile=certfile,
                      server_side=server_side, cert_reqs=cert_reqs,
                      ssl_version=ssl_version, ca_certs=ca_certs,
                      do_handshake_on_connect=do_handshake_on_connect,
-                     suppress_ragged_eofs=suppress_ragged_eofs)
+                     suppress_ragged_eofs=suppress_ragged_eofs,
+                     ciphers=ciphers)
 
 
 def get_server_certificate (addr, ssl_version=PROTOCOL_SSLv3, ca_certs=None):
@@ -410,4 +419,3 @@ def sslwrap_simple(sock, keyfile=None, certfile=None):
     for compability with Python 2.5 and earlier.  Will disappear in
     Python 3.0."""
     return SSLSocket(sock, keyfile, certfile)
-

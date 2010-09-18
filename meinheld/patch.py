@@ -1,8 +1,13 @@
 # Copyright (c) 2009-2010 Denis Bilenko. See LICENSE for details.
+# Copyright (c) 2010 Yutaka Matsubara. See LICENSE for details.
 import sys
 
 noisy = True
 
+__all__ = ['patch_all',
+           'patch_socket',
+           'patch_ssl',
+          ]
 
 def patch_socket(aggressive=True):
     """Replace the standard socket object with meinheld's cooperative sockets.
