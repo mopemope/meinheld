@@ -116,7 +116,7 @@ clean_cli(client_t *client)
     
     Py_CLEAR(client->response);
 #ifdef DEBUG
-    printf("close environ %p \n", client->environ);
+    printf("clean_cli environ status_code %d address %p \n", client->status_code, client->environ);
 #endif
     
     // force clear
@@ -154,7 +154,7 @@ close_conn(client_t *cli, picoev_loop* loop)
     if(!cli->keep_alive){
         close(cli->fd);
 #ifdef DEBUG
-        printf("close client:%p fd:%d \n", cli, cli->fd);
+        printf("close client:%p fd:%d status_code %d \n", cli, cli->fd, cli->status_code);
 #endif
     }else{
         disable_cork(cli);
@@ -433,6 +433,10 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
 {
     int ret;
     ret = process_wsgi_app(client);
+
+#ifdef DEBUG
+    printf("call_wsgi_app result %d \n", ret);
+#endif
     switch(ret){
         case -1:
             //Internal Server Error
@@ -454,6 +458,9 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
         return;
     }
     ret = response_start(client);
+#ifdef DEBUG
+    printf("response_start result %d \n", ret);
+#endif
     switch(ret){
         case -1:
             // Internal Server Error

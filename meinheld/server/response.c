@@ -74,6 +74,11 @@ send_error_page(client_t *client)
     int status = client->bad_request_code;
     int r = status < 0 ? status * -1:status;
     client->status_code = r;
+
+#ifdef DEBUG
+    printf("send_error_page status_code %d client %p \n", status, client);
+#endif
+
     switch(r){
         case 400:
             blocking_write(client, MSG_400, sizeof(MSG_400) -1);
@@ -564,6 +569,9 @@ start_response_file(client_t *client)
     in_fd = PyObject_AsFileDescriptor(filelike);
     if (in_fd == -1) {
         PyErr_Clear();
+#ifdef DEBUG
+        printf("can't get fd \n");
+#endif
         return -1;
     }
     if (fstat(in_fd, &info) == -1){
@@ -601,16 +609,21 @@ start_response_write(client_t *client)
         buflen = PyString_GET_SIZE(item);
 
 #ifdef DEBUG
-        printf("start_response_write buflen %d \n", buflen);
+        printf("start_response_write status_code %d buflen %d \n", client->status_code, buflen);
 #endif
         Py_DECREF(item);
         return write_headers(client, buf, buflen);
     }else{
-        PyErr_SetString(PyExc_TypeError, "response item must be a string");
-        Py_XDECREF(item);
-        if (PyErr_Occurred()){ 
-            write_error_log(__FILE__, __LINE__);
-            return -1;
+        if (item == NULL && !PyErr_Occurred()){ 
+            //Stap Iteration
+            return write_headers(client, NULL, 0);
+        }else{
+            PyErr_SetString(PyExc_TypeError, "response item must be a string");
+            Py_XDECREF(item);
+            if (PyErr_Occurred()){ 
+                write_error_log(__FILE__, __LINE__);
+                return -1;
+            }
         }
         
     }
@@ -626,6 +639,9 @@ response_start(client_t *client)
         return write_headers(client, NULL, 0);
     }
     if (CheckFileWrapper(client->response)) {
+#ifdef DEBUG
+        printf("use sendfile \n");
+#endif 
         ret = start_response_file(client);
         if(ret > 0){
             // sended header 
@@ -634,7 +650,7 @@ response_start(client_t *client)
     }else{
         ret = start_response_write(client);
 #ifdef DEBUG
-        printf("start_response_write ret = %d \n", ret);
+        printf("start_response_write status_code %d ret = %d \n", client->status_code, ret);
 #endif 
         if(ret > 0){
             // sended header 
@@ -784,6 +800,10 @@ FileWrapperObject_iter(PyObject *o)
         PyErr_SetString(PyExc_TypeError, "file-like object must be a iterable object");
         return NULL;
     }
+
+#ifdef DEBUG
+    printf("use FileWrapperObject_iter \n");
+#endif 
     return (PyObject *)iterator;
 }
 
@@ -829,9 +849,22 @@ file_wrapper(PyObject *self, PyObject *args)
 inline int 
 CheckFileWrapper(PyObject *obj)
 {
+    FileWrapperObject *f;
+    PyObject *filelike;
+    int in_fd;
     if (obj->ob_type != &FileWrapperType){
         return 0;
     }
+
+    f = (FileWrapperObject *)obj;
+    filelike = f->filelike;
+
+    in_fd = PyObject_AsFileDescriptor(filelike);
+    if (in_fd == -1) {
+        PyErr_Clear();
+        return 0;
+    }
+
     return 1;
 }
 
