@@ -5,7 +5,7 @@
 * Improve performance optimize (re-use object)
 * Add response header check(':' and status code range)
 * Change some parameter(watchdog interval, timeout)
-
+* Check socket with gevent's socket
 
 0.4
 =======
