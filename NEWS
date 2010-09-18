@@ -6,6 +6,7 @@
 * Add response header check(':' and status code range)
 * Change some parameter(watchdog interval, timeout)
 * Check socket with gevent's socket
+* Fix FileWrapper bugs
 
 0.4
 =======
