@@ -1,6 +1,7 @@
 # Copyright (c) 2005-2006, Bob Ippolito
 # Copyright (c) 2007, Linden Research, Inc.
 # Copyright (c) 2009-2010 Denis Bilenko
+# Copyright (c) 2010 Yutaka Matsubara
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,26 +32,44 @@ For convenience, exceptions (like :class:`error <socket.error>` and :class:`time
 as well as the constants from :mod:`socket` module are imported into this module.
 """
 
+__implements__ = ['getaddrinfo',
+                  'gethostbyname',
+                  'socket',
+                  'SocketType',
+                  'fromfd',
+                  'socketpair']
 
-__all__ = [
-           'error',
-           'fromfd',
-           'gaierror',
-           'getaddrinfo',
-           'gethostbyname',
-           'inet_aton',
-           'inet_ntoa',
-           'inet_pton',
-           'inet_ntop',
-           'socket',
-           'socketpair',
-           'timeout',
-           'ssl',
-           'sslerror',
-           'SocketType',
-           'wait_read',
-           'wait_write',
-           'wait_readwrite']
+# non-standard functions that this module provides:
+__extensions__ = ['wait_read',
+                  'wait_write',
+                  'wait_readwrite']
+
+# standard functions and classes that this module re-imports
+__imports__ = ['error',
+               'gaierror',
+               'getfqdn',
+               'herror',
+               'htonl',
+               'htons',
+               'ntohl',
+               'ntohs',
+               'inet_aton',
+               'inet_ntoa',
+               'inet_pton',
+               'inet_ntop',
+               'timeout',
+               'gethostname',
+               'getprotobyname',
+               'getservbyname',
+               'getservbyport',
+               'getdefaulttimeout',
+               'setdefaulttimeout',
+               # Python 2.5 and older:
+               'RAND_add',
+               'RAND_egd',
+               'RAND_status',
+               ]
+
 
 import sys
 import time
@@ -81,42 +100,31 @@ gaierror = _socket.gaierror
 gethostbyname = _socket.gethostbyname
 getaddrinfo = _socket.getaddrinfo
 
-# Import public constants from the standard socket (called __socket__ here) into this module.
+
+for name in __imports__[:]:
+    try:
+        value = getattr(__socket__, name)
+        globals()[name] = value
+    except AttributeError:
+        __imports__.remove(name)
 
 for name in __socket__.__all__:
-    if name[:1].isupper():
-        value = getattr(__socket__, name)
-        if isinstance(value, (int, basestring)):
-            globals()[name] = value
-            __all__.append(name)
-    elif name == 'getfqdn':
-        globals()[name] = getattr(__socket__, name)
-        __all__.append(name)
+    value = getattr(__socket__, name)
+    if isinstance(value, (int, long, basestring)):
+        globals()[name] = value
+        __imports__.append(name)
 
 del name, value
 
-inet_ntoa = _socket.inet_ntoa
-inet_aton = _socket.inet_aton
-try:
-    inet_ntop = _socket.inet_ntop
-except AttributeError:
+
+if 'inet_ntop' not in globals():
+    # inet_ntop is required by our implementation of getaddrinfo
+
     def inet_ntop(address_family, packed_ip):
         if address_family == AF_INET:
             return inet_ntoa(packed_ip)
         # XXX: ipv6 won't work on windows
         raise NotImplementedError('inet_ntop() is not available on this platform')
-try:
-    inet_pton = _socket.inet_pton
-except AttributeError:
-    def inet_pton(address_family, ip_string):
-        if address_family == AF_INET:
-            return inet_aton(ip_string)
-        # XXX: ipv6 won't work on windows
-        raise NotImplementedError('inet_ntop() is not available on this platform')
-
-# XXX: import other non-blocking stuff, like ntohl
-# XXX: implement blocking functions that are not yet implemented
-# XXX: add test that checks that socket.__all__ matches meinheld.socket.__all__ on all supported platforms
 
 from meinheld import server, cancel_wait
 
@@ -169,6 +177,7 @@ else:
 
 class _closedsocket(object):
     __slots__ = []
+
     def _dummy(*args):
         raise error(EBADF, 'Bad file descriptor')
     # All _delegate_methods must also be initialized here.
@@ -461,6 +470,7 @@ class socket(object):
 SocketType = socket
 
 if hasattr(_socket, 'socketpair'):
+    
     def socketpair(*args):
         one, two = _socket.socketpair(*args)
         return socket(_sock=one), socket(_sock=two)
@@ -468,6 +478,7 @@ else:
     __all__.remove('socketpair')
 
 if hasattr(_socket, 'fromfd'):
+    
     def fromfd(*args):
         return socket(_sock=_socket.fromfd(*args))
 else:
@@ -493,7 +504,8 @@ except ImportError:
     except ImportError:
         pass
 
-if not _have_ssl:
-    __all__.remove('ssl')
-    __all__.remove('sslerror')
+if sys.version_info[:2] <= (2, 5) and _have_ssl:
+    __implements__.extend(['ssl', 'sslerror', 'SSLType'])
 
+
+__all__ = __implements__ + __extensions__ + __imports__
