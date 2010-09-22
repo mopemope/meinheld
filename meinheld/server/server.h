@@ -25,7 +25,7 @@
 #include "http_parser.h"
 
 
-#define SERVER "meinheld/0.4.1"
+#define SERVER "meinheld/0.4.2"
 
 typedef enum {
     BODY_TYPE_NONE,

@@ -132,17 +132,17 @@ from meinheld import server, cancel_wait
 def wait_read(fileno, timeout=None):
     if not timeout:
         timeout = 0
-    server.trampolin(fileno, read=True, timeout=int(timeout))
+    server.trampoline(fileno, read=True, timeout=int(timeout))
 
 def wait_write(fileno, timeout=None):
     if not timeout:
         timeout = 0
-    server.trampolin(fileno, write=True, timeout=int(timeout))
+    server.trampoline(fileno, write=True, timeout=int(timeout))
 
 def wait_readwrite(fileno, timeout=None):
     if not timeout:
         timeout = 0
-    server.trampolin(fileno, read=True, write=True, timeout=int(timeout))
+    server.trampoline(fileno, read=True, write=True, timeout=int(timeout))
 
 
 if sys.version_info[:2] <= (2, 4):

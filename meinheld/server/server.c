@@ -1306,7 +1306,7 @@ meinheld_cancel_wait(PyObject *self, PyObject *args)
 }
 
 static inline void
-trampolin_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+trampoline_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)cb_arg;
 
@@ -1319,7 +1319,7 @@ trampolin_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 }
 
 static inline PyObject*
-meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
+meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     PyGreenlet *current, *parent;
     ClientObject *pyclient;
@@ -1328,7 +1328,7 @@ meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	static char *keywords[] = {"fileno", "read", "write", "timeout", NULL};
 	
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:trampolin", keywords, &fd, &read, &write, &timeout)){
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:trampoline", keywords, &fd, &read, &write, &timeout)){
 		return NULL;
     }
     
@@ -1359,7 +1359,7 @@ meinheld_trampolin(PyObject *self, PyObject *args, PyObject *kwargs)
     pyclient =(ClientObject *) current_client;
     
     picoev_del(main_loop, fd);
-    picoev_add(main_loop, fd, event, timeout, trampolin_switch_callback, (void *)pyclient);
+    picoev_add(main_loop, fd, event, timeout, trampoline_switch_callback, (void *)pyclient);
    
     // switch to hub
     current = pyclient->greenlet;
@@ -1400,7 +1400,7 @@ static PyMethodDef WsMethods[] = {
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
     // io
     {"cancel_wait", meinheld_cancel_wait, METH_VARARGS, "cancel wait"},
-    {"trampolin", (PyCFunction)meinheld_trampolin, METH_VARARGS | METH_KEYWORDS, "trampolin"},
+    {"trampoline", (PyCFunction)meinheld_trampoline, METH_VARARGS | METH_KEYWORDS, "trampoline"},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
