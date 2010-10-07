@@ -466,7 +466,7 @@ headers_complete_cb (http_parser *p)
     Py_DECREF(obj);
     
     if(req->path){
-        obj = getPyString(req->path); 
+        obj = getPyStringAndDecode(req->path);
         PyDict_SetItem(env, path_info_key, obj);
         Py_DECREF(obj);
         req->path = NULL;

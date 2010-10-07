@@ -32,6 +32,9 @@ free_buffer(buffer *buf);
 inline PyObject *
 getPyString(buffer *buf);
 
+inline PyObject *
+getPyStringAndDecode(buffer *buf);
+
 inline char *
 getString(buffer *buf);
 
