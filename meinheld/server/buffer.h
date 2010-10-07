@@ -35,4 +35,9 @@ getPyString(buffer *buf);
 inline char *
 getString(buffer *buf);
 
+inline void
+buffer_list_fill(void);
+
+inline void
+buffer_list_clear(void);
 #endif

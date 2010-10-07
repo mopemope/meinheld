@@ -2,12 +2,70 @@
 
 #define LIMIT_MAX 1024 * 1024 * 1024
 
+#define MAXFREELIST 128 * 16
+
+static buffer *buffer_free_list[MAXFREELIST];
+static int numfree = 0;
+
+inline void
+buffer_list_fill(void)
+{
+    buffer *buf;
+	while (numfree < MAXFREELIST) {
+        buf = (buffer *)PyMem_Malloc(sizeof(buffer));
+		buffer_free_list[numfree++] = buf;
+	}
+}
+
+inline void
+buffer_list_clear(void)
+{
+	buffer *op;
+
+	while (numfree) {
+		op = buffer_free_list[--numfree];
+		PyMem_Free(op);
+	}
+}
+
+static inline buffer*
+alloc_buffer(void)
+{
+    buffer *buf;
+	if (numfree) {
+		buf = buffer_free_list[--numfree];
+#ifdef DEBUG
+        printf("use pooled buf %p\n", buf);
+#endif
+    }else{
+        buf = (buffer *)PyMem_Malloc(sizeof(buffer));
+#ifdef DEBUG
+        printf("alloc buf %p\n", buf);
+#endif
+    }
+    memset(buf, 0, sizeof(buffer));
+    return buf;
+}
+
+static inline void
+dealloc_buffer(buffer *buf)
+{
+	if (numfree < MAXFREELIST){
+		buffer_free_list[numfree++] = buf;
+    }else{
+	    PyMem_Free(buf);
+    }
+}
+
 inline buffer *
 new_buffer(size_t buf_size, size_t limit)
 {
     buffer *buf;
-    buf = PyMem_Malloc(sizeof(buffer));
-    memset(buf, 0, sizeof(buffer));
+    
+    //buf = PyMem_Malloc(sizeof(buffer));
+    //memset(buf, 0, sizeof(buffer));
+    buf = alloc_buffer();
+
     buf->buf = PyMem_Malloc(sizeof(char) * buf_size);
     buf->buf_size = buf_size;
     if(limit){
@@ -58,7 +116,8 @@ inline void
 free_buffer(buffer *buf)
 {
     PyMem_Free(buf->buf);
-    PyMem_Free(buf);
+    //PyMem_Free(buf);
+    dealloc_buffer(buf);
 }
 
 inline PyObject *
