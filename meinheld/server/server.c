@@ -703,6 +703,7 @@ setup_server_env(void)
     setup_static_env(server_name, server_port);
     setup_start_response();
     setup_client();
+    request_list_fill();
     PycString_IMPORT;
     PyGreenlet_Import();
     
@@ -1008,6 +1009,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     //clean
     clear_start_response();
     clear_static_env();
+    request_list_clear();
 
     Py_DECREF(hub_switch_value);
     Py_DECREF(client_key);
@@ -1431,6 +1433,9 @@ initserver(void)
 
 #ifdef DEBUG
     printf("client size %d \n", sizeof(client_t));
+    printf("request size %d \n", sizeof(request));
+    printf("header size %d \n", sizeof(header));
+    printf("header bucket %d \n", sizeof(write_bucket));
 #endif
 }
 

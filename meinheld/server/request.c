@@ -1,9 +1,66 @@
 #include "request.h"
 
+#define MAXFREELIST 100
+
+static request *free_list[MAXFREELIST];
+static int numfree = 0;
+
+inline void
+request_list_fill(void)
+{
+    request *req;
+	while (numfree < MAXFREELIST) {
+        req = (request *)PyMem_Malloc(sizeof(request));
+		free_list[numfree++] = req;
+	}
+}
+
+inline void
+request_list_clear(void)
+{
+	request *op;
+
+	while (numfree) {
+		op = free_list[--numfree];
+		PyMem_Free(op);
+	}
+}
+
+static inline request*
+alloc_request(void)
+{
+    request *req;
+	if (numfree) {
+		req = free_list[--numfree];
+#ifdef DEBUG
+        printf("use pooled req %p\n", req);
+#endif
+    }else{
+        req = (request *)PyMem_Malloc(sizeof(request));
+#ifdef DEBUG
+        printf("alloc req %p\n", req);
+#endif
+    }
+    memset(req, 0, sizeof(request));
+    return req;
+}
+
+inline void
+dealloc_request(request *req)
+{
+	if (numfree < MAXFREELIST){
+		free_list[numfree++] = req;
+    }else{
+	    PyMem_Free(req);
+    }
+}
+
 inline request *
 new_request(void)
 {
-    request *req = (request *)PyMem_Malloc(sizeof(request));
+    request *req = alloc_request();
+    //request *req = (request *)PyMem_Malloc(sizeof(request));
+
     memset(req, 0, sizeof(request));
     return req;
 }
@@ -54,6 +111,7 @@ free_request(request *req)
             req->headers[i] = NULL;
         }
     }
-    PyMem_Free(req);
+    dealloc_request(req);
+    //PyMem_Free(req);
 }
 

@@ -47,4 +47,13 @@ free_header(header *h);
 inline void
 free_request(request *req);
 
+inline void
+dealloc_request(request *req);
+
+inline void
+request_list_fill(void);
+
+inline void
+request_list_clear(void);
+
 #endif
