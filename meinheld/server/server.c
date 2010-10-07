@@ -705,6 +705,7 @@ setup_server_env(void)
     setup_client();
     
     request_list_fill();
+    header_list_fill();
     buffer_list_fill();
 
     PycString_IMPORT;
@@ -1013,6 +1014,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     clear_start_response();
     clear_static_env();
     request_list_clear();
+    header_list_clear();
     buffer_list_clear();
 
     Py_DECREF(hub_switch_value);

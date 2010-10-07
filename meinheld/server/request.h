@@ -56,4 +56,10 @@ request_list_fill(void);
 inline void
 request_list_clear(void);
 
+inline void
+header_list_fill(void);
+
+inline void
+header_list_clear(void);
+
 #endif

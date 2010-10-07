@@ -1,17 +1,22 @@
 #include "request.h"
 
-#define MAXFREELIST 100
+#define REQUEST_MAXFREELIST 100
 
-static request *free_list[MAXFREELIST];
-static int numfree = 0;
+static request *request_free_list[REQUEST_MAXFREELIST];
+static int request_numfree = 0;
+
+#define HEADER_MAXFREELIST 100 * 8
+
+static header *header_free_list[HEADER_MAXFREELIST];
+static int header_numfree = 0;
 
 inline void
 request_list_fill(void)
 {
     request *req;
-	while (numfree < MAXFREELIST) {
+	while (request_numfree < REQUEST_MAXFREELIST) {
         req = (request *)PyMem_Malloc(sizeof(request));
-		free_list[numfree++] = req;
+		request_free_list[request_numfree++] = req;
 	}
 }
 
@@ -20,8 +25,8 @@ request_list_clear(void)
 {
 	request *op;
 
-	while (numfree) {
-		op = free_list[--numfree];
+	while (request_numfree) {
+		op = request_free_list[--request_numfree];
 		PyMem_Free(op);
 	}
 }
@@ -30,8 +35,8 @@ static inline request*
 alloc_request(void)
 {
     request *req;
-	if (numfree) {
-		req = free_list[--numfree];
+	if (request_numfree) {
+		req = request_free_list[--request_numfree];
 #ifdef DEBUG
         printf("use pooled req %p\n", req);
 #endif
@@ -48,8 +53,8 @@ alloc_request(void)
 inline void
 dealloc_request(request *req)
 {
-	if (numfree < MAXFREELIST){
-		free_list[numfree++] = req;
+	if (request_numfree < REQUEST_MAXFREELIST){
+		request_free_list[request_numfree++] = req;
     }else{
 	    PyMem_Free(req);
     }
@@ -65,11 +70,62 @@ new_request(void)
     return req;
 }
 
+inline void
+header_list_fill(void)
+{
+    header *h;
+	while (header_numfree < HEADER_MAXFREELIST) {
+        h = (header *)PyMem_Malloc(sizeof(header));
+		header_free_list[header_numfree++] = h;
+	}
+}
+
+inline void
+header_list_clear(void)
+{
+	header *op;
+
+	while (header_numfree) {
+		op = header_free_list[--header_numfree];
+		PyMem_Free(op);
+	}
+}
+
+static inline header*
+alloc_header(void)
+{
+    header *h;
+	if (header_numfree) {
+		h = header_free_list[--header_numfree];
+#ifdef DEBUG
+        printf("use pooled header %p\n", h);
+#endif
+    }else{
+        h = (header *)PyMem_Malloc(sizeof(header));
+#ifdef DEBUG
+        printf("alloc header %p\n", h);
+#endif
+    }
+    memset(h, 0, sizeof(header));
+    return h;
+}
+
+inline void
+dealloc_header(header *h)
+{
+	if (header_numfree < HEADER_MAXFREELIST){
+		header_free_list[header_numfree++] = h;
+    }else{
+	    PyMem_Free(h);
+    }
+}
+
 inline header *
 new_header(size_t fsize, size_t flimit, size_t vsize, size_t vlimit)
 {
     header *h;
-    h = PyMem_Malloc(sizeof(header));
+    //h = PyMem_Malloc(sizeof(header));
+    h = alloc_header();
     h->field = new_buffer(fsize, flimit);
     h->value = new_buffer(vsize, vlimit);
     return h;
@@ -78,7 +134,8 @@ new_header(size_t fsize, size_t flimit, size_t vsize, size_t vlimit)
 inline void
 free_header(header *h)
 {
-    PyMem_Free(h);
+    //PyMem_Free(h);
+    dealloc_header(h);
 }
 
 inline void
