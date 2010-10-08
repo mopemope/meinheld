@@ -2,7 +2,7 @@
 
 #define LIMIT_MAX 1024 * 1024 * 1024
 
-#define MAXFREELIST 100 * 16 * 2
+#define MAXFREELIST 128 * 16 * 2
 
 static buffer *buffer_free_list[MAXFREELIST];
 static int numfree = 0;

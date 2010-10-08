@@ -62,6 +62,11 @@ static int spinner = 0;
 static int tempfile_fd = 0;
 static int ppid = 0;
 
+#define CLIENT_MAXFREELIST 128
+
+static client_t *client_free_list[CLIENT_MAXFREELIST];
+static int client_numfree = 0;
+
 static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
@@ -82,13 +87,64 @@ setsig(int sig, void* handler)
     return sigaction(sig, &context, &ocontext);
 }
 
+static inline void
+client_t_list_fill(void)
+{
+    client_t *client;
+	while (client_numfree < CLIENT_MAXFREELIST) {
+        client = (client_t *)PyMem_Malloc(sizeof(client_t));
+		client_free_list[client_numfree++] = client;
+	}
+}
+
+static inline void
+client_t_list_clear(void)
+{
+	client_t *op;
+
+	while (client_numfree) {
+		op = client_free_list[--client_numfree];
+		PyMem_Free(op);
+	}
+}
+
+static inline client_t*
+alloc_client_t(void)
+{
+    client_t *client;
+	if (client_numfree) {
+		client = client_free_list[--client_numfree];
+#ifdef DEBUG
+        printf("use pooled client %p\n", client);
+#endif
+    }else{
+        client = (client_t *)PyMem_Malloc(sizeof(client_t));
+#ifdef DEBUG
+        printf("alloc client %p\n", client);
+#endif
+    }
+    memset(client, 0, sizeof(client_t));
+    return client;
+}
+
+static inline void
+dealloc_client(client_t *client)
+{
+	if (client_numfree < CLIENT_MAXFREELIST){
+		client_free_list[client_numfree++] = client;
+    }else{
+	    PyMem_Free(client);
+    }
+}
+
 
 static inline client_t *
 new_client_t(int client_fd, char *remote_addr, uint32_t remote_port){
     client_t *client;
     
-    client = PyMem_Malloc(sizeof(client_t)); 
-    memset(client, 0, sizeof(client_t));
+    client = alloc_client_t();
+    //client = PyMem_Malloc(sizeof(client_t)); 
+    //memset(client, 0, sizeof(client_t));
     
     //printf("size %d\n", sizeof(client_t));
 
@@ -163,7 +219,8 @@ close_conn(client_t *cli, picoev_loop* loop)
         init_parser(new_client, server_name, server_port);
         picoev_add(main_loop, new_client->fd, PICOEV_READ, keep_alive_timeout, r_callback, (void *)new_client);
     }
-    PyMem_Free(cli);
+    //PyMem_Free(cli);
+    dealloc_client(cli);
 
 }
 
@@ -704,6 +761,7 @@ setup_server_env(void)
     setup_start_response();
     setup_client();
     
+    client_t_list_fill();
     request_list_fill();
     header_list_fill();
     buffer_list_fill();
@@ -1013,6 +1071,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     //clean
     clear_start_response();
     clear_static_env();
+    client_t_list_clear();
     request_list_clear();
     header_list_clear();
     buffer_list_clear();
