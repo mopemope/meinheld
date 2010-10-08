@@ -49,18 +49,21 @@ enable_cork(client_t *client)
     int on = 1, r;
     r = setsockopt(client->fd, IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
     assert(r == 0);
+    client->use_cork = 1;
 }
 
 inline void 
 disable_cork(client_t *client)
 {
-    int off = 0;
-    int on = 1, r;
-    r = setsockopt(client->fd, IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
-    assert(r == 0);
+    if(client->use_cork == 1){
+        int off = 0;
+        int on = 1, r;
+        r = setsockopt(client->fd, IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
+        assert(r == 0);
 
-    r = setsockopt(client->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-    assert(r == 0);
+        r = setsockopt(client->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+        assert(r == 0);
+    }
 }
 
 
