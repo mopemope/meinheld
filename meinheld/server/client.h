@@ -60,5 +60,11 @@ setup_client(void);
 inline int 
 CheckClientObject(PyObject *obj);
 
+inline void
+ClientObject_list_fill(void);
+
+inline void
+ClientObject_list_clear(void);
+
 
 #endif

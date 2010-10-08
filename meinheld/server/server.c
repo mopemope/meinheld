@@ -761,6 +761,7 @@ setup_server_env(void)
     setup_start_response();
     setup_client();
     
+    ClientObject_list_fill();
     client_t_list_fill();
     request_list_fill();
     header_list_fill();
@@ -774,6 +775,26 @@ setup_server_env(void)
     wsgi_input_key = PyString_FromString("wsgi.input");
     empty_string = PyString_FromString("");
 }
+
+static inline void
+clear_server_env(void)
+{
+    //clean
+    clear_start_response();
+    clear_static_env();
+    client_t_list_clear();
+    
+    ClientObject_list_clear();
+    request_list_clear();
+    header_list_clear();
+    buffer_list_clear();
+
+    Py_DECREF(hub_switch_value);
+    Py_DECREF(client_key);
+    Py_DECREF(wsgi_input_key);
+    Py_DECREF(empty_string);
+}
+
 
 static inline int 
 inet_listen(void)
@@ -1068,18 +1089,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     picoev_destroy_loop(main_loop);
     picoev_deinit();
     
-    //clean
-    clear_start_response();
-    clear_static_env();
-    client_t_list_clear();
-    request_list_clear();
-    header_list_clear();
-    buffer_list_clear();
-
-    Py_DECREF(hub_switch_value);
-    Py_DECREF(client_key);
-    Py_DECREF(wsgi_input_key);
-    Py_DECREF(empty_string);
+    clear_server_env();
 
     if(unix_sock_name){
         unlink(unix_sock_name);

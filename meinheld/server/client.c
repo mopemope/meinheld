@@ -1,6 +1,62 @@
 #include "client.h"
 #include "greenlet.h"
 
+#define CLIENT_MAXFREELIST 128
+
+static ClientObject *client_free_list[CLIENT_MAXFREELIST];
+static int client_numfree = 0;
+
+inline void
+ClientObject_list_fill(void)
+{
+    ClientObject *client;
+	while (client_numfree < CLIENT_MAXFREELIST) {
+        client = PyObject_NEW(ClientObject, &ClientObjectType);
+		client_free_list[client_numfree++] = client;
+	}
+}
+
+inline void
+ClientObject_list_clear(void)
+{
+	ClientObject *op;
+
+	while (client_numfree) {
+		op = client_free_list[--client_numfree];
+        PyObject_DEL(op);
+	}
+}
+
+static inline ClientObject*
+alloc_ClientObject(void)
+{
+    ClientObject *client;
+	if (client_numfree) {
+		client = client_free_list[--client_numfree];
+		_Py_NewReference((PyObject *)client);
+#ifdef DEBUG
+        printf("use pooled client %p\n", client);
+#endif
+    }else{
+        client = PyObject_NEW(ClientObject, &ClientObjectType);
+#ifdef DEBUG
+        printf("alloc client %p\n", client);
+#endif
+    }
+    return client;
+}
+
+static inline void
+dealloc_ClientObject(ClientObject *client)
+{
+    Py_CLEAR(client->greenlet);
+	if (client_numfree < CLIENT_MAXFREELIST){
+		client_free_list[client_numfree++] = client;
+    }else{
+	    PyObject_DEL(client);
+    }
+}
+
 inline int 
 CheckClientObject(PyObject *obj)
 {
@@ -13,7 +69,8 @@ CheckClientObject(PyObject *obj)
 inline PyObject* 
 ClientObject_New(client_t* client)
 {
-    ClientObject *o = PyObject_NEW(ClientObject, &ClientObjectType);
+    ClientObject *o = alloc_ClientObject();
+    //ClientObject *o = PyObject_NEW(ClientObject, &ClientObjectType);
     if(o == NULL){
         return NULL;
     }
@@ -53,8 +110,9 @@ ClientObject_dealloc(ClientObject* self)
     printf("XDECREF greenlet:%p \n", self->greenlet);
 #endif
     
-    Py_XDECREF(self->greenlet);
-    PyObject_DEL(self);
+    dealloc_ClientObject(self);
+    //Py_XDECREF(self->greenlet);
+    //PyObject_DEL(self);
 }
 
 static inline PyObject *
