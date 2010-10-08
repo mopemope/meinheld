@@ -36,7 +36,6 @@ typedef struct _client {
     uint32_t write_bytes;            // send body length
     void *bucket;               //write_data
     uint8_t response_closed;    //response closed flag
-    uint8_t single_response;     // single response
     uint8_t use_cork;     // use TCP_CORK
 } client_t;
 

@@ -644,11 +644,11 @@ response_start(client_t *client)
     if(client->status_code == 304){
         return write_headers(client, NULL, 0);
     }
+    enable_cork(client);
     if (CheckFileWrapper(client->response)) {
 #ifdef DEBUG
         printf("use sendfile \n");
 #endif 
-        enable_cork(client);
         ret = start_response_file(client);
         if(ret > 0){
             // sended header 
@@ -656,9 +656,6 @@ response_start(client_t *client)
         }
     }else{
         ret = start_response_write(client);
-        if(!client->single_response){
-            enable_cork(client);
-        }
 #ifdef DEBUG
         printf("start_response_write status_code %d ret = %d \n", client->status_code, ret);
 #endif 
