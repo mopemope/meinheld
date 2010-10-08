@@ -227,6 +227,7 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
             Py_DECREF(header); 
             PyString_AsStringAndSize(length, &value, &valuelen);
             add_header(bucket, "Content-Length", 14, value, valuelen);
+            client->single_response = 1;
         }
     }
 }
@@ -640,7 +641,6 @@ inline int
 response_start(client_t *client)
 {
     int ret ;
-    enable_cork(client);
     if(client->status_code == 304){
         return write_headers(client, NULL, 0);
     }
@@ -648,6 +648,7 @@ response_start(client_t *client)
 #ifdef DEBUG
         printf("use sendfile \n");
 #endif 
+        enable_cork(client);
         ret = start_response_file(client);
         if(ret > 0){
             // sended header 
@@ -655,6 +656,9 @@ response_start(client_t *client)
         }
     }else{
         ret = start_response_write(client);
+        if(!client->single_response){
+            enable_cork(client);
+        }
 #ifdef DEBUG
         printf("start_response_write status_code %d ret = %d \n", client->status_code, ret);
 #endif 

@@ -83,6 +83,9 @@ static PyObject *fragment_key;
 static PyObject *request_method_key;
 static PyObject *client_key;
 
+static PyObject *server_protocol_val10;
+static PyObject *server_protocol_val11;
+
 static PyObject *http_method_delete;
 static PyObject *http_method_get;
 static PyObject *http_method_head;
@@ -461,9 +464,12 @@ headers_complete_cb (http_parser *p)
         client->bad_request_code = 413;
         return -1;
     }
-    obj = PyString_FromFormat("HTTP/%u.%u", p->http_major, p->http_minor);
+    if(p->http_major == 1 && p->http_minor == 1){
+        obj = server_protocol_val11;
+    }else{
+        obj = server_protocol_val10;
+    }
     PyDict_SetItem(env, server_protocol_key, obj);
-    Py_DECREF(obj);
     
     if(req->path){
         obj = getPyStringAndDecode(req->path);
@@ -705,7 +711,9 @@ setup_static_env(char *name, int port)
     fragment_key = PyString_FromString("HTTP_FRAGMENT");
     request_method_key = PyString_FromString("REQUEST_METHOD");
     client_key = PyString_FromString("meinheld.client");
-
+    
+    server_protocol_val10 = PyString_FromString("HTTP/1.0");
+    server_protocol_val11 = PyString_FromString("HTTP/1.1");
 
     http_method_delete = PyString_FromStringAndSize("DELETE", 6);
     http_method_get = PyString_FromStringAndSize("GET", 3);
@@ -764,6 +772,9 @@ clear_static_env(void)
     Py_DECREF(fragment_key);
     Py_DECREF(request_method_key);
     Py_DECREF(client_key);
+
+    Py_DECREF(server_protocol_val10);
+    Py_DECREF(server_protocol_val11);
 
     Py_DECREF(http_method_delete);
     Py_DECREF(http_method_get);
