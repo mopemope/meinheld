@@ -356,9 +356,9 @@ write_headers(client_t *client, char *data, size_t datalen)
     
     // check content_length_set
     // set content_length
-    if(data){
-        set_content_length(client, bucket, data, datalen); 
-    }
+    //if(data){
+    //    set_content_length(client, bucket, data, datalen); 
+    //}
 
     set2bucket(bucket, CRLF, 2);
     if(data){
