@@ -1,3 +1,9 @@
+0.4.3
+=======
+(bug fix release, release 2010-10-08)
+
+* Fix "PATH_INFO" is now decoded value
+
 0.4.2
 =======
 (bug fix release, release 2010-09-23)
