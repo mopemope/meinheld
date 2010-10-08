@@ -227,7 +227,6 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
             Py_DECREF(header); 
             PyString_AsStringAndSize(length, &value, &valuelen);
             add_header(bucket, "Content-Length", 14, value, valuelen);
-            client->single_response = 1;
         }
     }
 }
