@@ -1,7 +1,7 @@
 #include "client.h"
 #include "greenlet.h"
 
-#define CLIENT_MAXFREELIST 128
+#define CLIENT_MAXFREELIST 1024
 
 static ClientObject *client_free_list[CLIENT_MAXFREELIST];
 static int client_numfree = 0;

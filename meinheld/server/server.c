@@ -62,7 +62,7 @@ static int spinner = 0;
 static int tempfile_fd = 0;
 static int ppid = 0;
 
-#define CLIENT_MAXFREELIST 128
+#define CLIENT_MAXFREELIST 1024
 
 static client_t *client_free_list[CLIENT_MAXFREELIST];
 static int client_numfree = 0;

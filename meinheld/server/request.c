@@ -1,11 +1,11 @@
 #include "request.h"
 
-#define REQUEST_MAXFREELIST 128
+#define REQUEST_MAXFREELIST 1024
 
 static request *request_free_list[REQUEST_MAXFREELIST];
 static int request_numfree = 0;
 
-#define HEADER_MAXFREELIST 128 * 16
+#define HEADER_MAXFREELIST 1024 * 16
 
 static header *header_free_list[HEADER_MAXFREELIST];
 static int header_numfree = 0;
