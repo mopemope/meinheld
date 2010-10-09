@@ -3,6 +3,7 @@
 (bug fix release, release 2010-10-08)
 
 * Fix "PATH_INFO" is now decoded value
+* Improve performance optimize (use object pool)
 
 0.4.2
 =======
