@@ -1,3 +1,12 @@
+0.4.4
+=======
+(bug fix release, release 2010-10-14)
+
+* Fix write_bucket leak
+* Fix sendfile bug
+* support HTTP 1.1
+* enable keep-alive by default
+
 0.4.3
 =======
 (bug fix release, release 2010-10-08)
