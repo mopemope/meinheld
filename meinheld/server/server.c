@@ -548,7 +548,23 @@ prepare_call_wsgi(client_t *client)
 {
     PyObject *input = NULL, *object = NULL, *c = NULL;
     char *val;
-
+    
+    //check Expect
+    if(client->http_minor == 1){
+        c = PyDict_GetItemString(client->environ, "HTTP_EXPECT");
+        if(c){
+            val = PyString_AS_STRING(c);
+            if(!strcasecmp(val, "100-continue")){
+                write(client->fd, "HTTP/1.1 100 Continue\r\n\r\n", 25);
+            }else{
+                //417
+                client->status_code = 417;
+                send_error_page(client);
+                close_conn(client, main_loop);
+                return;
+            }
+        }
+    }
     if(client->body_type == BODY_TYPE_TMPFILE){
         FILE *tmp = (FILE *)client->body;
         fflush(tmp);
@@ -719,6 +735,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }
 
         if(finish == 1){
+            
             picoev_del(loop, cli->fd);
             prepare_call_wsgi(cli);
             call_wsgi_app(cli, loop);

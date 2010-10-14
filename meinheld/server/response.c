@@ -15,6 +15,8 @@
 
 #define MSG_413 ("HTTP/1.0 413 Request Entity Too Large\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Request Entity Too Large</head><body><p>Request Entity Too Large.</p></body></html>")
 
+#define MSG_417 ("HTTP/1.1 417 Expectation Failed\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Expectation Failed</head><body><p>Expectation Failed.</p></body></html>")
+
 ResponseObject *start_response = NULL;
 
 static inline int 
@@ -88,6 +90,9 @@ send_error_page(client_t *client)
             break;
         case 413:
             blocking_write(client, MSG_413, sizeof(MSG_413) -1);
+            break;
+        case 417:
+            blocking_write(client, MSG_417, sizeof(MSG_417) -1);
             break;
         case 503:
             blocking_write(client, MSG_503, sizeof(MSG_503) -1);
