@@ -577,18 +577,34 @@ prepare_call_wsgi(client_t *client)
         //Py_DECREF(object);
         Py_DECREF(input);
     }
+
     if(is_keep_alive){
         //support keep-alive
         c = PyDict_GetItemString(client->environ, "HTTP_CONNECTION");
-        if(c){
-            val = PyString_AS_STRING(c);
-            if(!strcasecmp(val, "keep-alive")){
+        if(client->http_minor = 1){
+            //HTTP 1.1
+            if(c){
+                val = PyString_AS_STRING(c);
+                if(!strcasecmp(val, "close")){
+                    client->keep_alive = 0;
+                }else{
+                    client->keep_alive = 1;
+                }
+            }else{
                 client->keep_alive = 1;
+            }
+        }else{
+            //HTTP 1.0
+            if(c){
+                val = PyString_AS_STRING(c);
+                if(!strcasecmp(val, "keep-alive")){
+                    client->keep_alive = 1;
+                }else{
+                    client->keep_alive = 0;
+                }
             }else{
                 client->keep_alive = 0;
             }
-        }else{
-            client->keep_alive = 0;
         }
     }
 }
