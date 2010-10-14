@@ -144,6 +144,13 @@ set_chunked_data(write_bucket *bucket, char *lendata, size_t lenlen, char *data,
     set2bucket(bucket, CRLF, 2);
 }
 
+static inline void
+set_last_chunked_data(write_bucket *bucket)
+{
+    set2bucket(bucket, "0", 1);
+    set2bucket(bucket, CRLF, 2);
+}
+
 
 static inline void
 add_header(write_bucket *bucket, char *key, size_t keylen, char *val, size_t vallen)
@@ -173,6 +180,7 @@ writev_bucket(write_bucket *data)
             return -1;
         }
     }if(w == 0){
+        data->sended = 1;
         return 1;
     }else{
         if(data->total > w){
@@ -195,7 +203,9 @@ writev_bucket(write_bucket *data)
             // again later
             return writev_bucket(data);
         }
+        data->sended = 1;
     }
+    data->sended = 1;
     return 1;
 }
 
@@ -532,9 +542,12 @@ processs_write(register client_t *client)
                 }
                 ret = writev_bucket(bucket);
                 if(ret <= 0){
+                    client->bucket = bucket;
                     Py_DECREF(item);
                     return ret;
                 }
+
+                free_write_bucket(bucket);
                 //mark
                 client->write_bytes += buflen;
                 //check write_bytes/content_length
@@ -554,6 +567,13 @@ processs_write(register client_t *client)
                 }
             }
             Py_DECREF(item);
+        }
+
+        if(client->chunked_response){
+            bucket = new_write_bucket(client->fd, 2);
+            set_last_chunked_data(bucket);
+            writev_bucket(bucket);
+            free_write_bucket(bucket);
         }
         close_response(client);
     }
@@ -712,15 +732,6 @@ clear_start_response(void)
 inline PyObject *  
 create_start_response(client_t *cli)
 {
-    /*
-    if(start_response){
-        start_response->cli = cli;
-        return (PyObject *)start_response;
-    }
-    start_response = PyObject_NEW(ResponseObject, &ResponseObjectType);
-    if(start_response == NULL)
-        return NULL;
-    */
     start_response->cli = cli;
     return (PyObject *)start_response;
 }

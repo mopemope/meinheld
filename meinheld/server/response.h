@@ -19,6 +19,7 @@ typedef struct {
     uint32_t iov_size;
     uint32_t total;
     uint32_t total_size;
+    uint8_t sended;
 } write_bucket;
 
 
