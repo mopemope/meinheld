@@ -149,7 +149,7 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port){
     //printf("size %d\n", sizeof(client_t));
 
     client->fd = client_fd;
-    
+    client->req_queue = new_request_queue();    
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     client->body_type = BODY_TYPE_NONE;
