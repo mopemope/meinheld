@@ -214,6 +214,14 @@ get_client(http_parser *p)
 int
 message_begin_cb(http_parser *p)
 {
+#ifdef DEBUG
+    printf("message_begin_cb \n");
+#endif
+
+    client_t *client = get_client(p);
+    if(client->req == NULL){
+        client->req = new_request();
+    }
     return 0;
 }
 
@@ -408,6 +416,9 @@ fragment_cb (http_parser *p, const char *buf, size_t len, char partial)
 int
 body_cb (http_parser *p, const char *buf, size_t len, char partial)
 {
+#ifdef DEBUG
+    printf("body_cb \n");
+#endif
     client_t *client = get_client(p);
     if(max_content_length <= client->body_readed + len){
 
@@ -584,12 +595,18 @@ headers_complete_cb (http_parser *p)
     PyDict_SetItem(env, client_key, obj);
     Py_DECREF(obj);
 
+#ifdef DEBUG
+    printf("headers_complete_cb \n");
+#endif
     return 0;
 }
 
 int
 message_complete_cb (http_parser *p)
 {
+#ifdef DEBUG
+    printf("message_complete_cb \n");
+#endif
     client_t *client = get_client(p);
     client->complete = 1;
     return 0;

@@ -152,7 +152,6 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port){
     
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
-    client->req = new_request();    
     client->body_type = BODY_TYPE_NONE;
     //printf("input_buf_size %d\n", client->input_buf_size);
     return client;
@@ -690,11 +689,12 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
-
+#ifdef DEBUG
+                printf("******************\n%s\n", buf);
+#endif
                 nread = execute_parse(cli, buf, r);
 #ifdef DEBUG
                 printf("read request fd %d readed %d nread %d \n", cli->fd, r, nread);
-                printf("%s\n", buf);
 #endif
                 
                 if(cli->bad_request_code > 0){
