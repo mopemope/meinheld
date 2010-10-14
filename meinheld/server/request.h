@@ -46,6 +46,18 @@ typedef struct _request_queue {
     request_env *last;
 } request_queue;
 
+inline request_env*
+new_request_env(void);
+
+inline void
+free_request_env(request_env *e);
+
+inline request_queue*
+new_request_queue(void);
+
+inline void
+free_request_queue(request_queue *q);
+
 inline request *
 new_request(void);
 

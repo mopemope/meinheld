@@ -1,5 +1,6 @@
 #include "request.h"
 
+/* use free_list */
 #define REQUEST_MAXFREELIST 1024
 
 static request *request_free_list[REQUEST_MAXFREELIST];
@@ -59,6 +60,50 @@ dealloc_request(request *req)
 	    PyMem_Free(req);
     }
 }
+
+
+inline request_env*
+new_request_env(void)
+{
+    request_env *e = (request_env *)PyMem_Malloc(sizeof(request_env));
+    memset(e, 0, sizeof(request_env));
+    return e;
+}
+
+inline void
+free_request_env(request_env *e)
+{
+    PyMem_Free(e);
+}
+
+inline request_queue*
+new_request_queue(void)
+{
+    request_queue *q = NULL;
+    q= (request_env *)PyMem_Malloc(sizeof(request_queue));
+    memset(q, 0, sizeof(request_queue));
+    return q;
+}
+
+inline void
+free_request_queue(request_queue *q)
+{
+    PyObject *env;
+    request_env *re, *temp_re;
+    re = q->head;
+    while(re){
+        temp_re = re;
+        env = temp_re->env;
+        // force clear
+        PyDict_Clear(env);
+        Py_DECREF(env);
+        re = (request_env *)temp_re->next;
+        free_request_env(temp_re);
+    }
+
+    PyMem_Free(q);
+}
+
 
 inline request *
 new_request(void)
