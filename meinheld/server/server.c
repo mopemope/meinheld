@@ -554,9 +554,19 @@ prepare_call_wsgi(client_t *client)
         if(c){
             val = PyString_AS_STRING(c);
             if(!strcasecmp(val, "100-continue")){
-                write(client->fd, "HTTP/1.1 100 Continue\r\n\r\n", 25);
+                int ret = write(client->fd, "HTTP/1.1 100 Continue\r\n\r\n", 25);
+                if(ret < 0){
+                    PyErr_SetFromErrno(PyExc_IOError);
+                    write_error_log(__FILE__, __LINE__); 
+                    client->keep_alive = 0;
+                    client->status_code = 500;
+                    send_error_page(client);
+                    close_conn(client, main_loop);
+                    return;
+                }
             }else{
                 //417
+                client->keep_alive = 0;
                 client->status_code = 417;
                 send_error_page(client);
                 close_conn(client, main_loop);

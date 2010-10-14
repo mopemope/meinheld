@@ -35,6 +35,17 @@ typedef struct {
     field_type last_header_element;   
 } request;
 
+typedef struct _request_env {
+    PyObject *env;
+    void *next;
+} request_env;
+
+typedef struct _request_queue {
+    int size;
+    request_env *head;
+    request_env *last;
+} request_queue;
+
 inline request *
 new_request(void);
 
