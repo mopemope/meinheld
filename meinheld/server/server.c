@@ -145,15 +145,12 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port){
     client = alloc_client_t();
     //client = PyMem_Malloc(sizeof(client_t)); 
     //memset(client, 0, sizeof(client_t));
-    
-    //printf("size %d\n", sizeof(client_t));
 
     client->fd = client_fd;
     client->req_queue = new_request_queue();    
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     client->body_type = BODY_TYPE_NONE;
-    //printf("input_buf_size %d\n", client->input_buf_size);
     return client;
 }
 
@@ -178,6 +175,9 @@ clean_cli(client_t *client)
     PyDict_Clear(client->environ);
     
     Py_CLEAR(client->environ);
+    
+    free_request_queue(client->req_queue);
+
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
             fclose(client->body);
