@@ -284,9 +284,6 @@ write_headers(client_t *client, char *data, size_t datalen)
         add_header(bucket, "Server", 6,  SERVER, sizeof(SERVER) -1);
         cache_time_update();
         add_header(bucket, "Date", 4, (char *)http_time, 29);
-        if(client->keep_alive == 1){
-            add_header(bucket, "Connection", 10, "keep-alive", 10);
-        }
     }
 
     //write header
