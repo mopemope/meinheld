@@ -156,9 +156,6 @@ add_header(write_bucket *bucket, char *key, size_t keylen, char *val, size_t val
 
 
 static inline int 
-writev_bucket(write_bucket *data);
-
-static inline int 
 writev_bucket(write_bucket *data)
 {
     size_t w;
@@ -375,7 +372,7 @@ write_headers(client_t *client, char *data, size_t datalen)
         if(client->chunked_response){
             char lendata[32];
             int i = 0;
-            i = snprintf(lendata, 32, "%zu", datalen);
+            i = snprintf(lendata, 32, "%zx", datalen);
 #ifdef DEBUG
             printf("Transfer-Encoding chunk_size %s \n", lendata);
 #endif
@@ -524,7 +521,7 @@ processs_write(register client_t *client)
                     
                     char lendata[32];
                     int i = 0;
-                    i = snprintf(lendata, 32, "%zu", buflen);
+                    i = snprintf(lendata, 32, "%zx", buflen);
 #ifdef DEBUG
                     printf("Transfer-Encoding chunk_size %s \n", lendata);
 #endif
