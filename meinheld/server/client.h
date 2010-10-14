@@ -8,9 +8,6 @@ typedef struct _client {
     int fd;
     char *remote_addr;
     int remote_port;
-    
-    uint8_t http_major;
-    uint8_t http_minor;
 
     uint8_t keep_alive;
     request *req;

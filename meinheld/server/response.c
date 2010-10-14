@@ -375,7 +375,7 @@ write_headers(client_t *client, char *data, size_t datalen)
     //header done 
     
     // check content_length_set
-    if(!client->content_length_set && client->http_minor == 1){
+    if(!client->content_length_set && client->http->http_minor == 1){
         //Transfer-Encoding chunked
         add_header(bucket, "Transfer-Encoding", 17, "chunked", 7);
         client->chunked_response = 1;
@@ -832,7 +832,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     
     Py_XDECREF(self->cli->http_status);
 
-    if(self->cli->http_minor == 1){
+    if(self->cli->http->http_minor == 1){
         self->cli->http_status =  PyString_FromFormat("HTTP/1.1 %s\r\n", PyString_AS_STRING(status));
     }else{
         self->cli->http_status =  PyString_FromFormat("HTTP/1.0 %s\r\n", PyString_AS_STRING(status));

@@ -550,7 +550,7 @@ prepare_call_wsgi(client_t *client)
     char *val;
     
     //check Expect
-    if(client->http_minor == 1){
+    if(client->http->http_minor == 1){
         c = PyDict_GetItemString(client->environ, "HTTP_EXPECT");
         if(c){
             val = PyString_AS_STRING(c);
@@ -597,7 +597,7 @@ prepare_call_wsgi(client_t *client)
     if(is_keep_alive){
         //support keep-alive
         c = PyDict_GetItemString(client->environ, "HTTP_CONNECTION");
-        if(client->http_minor = 1){
+        if(client->http->http_minor == 1){
             //HTTP 1.1
             if(c){
                 val = PyString_AS_STRING(c);

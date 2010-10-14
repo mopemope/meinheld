@@ -464,6 +464,8 @@ headers_complete_cb (http_parser *p)
         client->bad_request_code = 413;
         return -1;
     }
+    
+
     if(p->http_major == 1 && p->http_minor == 1){
         obj = server_protocol_val11;
     }else{
@@ -653,9 +655,6 @@ execute_parse(client_t *cli, const char *data, size_t len)
     size_t ret = http_parser_execute(cli->http, &settings, data, len);
     //check new protocol
     cli->upgrade = cli->http->upgrade;
-    
-    cli->http_major = cli->http->http_major;
-    cli->http_minor = cli->http->http_minor;
 
     return ret;
 }
