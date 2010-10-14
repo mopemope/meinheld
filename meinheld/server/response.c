@@ -354,10 +354,11 @@ write_headers(client_t *client, char *data, size_t datalen)
     //header done 
     
     // check content_length_set
-    // set content_length
-    //if(data){
-    //    set_content_length(client, bucket, data, datalen); 
-    //}
+    if(client->headers && !client->content_length_set && client->http_minor == 1){
+        //Transfer-Encoding chunked
+        add_header(bucket, "Transfer-Encoding", 17, "chunked", 7);
+        client->chunked_response = 1;
+    }
 
     set2bucket(bucket, CRLF, 2);
     if(data){
