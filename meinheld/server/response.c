@@ -430,6 +430,9 @@ write_sendfile(int out_fd, int in_fd, size_t count)
 
     if (size == 0) {
         struct stat info;
+#ifdef DEBUG
+        printf("call fstat \n");
+#endif
         if (fstat(in_fd, &info) == -1){
             PyErr_SetFromErrno(PyExc_IOError);
             write_error_log(__FILE__, __LINE__); 
@@ -625,7 +628,7 @@ start_response_file(client_t *client)
 {
     PyObject *filelike;
     FileWrapperObject *filewrap;
-    int in_fd, size;
+    int ret, in_fd, size;
     struct stat info;
 
     filewrap = (FileWrapperObject *)client->response;
@@ -639,16 +642,22 @@ start_response_file(client_t *client)
 #endif
         return -1;
     }
-    if (fstat(in_fd, &info) == -1){
-        PyErr_SetFromErrno(PyExc_IOError);
-        write_error_log(__FILE__, __LINE__); 
-        return -1;
-    }
+    ret = write_headers(client, NULL, 0);
+    if(!client->content_length_set){
+#ifdef DEBUG
+        printf("call fstat \n");
+#endif
+        if (fstat(in_fd, &info) == -1){
+            PyErr_SetFromErrno(PyExc_IOError);
+            write_error_log(__FILE__, __LINE__); 
+            return -1;
+        }
 
-    size = info.st_size;
-    client->content_length_set = 1;
-    client->content_length = size;
-    return write_headers(client, NULL, 0);
+        size = info.st_size;
+        client->content_length_set = 1;
+        client->content_length = size;
+    }
+    return ret;
 }
 
 static inline int
