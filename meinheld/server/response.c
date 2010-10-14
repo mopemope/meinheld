@@ -135,6 +135,15 @@ set2bucket(write_bucket *bucket, char *buf, size_t len)
     bucket->total_size += len;
 }
 
+static inline void
+set_chunked_data(write_bucket *bucket, char *lendata, size_t lenlen, char *data, size_t datalen)
+{
+    set2bucket(bucket, lendata, lenlen);
+    set2bucket(bucket, CRLF, 2);
+    set2bucket(bucket, data, datalen);
+    set2bucket(bucket, CRLF, 2);
+}
+
 
 static inline void
 add_header(write_bucket *bucket, char *key, size_t keylen, char *val, size_t vallen)
@@ -251,7 +260,7 @@ write_headers(client_t *client, char *data, size_t datalen)
         hlen = PySequence_Fast_GET_SIZE(headers);
         Py_DECREF(headers);
     }
-    bucket = new_write_bucket(client->fd, ( hlen * 4) + 32 );
+    bucket = new_write_bucket(client->fd, (hlen * 4) + 40 );
     
     object = client->http_status;
     if(object){
@@ -361,8 +370,19 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
 
     set2bucket(bucket, CRLF, 2);
+    
     if(data){
-        set2bucket(bucket, data, datalen);
+        if(client->chunked_response){
+            char lendata[32];
+            int i = 0;
+            i = snprintf(lendata, 32, "%zu", datalen);
+#ifdef DEBUG
+            printf("Transfer-Encoding chunk_size %s \n", lendata);
+#endif
+            set_chunked_data(bucket, lendata, i, data, datalen);  
+        }else{
+            set2bucket(bucket, data, datalen);
+        }
     }
     client->bucket = bucket;
     int ret = writev_bucket(bucket);
@@ -402,7 +422,7 @@ write_sendfile(int out_fd, int in_fd, size_t count)
 
         size = info.st_size - lseek(in_fd, 0, SEEK_CUR);
     }
-    return sendfile(out_fd, in_fd, NULL, count);
+    return sendfile(out_fd, in_fd, NULL, size);
 }
 
 inline void 
@@ -499,8 +519,20 @@ processs_write(register client_t *client)
             if(PyString_Check(item)){
                 PyString_AsStringAndSize(item, &buf, &buflen);
                 //write
-                bucket = new_write_bucket(client->fd, 1);
-                set2bucket(bucket, buf, buflen);
+                if(client->chunked_response){
+                    bucket = new_write_bucket(client->fd, 4);
+                    
+                    char lendata[32];
+                    int i = 0;
+                    i = snprintf(lendata, 32, "%zu", buflen);
+#ifdef DEBUG
+                    printf("Transfer-Encoding chunk_size %s \n", lendata);
+#endif
+                    set_chunked_data(bucket, lendata, i, buf, buflen);  
+                }else{
+                    bucket = new_write_bucket(client->fd, 1);
+                    set2bucket(bucket, buf, buflen);
+                }
                 ret = writev_bucket(bucket);
                 if(ret <= 0){
                     Py_DECREF(item);

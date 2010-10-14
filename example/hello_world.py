@@ -6,7 +6,7 @@ def hello_world(environ, start_response):
     response_headers = [('Content-type','text/plain')]
     start_response(status, response_headers)
 #    print environ
-    return [res]
+    return [res] * 1024
 
 server.listen(("0.0.0.0", 8000))
 #server.access_log('stdout')
