@@ -250,6 +250,10 @@ message_begin_cb(http_parser *p)
     }
     client->environ = new_environ(client);
     client->complete = 0;
+    client->bad_request_code = 0;
+    client->body_type == BODY_TYPE_NONE;
+    client->body_readed = 0;
+    client->body_length = 0;
     return 0;
 }
 
