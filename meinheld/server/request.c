@@ -55,6 +55,9 @@ inline void
 dealloc_request(request *req)
 {
 	if (request_numfree < REQUEST_MAXFREELIST){
+#ifdef DEBUG
+        printf("back to request pool %p\n", req);
+#endif
 		request_free_list[request_numfree++] = req;
     }else{
 	    PyMem_Free(req);
@@ -75,8 +78,6 @@ free_request_env(request_env *e)
 {
     PyObject *env;
     env = e->env;
-    PyDict_Clear(env);
-    Py_DECREF(env);
     PyMem_Free(e);
 }
 
@@ -195,6 +196,9 @@ inline void
 dealloc_header(header *h)
 {
 	if (header_numfree < HEADER_MAXFREELIST){
+#ifdef DEBUG
+        printf("back to header pool %p\n", h);
+#endif
 		header_free_list[header_numfree++] = h;
     }else{
 	    PyMem_Free(h);

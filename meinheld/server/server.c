@@ -171,6 +171,8 @@ clean_cli(client_t *client)
     printf("clean_cli environ status_code %d address %p \n", client->status_code, client->environ);
 #endif
     
+    PyDict_Clear(client->environ);
+    Py_DECREF(client->environ);
 
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
@@ -201,7 +203,7 @@ close_conn(client_t *cli, picoev_loop* loop)
 #endif
     clean_cli(cli);
 
-    free_request_queue(cli->request_queue);
+    //free_request_queue(cli->request_queue);
     if(!cli->keep_alive){
         close(cli->fd);
 #ifdef DEBUG
@@ -287,6 +289,7 @@ process_wsgi_app(client_t *cli)
     pyclient = (ClientObject *)current_client;
 
 #ifdef DEBUG
+    printf("start client %p \n", cli);
     printf("start environ %p \n", cli->environ);
 #endif
 

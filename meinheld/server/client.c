@@ -35,12 +35,12 @@ alloc_ClientObject(void)
 		client = client_free_list[--client_numfree];
 		_Py_NewReference((PyObject *)client);
 #ifdef DEBUG
-        printf("use pooled client %p\n", client);
+        printf("use pooled ClientObject %p\n", client);
 #endif
     }else{
         client = PyObject_NEW(ClientObject, &ClientObjectType);
 #ifdef DEBUG
-        printf("alloc client %p\n", client);
+        printf("alloc ClientObject %p\n", client);
 #endif
     }
     return client;
@@ -51,6 +51,9 @@ dealloc_ClientObject(ClientObject *client)
 {
     Py_CLEAR(client->greenlet);
 	if (client_numfree < CLIENT_MAXFREELIST){
+#ifdef DEBUG
+        printf("back to ClientObject pool %p\n", client);
+#endif
 		client_free_list[client_numfree++] = client;
     }else{
 	    PyObject_DEL(client);

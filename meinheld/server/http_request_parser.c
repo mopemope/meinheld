@@ -614,7 +614,7 @@ headers_complete_cb (http_parser *p)
     
     PyDict_SetItem(env, request_method_key, obj);
 
-    PyMem_Free(req);
+    free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
     

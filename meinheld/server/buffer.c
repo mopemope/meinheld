@@ -51,6 +51,9 @@ static inline void
 dealloc_buffer(buffer *buf)
 {
 	if (numfree < MAXFREELIST){
+#ifdef DEBUG
+        printf("back to buffer pool %p\n", buf);
+#endif
 		buffer_free_list[numfree++] = buf;
     }else{
 	    PyMem_Free(buf);
