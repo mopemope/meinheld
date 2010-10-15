@@ -171,12 +171,6 @@ clean_cli(client_t *client)
     printf("clean_cli environ status_code %d address %p \n", client->status_code, client->environ);
 #endif
     
-    // force clear
-    PyDict_Clear(client->environ);
-    
-    Py_CLEAR(client->environ);
-    
-    free_request_queue(client->request_queue);
 
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
@@ -206,6 +200,8 @@ close_conn(client_t *cli, picoev_loop* loop)
     printf("picoev_del client:%p fd:%d \n", cli, cli->fd);
 #endif
     clean_cli(cli);
+
+    free_request_queue(cli->request_queue);
     if(!cli->keep_alive){
         close(cli->fd);
 #ifdef DEBUG

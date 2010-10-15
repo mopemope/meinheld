@@ -73,6 +73,10 @@ new_request_env(void)
 inline void
 free_request_env(request_env *e)
 {
+    PyObject *env;
+    env = e->env;
+    PyDict_Clear(env);
+    Py_DECREF(env);
     PyMem_Free(e);
 }
 
@@ -94,9 +98,6 @@ free_request_queue(request_queue *q)
     while(re){
         temp_re = re;
         env = temp_re->env;
-        // force clear
-        PyDict_Clear(env);
-        Py_DECREF(env);
         re = (request_env *)temp_re->next;
         free_request_env(temp_re);
     }
