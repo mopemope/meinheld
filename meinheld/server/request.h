@@ -43,7 +43,7 @@ typedef struct _request_env {
 typedef struct _request_queue {
     int size;
     request_env *head;
-    request_env *last;
+    request_env *tail;
 } request_queue;
 
 inline request_env*
@@ -51,6 +51,12 @@ new_request_env(void);
 
 inline void
 free_request_env(request_env *e);
+
+inline void 
+push_request_queue(request_queue *q, PyObject *env);
+
+inline PyObject *
+shift_request_queue(request_queue *q);
 
 inline request_queue*
 new_request_queue(void);

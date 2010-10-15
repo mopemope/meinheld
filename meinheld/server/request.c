@@ -104,6 +104,41 @@ free_request_queue(request_queue *q)
     PyMem_Free(q);
 }
 
+inline void 
+push_request_queue(request_queue *q, PyObject *env)
+{
+    request_env *re;
+    re = new_request_env();
+    re->env = env;
+    
+    if(q->tail){
+        q->tail->next = re;
+    }else{
+        q->head = re;
+    }
+    q->tail = re;
+    q->size++;
+}
+
+inline PyObject *
+shift_request_queue(request_queue *q)
+{
+    PyObject *env;
+    request_env *re, *temp_re;
+    re = q->head;
+    if(re == NULL){
+        return NULL;
+    }
+    env = re->env;
+    temp_re = re;
+    re = re->next;
+    if(re){
+        q->head = re;
+    }
+    q->size--;
+    free_request_env(temp_re);
+    return env;
+}
 
 inline request *
 new_request(void)
