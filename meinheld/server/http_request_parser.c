@@ -625,6 +625,35 @@ static http_parser_settings settings =
   ,.on_message_complete = message_complete_cb
   };
 
+static inline PyObject * 
+new_environ(client_t *client)
+{
+    register PyObject *object, *environ;
+
+    environ = PyDict_New();
+    PyDict_SetItem(environ, version_key, version_val);
+    PyDict_SetItem(environ, scheme_key, scheme_val);
+    PyDict_SetItem(environ, errors_key, errors_val);
+    PyDict_SetItem(environ, multithread_key, multithread_val);
+    PyDict_SetItem(environ, multiprocess_key, multiprocess_val);
+    PyDict_SetItem(environ, run_once_key, run_once_val);
+    PyDict_SetItem(environ, script_key, script_val);
+    PyDict_SetItem(environ, server_name_key, server_name_val);
+    PyDict_SetItem(environ, server_port_key, server_port_val);
+    PyDict_SetItem(environ, file_wrapper_key, file_wrapper_val);
+     
+    object = PyString_FromString(client->remote_addr);
+    PyDict_SetItem(environ, remote_addr_key, object);
+    Py_DECREF(object);
+
+    object = PyString_FromFormat("%d", client->remote_port);
+    PyDict_SetItem(environ, remote_port_key, object);
+    Py_DECREF(object);
+    return environ;
+}
+
+
+
 static PyMethodDef method = {"file_wrapper", (PyCFunction)file_wrapper, METH_VARARGS, 0};
 
 inline int
