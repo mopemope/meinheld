@@ -62,7 +62,7 @@ inline void
 free_request_env(request_env *e);
 
 inline void 
-push_request_queue(request_queue *q, void *user);
+push_new_request_env(request_queue *q);
 
 inline request_env*
 shift_request_queue(request_queue *q);

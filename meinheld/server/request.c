@@ -104,15 +104,10 @@ free_request_queue(request_queue *q)
 }
 
 inline void 
-push_request_queue(request_queue *q, void *user)
+push_new_request_env(request_queue *q)
 {
     request_env *re;
     re = new_request_env();
-    client_t *client = (client_t *)user;
-
-    re->env = client->environ;
-    re->body = client->body;
-    re->body_type = client->body_type;
 
     if(q->tail){
         q->tail->next = re;

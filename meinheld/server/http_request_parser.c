@@ -254,6 +254,9 @@ message_begin_cb(http_parser *p)
     client->body_type == BODY_TYPE_NONE;
     client->body_readed = 0;
     client->body_length = 0;
+    push_new_request_env(client->request_queue);
+    request_env *re = client->request_queue->tail;
+    re->env = client->environ;
     return 0;
 }
 
@@ -641,7 +644,12 @@ message_complete_cb (http_parser *p)
 #endif
     client_t *client = get_client(p);
     client->complete = 1;
-    push_request_queue(client->request_queue, client);
+    
+    request_env *re = client->request_queue->tail;
+    //re->env = client->environ;
+    re->body = client->body;
+    re->body_type = client->body_type;
+    
     return 0;
 }
 
