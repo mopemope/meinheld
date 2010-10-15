@@ -203,7 +203,7 @@ close_conn(client_t *cli, picoev_loop* loop)
 #endif
     clean_cli(cli);
 
-    //free_request_queue(cli->request_queue);
+    free_request_queue(cli->request_queue);
     if(!cli->keep_alive){
         close(cli->fd);
 #ifdef DEBUG
