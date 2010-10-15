@@ -37,7 +37,7 @@ static int log_fd = -1; //access log
 static char *error_log_path = NULL; //error log path
 static int err_log_fd = -1; //error log
 
-static int is_keep_alive = 1; //keep alive support
+static int is_keep_alive = 0; //keep alive support
 static int keep_alive_timeout = 5;
 
 int max_content_length = 1024 * 1024 * 16; //max_content_length
