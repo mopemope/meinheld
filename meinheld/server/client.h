@@ -11,7 +11,7 @@ typedef struct _client {
 
     uint8_t keep_alive;
     request *req;
-    request_queue *req_queue;
+    request_queue *request_queue;
     int body_length;
     int body_readed;
     void *body;
