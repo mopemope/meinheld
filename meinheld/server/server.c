@@ -178,9 +178,10 @@ clean_cli(client_t *client)
 #ifdef DEBUG
     printf("clean_cli environ status_code %d address %p \n", client->status_code, client->environ);
 #endif
-    
-    PyDict_Clear(client->environ);
-    Py_DECREF(client->environ);
+    if(client->environ){ 
+        PyDict_Clear(client->environ);
+        Py_DECREF(client->environ);
+    }
 
     if(client->body_type == BODY_TYPE_TMPFILE){
         if(client->body){
