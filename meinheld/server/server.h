@@ -27,11 +27,6 @@
 
 #define SERVER "meinheld/0.4.4"
 
-typedef enum {
-    BODY_TYPE_NONE,
-    BODY_TYPE_TMPFILE,
-    BODY_TYPE_BUFFER
-} request_body_type;
 
 extern int max_content_length; //max_content_length
 

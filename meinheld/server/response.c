@@ -11,6 +11,8 @@
 
 #define MSG_400 ("HTTP/1.0 400 Bad Request\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Bad Request</head><body><p>Bad Request.</p></body></html>")
 
+#define MSG_408 ("HTTP/1.0 408 Request Timeout\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Request Timeout</head><body><p>Request Timeout.</p></body></html>")
+
 #define MSG_411 ("HTTP/1.0 411 Length Required\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Length Required</head><body><p>Length Required.</p></body></html>")
 
 #define MSG_413 ("HTTP/1.0 413 Request Entity Too Large\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Request Entity Too Large</head><body><p>Request Entity Too Large.</p></body></html>")
@@ -84,6 +86,9 @@ send_error_page(client_t *client)
     switch(r){
         case 400:
             blocking_write(client, MSG_400, sizeof(MSG_400) -1);
+            break;
+        case 408:
+            blocking_write(client, MSG_400, sizeof(MSG_408) -1);
             break;
         case 411:
             blocking_write(client, MSG_411, sizeof(MSG_411) -1);

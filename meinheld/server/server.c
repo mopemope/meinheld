@@ -76,6 +76,14 @@ w_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 static inline void
 resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop);
 
+static inline void
+prepare_call_wsgi(client_t *client);
+
+static inline void
+call_wsgi_app(client_t *client, picoev_loop* loop);
+
+static inline int
+check_status_code(client_t *client);
 
 static inline int
 setsig(int sig, void* handler)
@@ -181,11 +189,12 @@ clean_cli(client_t *client)
     }else{
         Py_CLEAR(client->body);
     }
-    if(client->http != NULL){
-        PyMem_Free(client->http);
-        client->http = NULL;
-    }
-    
+    client->header_done = 0;
+    client->response_closed = 0;
+    client->chunked_response = 0;
+    client->content_length_set = 0;
+    client->content_length = 0;
+    client->write_bytes = 0;
 }
 
 static inline void 
@@ -197,11 +206,26 @@ close_conn(client_t *cli, picoev_loop* loop)
     }
 
     picoev_del(loop, cli->fd);
+    clean_cli(cli);
 
 #ifdef DEBUG
+    printf("start close client:%p fd:%d status_code %d \n", cli, cli->fd, cli->status_code);
     printf("picoev_del client:%p fd:%d \n", cli, cli->fd);
+    printf("remain http pipeline size :%d \n", cli->request_queue->size);
 #endif
-    clean_cli(cli);
+    
+    if(cli->request_queue->size > 0){
+        if(check_status_code(cli) > 0){
+            //process pipeline 
+            prepare_call_wsgi(cli);
+            call_wsgi_app(cli, loop);
+        }
+        return ;
+    }
+
+    if(cli->http != NULL){
+        PyMem_Free(cli->http);
+    }
 
     free_request_queue(cli->request_queue);
     if(!cli->keep_alive){
@@ -219,6 +243,30 @@ close_conn(client_t *cli, picoev_loop* loop)
     //PyMem_Free(cli);
     dealloc_client(cli);
 
+}
+
+static inline int
+check_status_code(client_t *client)
+{
+    request_env *re;
+    re = get_current_request(client->request_queue);
+    if(re->bad_request_code > 200){
+        //error
+        //shift 
+#ifdef DEBUG
+        printf("bad_request_code \n");
+#endif 
+        re = shift_request_queue(client->request_queue);
+        client->bad_request_code = re->bad_request_code;
+        client->body = re->body;
+        client->body_type = re->body_type;
+        free_request_env(re);
+        send_error_page(client);
+        close_conn(client, main_loop);
+        return 0;
+    }
+    return 1;
+    
 }
 
 static inline int
@@ -546,8 +594,14 @@ prepare_call_wsgi(client_t *client)
 {
     PyObject *input = NULL, *object = NULL, *c = NULL;
     char *val;
-
-    client->environ = shift_request_queue(client->request_queue);
+    
+    request_env *re;
+    re = shift_request_queue(client->request_queue);
+    client->bad_request_code = re->bad_request_code;
+    client->body = re->body;
+    client->body_type = re->body_type;
+    client->environ = re->env;
+    free_request_env(re);
     
     //check Expect
     if(client->http->http_minor == 1){
@@ -649,13 +703,14 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #endif
         //timeout
         cli->keep_alive = 0;
-        close_conn(cli, loop);
+        if(cli->request_queue->size > 0){
+            //piplining
+            set_bad_request_code(cli->request_queue, 408);
+        }else{
+            close_conn(cli, loop);
+        }
     
     } else if ((events & PICOEV_READ) != 0) {
-
-#ifdef DEBUG
-        printf("ready read \n");
-#endif
         /* update timeout, and read */
         int finish = 0, nread;
         char buf[INPUT_BUF_SIZE];
@@ -668,35 +723,49 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             case 0: 
                 cli->keep_alive = 0;
                 //503??
-                cli->status_code = 503;
-                send_error_page(cli);
-                close_conn(cli, loop);
-                return;
+                if(cli->request_queue->size > 0){
+                    //piplining
+                    set_bad_request_code(cli->request_queue, 503);
+                }else{
+                    cli->status_code = 503;
+                    send_error_page(cli);
+                    close_conn(cli, loop);
+                    return;
+                }
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
                 } else { /* fatal error */
-                    if(cli->keep_alive && errno == ECONNRESET){
-                        
-                        cli->keep_alive = 0;
-                        cli->status_code = 500;
-                        cli->header_done = 1;
-                        cli->response_closed = 1;
-                        
-                    }else{
-                        PyErr_SetFromErrno(PyExc_IOError);
-                        write_error_log(__FILE__, __LINE__); 
-                        cli->keep_alive = 0;
-                        cli->status_code = 500;
+                    if(cli->request_queue->size > 0){
+                        //piplining
+                        set_bad_request_code(cli->request_queue, 500);
                         if(errno != ECONNRESET){
-                            send_error_page(cli);
-                        }else{
+                            PyErr_SetFromErrno(PyExc_IOError);
+                            write_error_log(__FILE__, __LINE__); 
+                        }
+                    }else{
+                        if(cli->keep_alive && errno == ECONNRESET){
+                        
+                            cli->keep_alive = 0;
+                            cli->status_code = 500;
                             cli->header_done = 1;
                             cli->response_closed = 1;
+                        
+                        }else{
+                            PyErr_SetFromErrno(PyExc_IOError);
+                            write_error_log(__FILE__, __LINE__); 
+                            cli->keep_alive = 0;
+                            cli->status_code = 500;
+                            if(errno != ECONNRESET){
+                                send_error_page(cli);
+                            }else{
+                                cli->header_done = 1;
+                                cli->response_closed = 1;
+                            }
                         }
+                        close_conn(cli, loop);
+                        return;
                     }
-                    close_conn(cli, loop);
-                    return;
                 }
                 break;
             default:
@@ -712,20 +781,35 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #ifdef DEBUG
                     printf("fd %d bad_request code %d \n",cli->fd,  cli->bad_request_code);
 #endif
-                    send_error_page(cli);
-                    close_conn(cli, loop);
-                    return;
+                    set_bad_request_code(cli->request_queue, cli->bad_request_code);
+                    ///force end
+                    finish = 1;
+
+                    /*
+                    if(cli->request_queue->size > 0){
+                        //piplining
+                        set_bad_request_code(cli->request_queue, cli->bad_request_code);
+                    }else{
+                        send_error_page(cli);
+                        close_conn(cli, loop);
+                        return;
+                    }*/
                 }
 
                 if(!cli->upgrade && nread != r){
                     // parse error
 #ifdef DEBUG
-                    printf("fd %d parse error %d \n", cli->fd, cli->bad_request_code);
+                    printf("fd %d parse error Bad Request %d \n", cli->fd, cli->bad_request_code);
 #endif
+                    set_bad_request_code(cli->request_queue, 400);
+                    ///force end
+                    finish = 1;
+                    /*
                     cli->bad_request_code = 400;
                     send_error_page(cli);
                     close_conn(cli, loop);
                     return;
+                    */
                 }
                 
 #ifdef DEBUG
@@ -746,10 +830,12 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }
 
         if(finish == 1){
-            
             picoev_del(loop, cli->fd);
-            prepare_call_wsgi(cli);
-            call_wsgi_app(cli, loop);
+            if(check_status_code(cli) > 0){
+                //current request ok
+                prepare_call_wsgi(cli);
+                call_wsgi_app(cli, loop);
+            }
             return;
         }
     }

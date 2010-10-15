@@ -16,6 +16,12 @@
 
 
 typedef enum {
+    BODY_TYPE_NONE,
+    BODY_TYPE_TMPFILE,
+    BODY_TYPE_BUFFER
+} request_body_type;
+
+typedef enum {
     FIELD,
     VALUE,
 } field_type;
@@ -38,6 +44,9 @@ typedef struct {
 typedef struct _request_env {
     PyObject *env;
     void *next;
+    int bad_request_code;
+    void *body;
+    request_body_type body_type;    
 } request_env;
 
 typedef struct _request_queue {
@@ -53,10 +62,16 @@ inline void
 free_request_env(request_env *e);
 
 inline void 
-push_request_queue(request_queue *q, PyObject *env);
+push_request_queue(request_queue *q, void *user);
 
-inline PyObject *
+inline request_env*
 shift_request_queue(request_queue *q);
+
+inline request_env*
+get_current_request(request_queue *q);
+
+inline void
+set_bad_request_code(request_queue *q, int status_code);
 
 inline request_queue*
 new_request_queue(void);

@@ -637,7 +637,7 @@ message_complete_cb (http_parser *p)
 #endif
     client_t *client = get_client(p);
     client->complete = 1;
-    push_request_queue(client->request_queue, client->environ);
+    push_request_queue(client->request_queue, client);
     return 0;
 }
 
@@ -660,7 +660,6 @@ static PyMethodDef method = {"file_wrapper", (PyCFunction)file_wrapper, METH_VAR
 inline int
 init_parser(client_t *cli, const char *name, const short port)
 {
-    register PyObject *object;
 
     cli->http = (http_parser*)PyMem_Malloc(sizeof(http_parser));
     memset(cli->http, 0, sizeof(http_parser));

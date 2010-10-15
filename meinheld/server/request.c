@@ -1,4 +1,5 @@
 #include "request.h"
+#include "client.h"
 
 /* use free_list */
 #define REQUEST_MAXFREELIST 1024
@@ -79,7 +80,7 @@ free_request_env(request_env *e)
     PyMem_Free(e);
 }
 
-inline request_queue*
+inline request_queue * 
 new_request_queue(void)
 {
     request_queue *q = NULL;
@@ -103,12 +104,16 @@ free_request_queue(request_queue *q)
 }
 
 inline void 
-push_request_queue(request_queue *q, PyObject *env)
+push_request_queue(request_queue *q, void *user)
 {
     request_env *re;
     re = new_request_env();
-    re->env = env;
-    
+    client_t *client = (client_t *)user;
+
+    re->env = client->environ;
+    re->body = client->body;
+    re->body_type = client->body_type;
+
     if(q->tail){
         q->tail->next = re;
     }else{
@@ -118,22 +123,31 @@ push_request_queue(request_queue *q, PyObject *env)
     q->size++;
 }
 
-inline PyObject *
+inline request_env*
+get_current_request(request_queue *q)
+{
+    return q->head;
+}
+
+inline request_env *
 shift_request_queue(request_queue *q)
 {
-    PyObject *env;
     request_env *re, *temp_re;
     re = q->head;
     if(re == NULL){
         return NULL;
     }
-    env = re->env;
     temp_re = re;
     re = re->next;
     q->head = re;
     q->size--;
-    free_request_env(temp_re);
-    return env;
+    return temp_re;
+}
+
+inline void
+set_bad_request_code(request_queue *q, int status_code)
+{
+    q->tail->bad_request_code = status_code;
 }
 
 inline request *
