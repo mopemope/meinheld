@@ -1,10 +1,10 @@
 0.4.4
 =======
-(bug fix release, release 2010-10-14)
+(bug fix release, release 2010-10-16)
 
 * Fix write_bucket leak
 * Fix sendfile bug
-* support HTTP 1.1
+* HTTP 1.1 Support (keep-alive and piplining)
 
 0.4.3
 =======
