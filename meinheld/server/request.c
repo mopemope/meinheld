@@ -66,25 +66,11 @@ dealloc_request(request *req)
 }
 
 
-inline request_env*
-new_request_env(void)
-{
-    request_env *e = (request_env *)PyMem_Malloc(sizeof(request_env));
-    memset(e, 0, sizeof(request_env));
-    return e;
-}
-
-inline void
-free_request_env(request_env *e)
-{
-    PyMem_Free(e);
-}
-
 inline request_queue * 
 new_request_queue(void)
 {
     request_queue *q = NULL;
-    q= (request_env *)PyMem_Malloc(sizeof(request_queue));
+    q = (request_queue *)PyMem_Malloc(sizeof(request_queue));
     memset(q, 0, sizeof(request_queue));
     return q;
 }
@@ -92,58 +78,46 @@ new_request_queue(void)
 inline void
 free_request_queue(request_queue *q)
 {
-    request_env *re, *temp_re;
-    re = q->head;
-    while(re){
-        temp_re = re;
-        re = (request_env *)temp_re->next;
-        free_request_env(temp_re);
+    request *req, *temp_req;
+    req = q->head;
+    while(req){
+        temp_req = req;
+        req = (request *)temp_req->next;
+        free_request(temp_req);
     }
 
     PyMem_Free(q);
 }
 
 inline void 
-push_new_request_env(request_queue *q)
+push_request(request_queue *q, request *req)
 {
-    request_env *re;
-    re = new_request_env();
-
+    
     if(q->tail){
-        q->tail->next = re;
+        q->tail->next = req;
     }else{
-        q->head = re;
+        q->head = req;
     }
-    q->tail = re;
+    q->tail = req;
     q->size++;
 }
 
-inline request_env*
-get_current_request(request_queue *q)
-{
-    return q->head;
-}
 
-inline request_env *
-shift_request_queue(request_queue *q)
+inline request*
+shift_request(request_queue *q)
 {
-    request_env *re, *temp_re;
-    re = q->head;
-    if(re == NULL){
+    request *req, *temp_req;
+    req = q->head;
+    if(req == NULL){
         return NULL;
     }
-    temp_re = re;
-    re = re->next;
-    q->head = re;
+    temp_req = req;
+    req = req->next;
+    q->head = req;
     q->size--;
-    return temp_re;
+    return temp_req;
 }
 
-inline void
-set_bad_request_code(request_queue *q, int status_code)
-{
-    q->tail->bad_request_code = status_code;
-}
 
 inline request *
 new_request(void)

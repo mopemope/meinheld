@@ -182,13 +182,14 @@ clean_cli(client_t *client)
         PyDict_Clear(client->environ);
         Py_DECREF(client->environ);
     }
-
-    if(client->body_type == BODY_TYPE_TMPFILE){
-        if(client->body){
-            fclose(client->body);
+    if(client->body){
+        if(client->body_type == BODY_TYPE_TMPFILE){
+            if(client->body){
+                fclose(client->body);
+            }
+        }else{
+            Py_CLEAR(client->body);
         }
-    }else{
-        Py_CLEAR(client->body);
     }
     client->header_done = 0;
     client->response_closed = 0;
@@ -246,23 +247,39 @@ close_conn(client_t *cli, picoev_loop* loop)
 
 }
 
+static inline void
+set_current_request(client_t *client)
+{
+    request *req;
+    req = shift_request(client->request_queue);
+    client->bad_request_code = req->bad_request_code;
+    client->body = req->body;
+    client->body_type = req->body_type;
+    client->environ = req->env;
+    free_request(req);
+    client->req = NULL;
+}
+
+static inline void
+set_bad_request_code(client_t *client, int status_code)
+{
+    request *req;
+    req = client->request_queue->tail;
+    req->bad_request_code = status_code;
+}
+
 static inline int
 check_status_code(client_t *client)
 {
-    request_env *re;
-    re = get_current_request(client->request_queue);
-    if(re->bad_request_code > 200){
+    request *req;
+    req = client->request_queue->head;
+    if(req->bad_request_code > 200){
         //error
         //shift 
 #ifdef DEBUG
         printf("bad_request_code \n");
 #endif 
-        re = shift_request_queue(client->request_queue);
-        client->bad_request_code = re->bad_request_code;
-        client->body = re->body;
-        client->body_type = re->body_type;
-        client->environ = re->env;
-        free_request_env(re);
+        set_current_request(client);
         send_error_page(client);
         close_conn(client, main_loop);
         return 0;
@@ -597,13 +614,7 @@ prepare_call_wsgi(client_t *client)
     PyObject *input = NULL, *object = NULL, *c = NULL;
     char *val;
     
-    request_env *re;
-    re = shift_request_queue(client->request_queue);
-    client->bad_request_code = re->bad_request_code;
-    client->body = re->body;
-    client->body_type = re->body_type;
-    client->environ = re->env;
-    free_request_env(re);
+    set_current_request(client);
     
     //check Expect
     if(client->http->http_minor == 1){
@@ -708,7 +719,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         cli->keep_alive = 0;
         if(cli->request_queue->size > 0){
             //piplining
-            set_bad_request_code(cli->request_queue, 408);
+            set_bad_request_code(cli, 408);
             finish = 1;
         }else{
             close_conn(cli, loop);
@@ -727,7 +738,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 //503??
                 if(cli->request_queue->size > 0){
                     //piplining
-                    set_bad_request_code(cli->request_queue, 503);
+                    set_bad_request_code(cli, 503);
                     finish = 1;
                 }else{
                     cli->status_code = 503;
@@ -741,7 +752,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 } else { /* fatal error */
                     if(cli->request_queue->size > 0){
                         //piplining
-                        set_bad_request_code(cli->request_queue, 500);
+                        set_bad_request_code(cli, 500);
                         if(errno != ECONNRESET){
                             PyErr_SetFromErrno(PyExc_IOError);
                             write_error_log(__FILE__, __LINE__); 
@@ -785,7 +796,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #ifdef DEBUG
                     printf("fd %d bad_request code %d \n",cli->fd,  cli->bad_request_code);
 #endif
-                    set_bad_request_code(cli->request_queue, cli->bad_request_code);
+                    set_bad_request_code(cli, cli->bad_request_code);
                     ///force end
                     finish = 1;
                     break;
@@ -796,7 +807,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #ifdef DEBUG
                     printf("fd %d parse error Bad Request %d \n", cli->fd, cli->bad_request_code);
 #endif
-                    set_bad_request_code(cli->request_queue, 400);
+                    set_bad_request_code(cli, 400);
                     ///force end
                     finish = 1;
                     break;

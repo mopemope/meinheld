@@ -245,18 +245,16 @@ message_begin_cb(http_parser *p)
 #endif
 
     client_t *client = get_client(p);
-    if(client->req == NULL){
-        client->req = new_request();
-    }
+    
+    client->req = new_request();
     client->environ = new_environ(client);
     client->complete = 0;
     client->bad_request_code = 0;
-    client->body_type == BODY_TYPE_NONE;
+    client->body_type = BODY_TYPE_NONE;
     client->body_readed = 0;
     client->body_length = 0;
-    push_new_request_env(client->request_queue);
-    request_env *re = client->request_queue->tail;
-    re->env = client->environ;
+    client->req->env = client->environ;
+    push_request(client->request_queue, client->req);
     return 0;
 }
 
@@ -621,7 +619,7 @@ headers_complete_cb (http_parser *p)
     
     PyDict_SetItem(env, request_method_key, obj);
 
-    free_request(req);
+    //free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
     
@@ -645,10 +643,9 @@ message_complete_cb (http_parser *p)
     client_t *client = get_client(p);
     client->complete = 1;
     
-    request_env *re = client->request_queue->tail;
-    //re->env = client->environ;
-    re->body = client->body;
-    re->body_type = client->body_type;
+    request *req = client->request_queue->tail;
+    req->body = client->body;
+    req->body_type = client->body_type;
     
     return 0;
 }

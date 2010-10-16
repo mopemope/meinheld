@@ -22,7 +22,7 @@ write_error_log(char *file_name, int line)
     fputs((char *)err_log_time, fp);
     fputs(" [error] ", fp);
     
-    sprintf(buf, "pid %d, File \"%s\", line %d :", getpid(), file_name, line);
+    sprintf(buf, "pid %d, File \"%s\", line %d \n", getpid(), file_name, line);
     fputs(buf, fp);
     
     PyErr_Print();

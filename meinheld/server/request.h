@@ -39,39 +39,29 @@ typedef struct {
     header *headers[LIMIT_REQUEST_FIELDS];
     uint32_t num_headers;
     field_type last_header_element;   
-} request;
-
-typedef struct _request_env {
+    
     PyObject *env;
     void *next;
+    int body_length;
+    int body_readed;
     int bad_request_code;
     void *body;
-    request_body_type body_type;    
-} request_env;
+    request_body_type body_type;
 
-typedef struct _request_queue {
+} request;
+
+typedef struct {
     int size;
-    request_env *head;
-    request_env *tail;
+    request *head;
+    request *tail;
 } request_queue;
 
-inline request_env*
-new_request_env(void);
-
-inline void
-free_request_env(request_env *e);
 
 inline void 
-push_new_request_env(request_queue *q);
+push_request(request_queue *q, request *req);
 
-inline request_env*
-shift_request_queue(request_queue *q);
-
-inline request_env*
-get_current_request(request_queue *q);
-
-inline void
-set_bad_request_code(request_queue *q, int status_code);
+inline request*
+shift_request(request_queue *q);
 
 inline request_queue*
 new_request_queue(void);
