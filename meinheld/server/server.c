@@ -244,6 +244,9 @@ close_conn(client_t *cli, picoev_loop* loop)
     }
     //PyMem_Free(cli);
     dealloc_client(cli);
+#ifdef DEBUG
+    printf("********************\n\n");
+#endif
 
 }
 
@@ -785,7 +788,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 break;
             default:
 #ifdef DEBUG
-                printf("******************\n%s\n", buf);
+                printf("********************\n%s\n", buf);
 #endif
                 nread = execute_parse(cli, buf, r);
 #ifdef DEBUG
@@ -822,7 +825,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                         //WebSocket Key
                         key = buf + nread + 1;
                         body = PyString_FromStringAndSize(key, r - nread);
-                        cli->body = body;
+                        cli->request_queue->tail->body = body;
 
                     }
                     finish = 1;

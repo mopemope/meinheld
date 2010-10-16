@@ -633,7 +633,7 @@ start_response_file(client_t *client)
 {
     PyObject *filelike;
     FileWrapperObject *filewrap;
-    int ret, in_fd, size;
+    int in_fd, size;
     struct stat info;
 
     filewrap = (FileWrapperObject *)client->response;
