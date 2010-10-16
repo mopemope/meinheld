@@ -3,9 +3,9 @@ What's this
 
 this is a python wsgi web server.
 
-Thus this is yet an another asynchronous web server like fapws3, tornado.
+Thus this is yet an another asynchronous web server like gevent, tornado.
 
-And meinheld is a WSGI compliant web server.
+And meinheld is a WSGI compliant web server. (Support HTTP 1.1)
 
 You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 
