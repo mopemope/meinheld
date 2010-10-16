@@ -647,22 +647,17 @@ start_response_file(client_t *client)
 #endif
         return -1;
     }
-    ret = write_headers(client, NULL, 0);
-    if(!client->content_length_set){
-#ifdef DEBUG
-        printf("call fstat \n");
-#endif
-        if (fstat(in_fd, &info) == -1){
-            PyErr_SetFromErrno(PyExc_IOError);
-            write_error_log(__FILE__, __LINE__); 
-            return -1;
-        }
-
-        size = info.st_size;
-        client->content_length_set = 1;
-        client->content_length = size;
+    if (fstat(in_fd, &info) == -1){
+        PyErr_SetFromErrno(PyExc_IOError);
+        write_error_log(__FILE__, __LINE__); 
+        return -1;
     }
-    return ret;
+
+    size = info.st_size;
+    client->content_length_set = 1;
+    client->content_length = size;
+    
+    return write_headers(client, NULL, 0);
 }
 
 static inline int
