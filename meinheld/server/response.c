@@ -377,7 +377,7 @@ write_headers(client_t *client, char *data, size_t datalen)
     //header done 
     
     // check content_length_set
-    if(!client->content_length_set && client->http->http_minor == 1){
+    if(data && !client->content_length_set && client->http->http_minor == 1){
         //Transfer-Encoding chunked
         add_header(bucket, "Transfer-Encoding", 17, "chunked", 7);
         client->chunked_response = 1;
@@ -432,7 +432,7 @@ static inline int
 write_sendfile(int out_fd, int in_fd, size_t count)
 {
     int size = (int)count;
-
+    /*
     if (size == 0) {
         struct stat info;
 #ifdef DEBUG
@@ -445,7 +445,7 @@ write_sendfile(int out_fd, int in_fd, size_t count)
         }
 
         size = info.st_size - lseek(in_fd, 0, SEEK_CUR);
-    }
+    }*/
     return sendfile(out_fd, in_fd, NULL, size);
 }
 
@@ -633,7 +633,7 @@ start_response_file(client_t *client)
 {
     PyObject *filelike;
     FileWrapperObject *filewrap;
-    int in_fd, size;
+    int ret,in_fd, size;
     struct stat info;
 
     filewrap = (FileWrapperObject *)client->response;
@@ -647,17 +647,20 @@ start_response_file(client_t *client)
 #endif
         return -1;
     }
-    if (fstat(in_fd, &info) == -1){
-        PyErr_SetFromErrno(PyExc_IOError);
-        write_error_log(__FILE__, __LINE__); 
-        return -1;
-    }
+    ret = write_headers(client, NULL, 0);
+    if(!client->content_length_set){
+        if (fstat(in_fd, &info) == -1){
+            PyErr_SetFromErrno(PyExc_IOError);
+            write_error_log(__FILE__, __LINE__); 
+            return -1;
+        }
 
-    size = info.st_size;
-    client->content_length_set = 1;
-    client->content_length = size;
-    
-    return write_headers(client, NULL, 0);
+        size = info.st_size;
+        client->content_length_set = 1;
+        client->content_length = size;
+    }
+    return ret;
+
 }
 
 static inline int

@@ -22,8 +22,8 @@ class FileWrapper(object):
 
 def simple_app(environ, start_response):
     status = '200 OK'
-    response_headers = [('Content-type','image/jpeg')]
-    #response_headers = [('Content-type','image/jpeg'), ('Content-Length', '137823')]
+    #response_headers = [('Content-type','image/jpeg')]
+    response_headers = [('Content-type','image/jpeg'), ('Content-Length', '137823')]
     start_response(status, response_headers)
     # use sendfile(2)
     return environ.get('wsgi.file_wrapper', FileWrapper)(open('wallpaper.jpg', 'rb'))
