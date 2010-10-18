@@ -1586,7 +1586,7 @@ PyObject *
 meinheld_get_ident(PyObject *self, PyObject *args)
 {
     if(current_client){
-        ClientObject *pyclient = current_client;
+        ClientObject *pyclient = (ClientObject *)current_client;
         if(pyclient->greenlet){
 #ifdef DEBUG
             printf("get thread ident %p\n", pyclient->greenlet);
