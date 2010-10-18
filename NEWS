@@ -1,3 +1,9 @@
+0.4.6
+=======
+(bug fix release, release 2010-10-20)
+
+* Add get_ident. instead of werkzeug.local.get_ident
+
 0.4.5
 =======
 (bug fix release, release 2010-10-17)
