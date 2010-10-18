@@ -480,6 +480,9 @@ w_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 #ifdef DEBUG
     printf("call w_callback \n");
 #endif
+    if(client->environ){
+        current_client = PyDict_GetItem(client->environ, client_key);
+    }
     if ((events & PICOEV_TIMEOUT) != 0) {
 
 #ifdef DEBUG
@@ -1579,7 +1582,21 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 
 }
 
-
+PyObject *
+meinheld_get_ident(PyObject *self, PyObject *args)
+{
+    if(current_client){
+        ClientObject *pyclient = current_client;
+        if(pyclient->greenlet){
+#ifdef DEBUG
+            printf("get thread ident %p\n", pyclient->greenlet);
+#endif
+            Py_INCREF(pyclient->greenlet);
+            return pyclient->greenlet;
+        }
+    }
+    Py_RETURN_NONE;
+}
 
 
 static PyMethodDef WsMethods[] = {
@@ -1612,6 +1629,7 @@ static PyMethodDef WsMethods[] = {
     // io
     {"cancel_wait", meinheld_cancel_wait, METH_VARARGS, "cancel wait"},
     {"trampoline", (PyCFunction)meinheld_trampoline, METH_VARARGS | METH_KEYWORDS, "trampoline"},
+    {"get_ident", meinheld_get_ident, METH_VARARGS, "return thread ident "},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
