@@ -15,7 +15,7 @@
 #include "util.h"
 
 #define ACCEPT_TIMEOUT_SECS 1
-#define SHORT_TIMEOUT_SECS 2
+#define READ_TIMEOUT_SECS 30 
 
 #define MAX_BUFSIZE 1024 * 8
 #define INPUT_BUF_SIZE 1024 * 8
@@ -735,7 +735,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         char buf[INPUT_BUF_SIZE];
         ssize_t r;
         if(!cli->keep_alive){
-            picoev_set_timeout(loop, cli->fd, SHORT_TIMEOUT_SECS);
+            picoev_set_timeout(loop, cli->fd, READ_TIMEOUT_SECS);
         }
         r = read(cli->fd, buf, sizeof(buf));
         switch (r) {
