@@ -3,6 +3,8 @@
 (bug fix release, release 2010-10-20)
 
 * Add get_ident. instead of werkzeug.local.get_ident
+* Change read timeout value(30sec)
+* Add client_body_buffer_size 
 
 0.4.5
 =======
