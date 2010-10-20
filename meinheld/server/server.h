@@ -28,7 +28,8 @@
 #define SERVER "meinheld/0.4.6"
 
 
-extern int max_content_length; //max_content_length
+extern int max_content_length;      //max_content_length
+extern int client_body_buffer_size; //client_body_buffer_size
 
 extern picoev_loop* main_loop; //main loop
 

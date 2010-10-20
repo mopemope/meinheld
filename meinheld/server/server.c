@@ -41,6 +41,7 @@ static int is_keep_alive = 0; //keep alive support
 static int keep_alive_timeout = 5;
 
 int max_content_length = 1024 * 1024 * 16; //max_content_length
+int client_body_buffer_size = 1024 * 500;  //client_body_buffer_size
 
 static char *unix_sock_name = NULL;
 
@@ -1322,6 +1323,26 @@ meinheld_get_max_content_length(PyObject *self, PyObject *args)
 }
 
 PyObject *
+meinheld_set_client_body_buffer_size(PyObject *self, PyObject *args)
+{
+    int temp;
+    if (!PyArg_ParseTuple(args, "i", &temp))
+        return NULL;
+    if(temp <= 0){
+        PyErr_SetString(PyExc_ValueError, "client_body_buffer_size value out of range ");
+        return NULL;
+    }
+    client_body_buffer_size = temp;
+    Py_RETURN_NONE;
+}
+
+PyObject *
+meinheld_get_client_body_buffer_size(PyObject *self, PyObject *args)
+{
+    return Py_BuildValue("i", client_body_buffer_size);
+}
+
+PyObject *
 meinheld_set_listen_socket(PyObject *self, PyObject *args)
 {
     int temp_sock;
@@ -1610,6 +1631,9 @@ static PyMethodDef WsMethods[] = {
     {"set_max_content_length", meinheld_set_max_content_length, METH_VARARGS, "set max_content_length"},
     {"get_max_content_length", meinheld_get_max_content_length, METH_VARARGS, "return max_content_length"},
     
+    {"set_client_body_buffer_size", meinheld_set_client_body_buffer_size, METH_VARARGS, "set client_body_buffer_size"},
+    {"get_client_body_buffer_size", meinheld_get_client_body_buffer_size, METH_VARARGS, "return client_body_buffer_size"},
+
     {"set_backlog", meinheld_set_backlog, METH_VARARGS, "set backlog size"},
     {"get_backlog", meinheld_get_backlog, METH_VARARGS, "return backlog size"},
 

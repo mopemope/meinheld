@@ -49,7 +49,6 @@
  *
  */
 
-#define LIMIT_INMEMORY_BODY_SIZE 1024 * 512
 
 static PyObject *version_key;
 static PyObject *version_val;
@@ -464,7 +463,7 @@ body_cb (http_parser *p, const char *buf, size_t len, char partial)
             client->bad_request_code = 411;
             return -1;
         }
-        if(client->body_length > LIMIT_INMEMORY_BODY_SIZE){
+        if(client->body_length > client_body_buffer_size){
             //large size request
             FILE *tmp = tmpfile();
             if(tmp < 0){
