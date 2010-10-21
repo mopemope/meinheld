@@ -1613,7 +1613,7 @@ meinheld_get_ident(PyObject *self, PyObject *args)
             printf("get thread ident %p\n", pyclient->greenlet);
 #endif
             Py_INCREF(pyclient->greenlet);
-            return pyclient->greenlet;
+            return (PyObject *)pyclient->greenlet;
         }
     }
     Py_RETURN_NONE;
