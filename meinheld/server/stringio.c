@@ -75,7 +75,7 @@ StringIOObject_New(buffer *buffer)
     io = alloc_StringIOObject();
     io->buffer = buffer;
     io->pos = 0;
-    return io;
+    return (PyObject *)io;
 }
 
 inline void
@@ -95,21 +95,42 @@ StringIOObject_flush(PyObject *self, PyObject *args)
 }
 
 static inline PyObject* 
-StringIOObject_getval(PyObject *self, PyObject *args)
+StringIOObject_getval(StringIOObject *self, PyObject *args)
 {
-    Py_RETURN_NONE;
+    if(self->buffer == NULL){
+        Py_RETURN_NONE;
+    }
+    PyObject *o;
+    o = getPyString(self->buffer);
+    self->buffer = NULL;
+    return o;
 }
 
 static inline PyObject* 
 StringIOObject_isatty(PyObject *self, PyObject *args)
 {
-    Py_RETURN_NONE;
+    Py_INCREF(Py_False);
+    return Py_False;
 }
 
 static inline PyObject* 
-StringIOObject_read(PyObject *self, PyObject *args)
+StringIOObject_read(StringIOObject *self, PyObject *args)
 {
-    Py_RETURN_NONE;
+    Py_ssize_t n = -1, l = 0;
+
+    if (!PyArg_ParseTuple(args, "|n:read", &n)){
+        return NULL;
+    }
+    l = self->buffer->len - self->pos;
+    if (n < 0 || n > l) {
+        n = l;
+        if (n < 0) {
+            n = 0;
+        }
+    }
+    self->buffer->buf += n;
+    self->pos += n;
+    return PyString_FromStringAndSize(self->buffer->buf, n);
 }
 
 static inline PyObject* 
