@@ -672,7 +672,7 @@ prepare_call_wsgi(client_t *client)
             }else{
                 //object = empty_string;
                 //Py_INCREF(empty_string);
-                input = StringIOObject_New(NULL);
+                input = StringIOObject_New(new_buffer(0, 0));
             }
             //input = PycStringIO->NewInput(object);
             PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
@@ -1678,6 +1678,10 @@ initserver(void)
     }
 
     if(PyType_Ready(&ClientObjectType) < 0){
+        return;
+    }
+
+    if(PyType_Ready(&StringIOObjectType) < 0){
         return;
     }
 
