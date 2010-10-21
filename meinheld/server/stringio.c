@@ -173,7 +173,7 @@ StringIOObject_readline(StringIOObject *self, PyObject *args)
 }
 
 static inline PyObject* 
-StringIOObject_readlines(PyObject *self, PyObject *args)
+StringIOObject_readlines(StringIOObject *self, PyObject *args)
 {
 	int n;
 	char *output;
@@ -190,7 +190,7 @@ StringIOObject_readlines(PyObject *self, PyObject *args)
     }
 
 	while (1){
-		if ( (n = IO_creadline(self, &output)) < 0)
+		if ( (n = inner_readline(self, &output)) < 0)
                         goto err;
 		if (n == 0)
 			break;
@@ -286,6 +286,34 @@ StringIOObject_seek(StringIOObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static inline PyObject *
+StringIOObject_get_closed(StringIOObject *self, void *closure)
+{
+	PyObject *result = Py_False;
+
+	if (self->buffer == NULL){
+		result = Py_True;
+    }
+	Py_INCREF(result);
+	return result;
+}
+
+static inline PyObject *
+StringIOObject_iternext(StringIOObject *self)
+{
+	PyObject *next;
+	next = StringIOObject_readline(self, NULL);
+	if (!next){
+		return NULL;
+    }
+	if (!PyString_GET_SIZE(next)) {
+		Py_DECREF(next);
+		PyErr_SetNone(PyExc_StopIteration);
+		return NULL;
+	}
+	return next;
+}
+
 static struct PyMethodDef StringIOObject_methods[] = {
   
   {"flush",     (PyCFunction)StringIOObject_flush,    METH_NOARGS, ""},
@@ -302,6 +330,10 @@ static struct PyMethodDef StringIOObject_methods[] = {
   {NULL,	NULL}
 };
 
+static PyGetSetDef file_getsetlist[] = {
+	{"closed", (getter)StringIOObject_get_closed, NULL, "True if the file is closed"},
+	{0},
+};
 
 
 PyTypeObject StringIOObjectType = {
@@ -331,8 +363,8 @@ PyTypeObject StringIOObjectType = {
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
     0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		                   /* tp_iternext */
+    PyObject_SelfIter,		/*tp_iter */
+    (iternextfunc)StringIOObject_iternext,		/* tp_iternext */
     StringIOObject_methods,        /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
