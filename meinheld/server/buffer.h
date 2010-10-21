@@ -13,7 +13,7 @@ typedef enum{
     LIMIT_OVER,
 } buffer_result;
 
-typedef struct {
+typedef struct _buffer {
     char *buf;
     size_t buf_size;
     size_t len;

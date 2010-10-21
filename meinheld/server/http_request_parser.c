@@ -1,7 +1,6 @@
 #include "http_request_parser.h"
 #include "response.h"
 #include "client.h"
-#include "cStringIO.h"
 
 
 /**
@@ -165,13 +164,14 @@ write_body2file(client_t *client, const char *buffer, size_t buffer_len)
 }
 
 static inline int
-write_body2mem(client_t *client, const char *buffer, size_t buffer_len)
+write_body2mem(client_t *client, const char *buf, size_t buf_len)
 {
-    PyObject *obj = (PyObject *)client->body;
-    PycStringIO->cwrite(obj, buffer, (Py_ssize_t)buffer_len);
-    client->body_readed += buffer_len;
+    buffer *body = (buffer *)client->body;
+    write2buf(body, buf, buf_len);
+
+    client->body_readed += buf_len;
 #ifdef DEBUG
-    printf("write_body2mem %d bytes \n", buffer_len);
+    printf("write_body2mem %d bytes \n", buf_len);
 #endif
     return client->body_readed;
 }
@@ -452,7 +452,7 @@ body_cb (http_parser *p, const char *buf, size_t len, char partial)
     printf("body_cb \n");
 #endif
     client_t *client = get_client(p);
-    if(max_content_length <= client->body_readed + len){
+    if(max_content_length < client->body_readed + len){
 
         client->bad_request_code = 413;
         return -1;
@@ -480,7 +480,7 @@ body_cb (http_parser *p, const char *buf, size_t len, char partial)
 #ifdef DEBUG
             printf("client->body_length %d \n", client->body_length);
 #endif
-            client->body = PycStringIO->NewOutput(client->body_length);
+            client->body = new_buffer(client->body_length, 0);
             //client->body = PycStringIO->NewOutput(client->body_length);
             client->body_type = BODY_TYPE_BUFFER;
 #ifdef DEBUG
@@ -762,7 +762,7 @@ setup_static_env(char *name, int port)
     http_method_checkout = PyString_FromStringAndSize("CHECKOUT", 8);
     http_method_merge = PyString_FromStringAndSize("MERGE", 5);
     
-    PycString_IMPORT;
+    //PycString_IMPORT;
 }
 
 inline void

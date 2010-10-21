@@ -6,13 +6,12 @@
 #include <sys/un.h>
 #include <sys/stat.h>
 
-#include "cStringIO.h"
-
 #include "http_request_parser.h"
 #include "response.h"
 #include "log.h"
 #include "client.h"
 #include "util.h"
+#include "stringio.h"
 
 #define ACCEPT_TIMEOUT_SECS 1
 #define READ_TIMEOUT_SECS 30 
@@ -618,7 +617,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
 static inline void
 prepare_call_wsgi(client_t *client)
 {
-    PyObject *input = NULL, *object = NULL, *c = NULL;
+    PyObject *input = NULL, *c = NULL;
     char *val;
     
     set_current_request(client);
@@ -659,21 +658,26 @@ prepare_call_wsgi(client_t *client)
         client->body = NULL;
     }else{
         if(client->body_type == BODY_TYPE_BUFFER){
+            /*
             object = PycStringIO->cgetvalue((PyObject *)client->body);
             Py_XDECREF((PyObject *)client->body);
             input = PycStringIO->NewInput(object);
+            */
+            input = StringIOObject_New((buffer *)client->body);
             PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
         }else{
             if(client->body){
-                object = client->body;
+                //object = client->body;
+                input = StringIOObject_New((buffer *)client->body);
             }else{
-                object = empty_string;
-                Py_INCREF(empty_string);
+                //object = empty_string;
+                //Py_INCREF(empty_string);
+                input = StringIOObject_New(NULL);
             }
-            input = PycStringIO->NewInput(object);
+            //input = PycStringIO->NewInput(object);
             PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
         }
-        client->body = object;
+        //client->body = object;
         //Py_DECREF(object);
         Py_DECREF(input);
     }
@@ -713,7 +717,7 @@ static void
 r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     client_t *cli = ( client_t *)(cb_arg);
-    PyObject *body = NULL;
+    //PyObject *body = NULL;
     char *key = NULL;
     int finish = 0, nread;
 
@@ -828,8 +832,10 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     if(cli->upgrade){
                         //WebSocket Key
                         key = buf + nread + 1;
-                        body = PyString_FromStringAndSize(key, r - nread);
-                        cli->request_queue->tail->body = body;
+                        buffer *b = new_buffer(r - nread, 0);
+                        write2buf(b, key, r - nread);
+                        //body = PyString_FromStringAndSize(key, r - nread);
+                        cli->request_queue->tail->body = b;
 
                     }
                     finish = 1;
@@ -905,7 +911,7 @@ setup_server_env(void)
     header_list_fill();
     buffer_list_fill();
 
-    PycString_IMPORT;
+    //PycString_IMPORT;
     PyGreenlet_Import();
     
     hub_switch_value = Py_BuildValue("(i)", -1);
