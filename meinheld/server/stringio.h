@@ -7,6 +7,7 @@
 typedef struct {
     PyObject_HEAD
     buffer *buffer;
+    Py_ssize_t pos
 } StringIOObject;
 
 extern PyTypeObject StringIOObjectType;

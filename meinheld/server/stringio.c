@@ -71,12 +71,20 @@ CheckStringIOObject(PyObject *obj)
 inline PyObject*
 StringIOObject_New(buffer *buffer)
 {
-    Py_RETURN_NONE;
+    StringIOObject *io;
+    io = alloc_StringIOObject();
+    io->buffer = buffer;
+    io->pos = 0;
+    return io;
 }
 
 inline void
 StringIOObject_dealloc(StringIOObject *self)
 {
+    if(self->buffer){
+        free_buffer(self->buffer);
+        self->buffer = NULL;
+    }
     dealloc_StringIOObject(self);
 }
 
