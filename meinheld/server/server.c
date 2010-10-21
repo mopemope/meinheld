@@ -184,11 +184,9 @@ clean_cli(client_t *client)
     }
     if(client->body){
         if(client->body_type == BODY_TYPE_TMPFILE){
-            if(client->body){
-                fclose(client->body);
-            }
+            fclose(client->body);
         }else{
-            Py_CLEAR(client->body);
+            free_buffer(client->body);
         }
     }
     client->header_done = 0;
@@ -658,27 +656,17 @@ prepare_call_wsgi(client_t *client)
         client->body = NULL;
     }else{
         if(client->body_type == BODY_TYPE_BUFFER){
-            /*
-            object = PycStringIO->cgetvalue((PyObject *)client->body);
-            Py_XDECREF((PyObject *)client->body);
-            input = PycStringIO->NewInput(object);
-            */
             input = StringIOObject_New((buffer *)client->body);
             PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
         }else{
             if(client->body){
-                //object = client->body;
                 input = StringIOObject_New((buffer *)client->body);
             }else{
-                //object = empty_string;
-                //Py_INCREF(empty_string);
                 input = StringIOObject_New(new_buffer(0, 0));
             }
-            //input = PycStringIO->NewInput(object);
             PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
         }
-        //client->body = object;
-        //Py_DECREF(object);
+        client->body = NULL;;
         Py_DECREF(input);
     }
 
