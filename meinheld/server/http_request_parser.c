@@ -481,7 +481,6 @@ body_cb (http_parser *p, const char *buf, size_t len, char partial)
             printf("client->body_length %d \n", client->body_length);
 #endif
             client->body = new_buffer(client->body_length, 0);
-            //client->body = PycStringIO->NewOutput(client->body_length);
             client->body_type = BODY_TYPE_BUFFER;
 #ifdef DEBUG
             printf("BODY_TYPE_BUFFER \n");

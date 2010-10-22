@@ -822,7 +822,6 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                         key = buf + nread + 1;
                         buffer *b = new_buffer(r - nread, 0);
                         write2buf(b, key, r - nread);
-                        //body = PyString_FromStringAndSize(key, r - nread);
                         cli->request_queue->tail->body = b;
 
                     }
