@@ -88,8 +88,14 @@ StringIOObject_dealloc(StringIOObject *self)
     dealloc_StringIOObject(self);
 }
 
+static inline int
+is_close(StringIOObject *self)
+{
+    return self->buffer == NULL;
+}
+
 static inline PyObject*
-StringIOObject_flush(PyObject *self, PyObject *args)
+StringIOObject_flush(StringIOObject *self, PyObject *args)
 {
     Py_RETURN_NONE;
 }
@@ -134,17 +140,26 @@ StringIOObject_read(StringIOObject *self, PyObject *args)
 
 static inline int
 inner_readline(StringIOObject *self, char **output) {
-    char *n, *s;
-    Py_ssize_t l;
+    char *start, *end;
+    Py_ssize_t l = 0;
     
-    for (n = self->buffer->buf + self->pos,
-        s = self->buffer->buf + self->buffer->len; 
-             n < s && *n != '\n'; n++);
+    start = self->buffer->buf + self->pos;
+    end = self->buffer->buf + self->buffer->len; 
     
-    if (n < s) n++;
+    while(start < end){
+        if(*start == '\n'){
+            break;
+        }
+        start++;
+        l++;
+    }
 
+    if (start < end){
+        start++;
+        l++;
+    }
+    //seek current pos
     *output = self->buffer->buf + self->pos;
-    l = n - self->buffer->buf - self->pos;
     self->pos += l;
     return (int)l;
 }
@@ -152,35 +167,36 @@ inner_readline(StringIOObject *self, char **output) {
 static inline PyObject* 
 StringIOObject_readline(StringIOObject *self, PyObject *args)
 {
-    int n, m=-1;
+    int len, size = -1, delta;
     char *output;
 
     if(args){
-        if (!PyArg_ParseTuple(args, "|i:readline", &m)){
+        if (!PyArg_ParseTuple(args, "|i:readline", &size)){
             return NULL;
         }
     }
 
-    if((n = inner_readline(self, &output)) < 0){
+    if((len = inner_readline(self, &output)) < 0){
         return NULL;
     }
-    if (m >= 0 && m < n) {
-        m = n - m;
-        n -= m;
-        self->pos -= m;
+    if (size >= 0 && size < len) {
+        delta = len - size;
+        len -= delta;
+        //back
+        self->pos -= delta;
     }
-    return PyString_FromStringAndSize(output, n);
+    return PyString_FromStringAndSize(output, len);
 }
 
 static inline PyObject* 
 StringIOObject_readlines(StringIOObject *self, PyObject *args)
 {
-	int n;
+	int len;
 	char *output;
-	PyObject *result, *line;
-    int hint = 0, length = 0;
+	PyObject *result, *new_line;
+    int sizehint = 0, length = 0;
 	
-    if (!PyArg_ParseTuple(args, "|i:readlines", &hint)){
+    if (!PyArg_ParseTuple(args, "|i:readlines", &sizehint)){
         return NULL;
     }
 
@@ -190,20 +206,23 @@ StringIOObject_readlines(StringIOObject *self, PyObject *args)
     }
 
 	while (1){
-		if ( (n = inner_readline(self, &output)) < 0)
-                        goto err;
-		if (n == 0)
-			break;
-		line = PyString_FromStringAndSize(output, n);
-		if (!line) 
+		if((len = inner_readline(self, &output)) < 0){
             goto err;
-		if (PyList_Append (result, line) == -1) {
-			Py_DECREF (line);
+        }
+		if (len == 0){
+			break;
+        }
+		new_line = PyString_FromStringAndSize(output, len);
+		if (!new_line){
+            goto err;
+        }
+		if (PyList_Append(result, new_line) == -1) {
+			Py_DECREF(new_line);
 			goto err;
 		}
-		Py_DECREF (line);
-        length += n;
-        if (hint > 0 && length >= hint)
+		Py_DECREF(new_line);
+        length += len;
+        if (sizehint > 0 && length >= sizehint)
 			break;
 	}
 	return result;
@@ -235,7 +254,6 @@ StringIOObject_truncate(StringIOObject *self, PyObject *args)
     }
 
 	if (PyTuple_Size(args) == 0) {
-		/* No argument passed, truncate to current position */
 		pos = self->pos;
 	}
 
@@ -244,10 +262,12 @@ StringIOObject_truncate(StringIOObject *self, PyObject *args)
 		PyErr_SetFromErrno(PyExc_IOError);
 		return NULL;
 	}
-
+    
+    //truncate
     if (self->buffer->len > pos){
         self->buffer->len = pos;
     }
+
     self->pos = self->buffer->len;
     Py_RETURN_NONE;
 }

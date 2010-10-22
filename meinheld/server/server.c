@@ -898,8 +898,8 @@ setup_server_env(void)
     request_list_fill();
     header_list_fill();
     buffer_list_fill();
+    StringIOObject_list_fill();
 
-    //PycString_IMPORT;
     PyGreenlet_Import();
     
     hub_switch_value = Py_BuildValue("(i)", -1);
@@ -920,6 +920,7 @@ clear_server_env(void)
     request_list_clear();
     header_list_clear();
     buffer_list_clear();
+    StringIOObject_list_clear();
 
     Py_DECREF(hub_switch_value);
     Py_DECREF(client_key);
