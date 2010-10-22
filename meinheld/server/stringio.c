@@ -48,7 +48,10 @@ alloc_StringIOObject(void)
 static inline void
 dealloc_StringIOObject(StringIOObject *io)
 {
-    //Py_CLEAR(client->greenlet);
+    if(io->buffer){
+        free_buffer(io->buffer);
+        io->buffer = NULL;
+    }
 	if (io_numfree < IO_MAXFREELIST){
 #ifdef DEBUG
         printf("back to StringIOObject pool %p\n", io);
