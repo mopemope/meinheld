@@ -91,7 +91,11 @@ StringIOObject_dealloc(StringIOObject *self)
 static inline int
 is_close(StringIOObject *self)
 {
-    return self->buffer == NULL;
+    if(self->buffer == NULL){
+        PyErr_SetString(PyExc_IOError, "closed");
+        return 1;
+    }
+    return 0;
 }
 
 static inline PyObject*
@@ -125,6 +129,9 @@ StringIOObject_read(StringIOObject *self, PyObject *args)
     Py_ssize_t n = -1, l = 0;
 
     if (!PyArg_ParseTuple(args, "|n:read", &n)){
+        return NULL;
+    }
+    if(is_close(self)){
         return NULL;
     }
     l = self->buffer->len - self->pos;
@@ -175,6 +182,9 @@ StringIOObject_readline(StringIOObject *self, PyObject *args)
             return NULL;
         }
     }
+    if(is_close(self)){
+        return NULL;
+    }
 
     if((len = inner_readline(self, &output)) < 0){
         return NULL;
@@ -197,6 +207,9 @@ StringIOObject_readlines(StringIOObject *self, PyObject *args)
     int sizehint = 0, length = 0;
 	
     if (!PyArg_ParseTuple(args, "|i:readlines", &sizehint)){
+        return NULL;
+    }
+    if(is_close(self)){
         return NULL;
     }
 
@@ -252,6 +265,9 @@ StringIOObject_truncate(StringIOObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "|n:truncate", &pos)){
         return NULL;
     }
+    if(is_close(self)){
+        return NULL;
+    }
 
 	if (PyTuple_Size(args) == 0) {
 		pos = self->pos;
@@ -290,6 +306,9 @@ StringIOObject_seek(StringIOObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "n|i:seek", &position, &mode)){
         return NULL;
     }
+    if(is_close(self)){
+        return NULL;
+    }
 
     if (mode == 2){
         position += self->buffer->len;
@@ -322,6 +341,9 @@ static inline PyObject *
 StringIOObject_iternext(StringIOObject *self)
 {
 	PyObject *next;
+    if(is_close(self)){
+        return NULL;
+    }
 	next = StringIOObject_readline(self, NULL);
 	if (!next){
 		return NULL;
