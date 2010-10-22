@@ -188,6 +188,7 @@ clean_cli(client_t *client)
         }else{
             free_buffer(client->body);
         }
+        client->body = NULL;
     }
     client->header_done = 0;
     client->response_closed = 0;
@@ -826,14 +827,14 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                         buffer *b = new_buffer(r - nread -1, r - nread -1);
                         if(write2buf(b, key, r - nread -1) == WRITE_OK){
                             cli->request_queue->tail->body = b;
+                        }else{
+                            free_buffer(b);
                         }
-
                     }
                     finish = 1;
                 }
                 break;
         }
-
     }
     if(finish == 1){
         picoev_del(loop, cli->fd);

@@ -415,7 +415,7 @@ PyTypeObject StringIOObjectType = {
     (iternextfunc)StringIOObject_iternext,		/* tp_iternext */
     StringIOObject_methods,        /* tp_methods */
     0,                         /* tp_members */
-    0,                         /* tp_getset */
+    file_getsetlist,            /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */
