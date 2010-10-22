@@ -130,6 +130,7 @@ static inline PyObject*
 StringIOObject_read(StringIOObject *self, PyObject *args)
 {
     Py_ssize_t n = -1, l = 0;
+    PyObject *s;
 
     if (!PyArg_ParseTuple(args, "|n:read", &n)){
         return NULL;
@@ -144,8 +145,10 @@ StringIOObject_read(StringIOObject *self, PyObject *args)
             n = 0;
         }
     }
+    s = PyString_FromStringAndSize(self->buffer->buf + self->pos, n);
     self->pos += n;
-    return PyString_FromStringAndSize(self->buffer->buf + n, n);
+    //printf("%s# read %d\n", self->buffer->buf, n);
+    return s;
 }
 
 static inline int

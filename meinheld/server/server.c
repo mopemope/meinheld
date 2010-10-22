@@ -819,10 +819,14 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if(parser_finish(cli) > 0){
                     if(cli->upgrade){
                         //WebSocket Key
+#ifdef DEBUG
+                        printf("upgrade websocket %d \n", cli->fd);
+#endif
                         key = buf + nread + 1;
-                        buffer *b = new_buffer(r - nread, 0);
-                        write2buf(b, key, r - nread);
-                        cli->request_queue->tail->body = b;
+                        buffer *b = new_buffer(r - nread -1, r - nread -1);
+                        if(write2buf(b, key, r - nread -1) == WRITE_OK){
+                            cli->request_queue->tail->body = b;
+                        }
 
                     }
                     finish = 1;
