@@ -25,7 +25,7 @@
 #include "http_parser.h"
 
 
-#define SERVER "meinheld/0.4.7"
+#define SERVER "meinheld/0.4.8"
 
 
 extern int max_content_length;      //max_content_length
