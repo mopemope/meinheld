@@ -159,6 +159,7 @@ set_last_chunked_data(write_bucket *bucket)
 {
     set2bucket(bucket, "0", 1);
     set2bucket(bucket, CRLF, 2);
+    set2bucket(bucket, CRLF, 2);
 }
 
 
@@ -587,7 +588,7 @@ processs_write(register client_t *client)
         }
 
         if(client->chunked_response){
-            bucket = new_write_bucket(client->fd, 2);
+            bucket = new_write_bucket(client->fd, 3);
             set_last_chunked_data(bucket);
             writev_bucket(bucket);
             free_write_bucket(bucket);
