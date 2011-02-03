@@ -1,3 +1,9 @@
+0.4.9
+=======
+(bug fix release, release 2010-2-3)
+
+* Fix missing last-chunk's CRLF
+
 0.4.8
 =======
 (bug fix release, release 2010-1-19)
