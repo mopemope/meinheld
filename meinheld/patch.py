@@ -4,10 +4,21 @@ import sys
 
 noisy = True
 
-__all__ = ['patch_all',
+__all__ = [
+            'patch_all',
+            'patch_werkzeug',
            'patch_socket',
            'patch_ssl',
           ]
+
+def patch_werkzeug():
+    """ Replace werkzeug local get_ident """
+    try:
+        from werkzeug import local
+        from meinheld import get_ident
+        local.get_ident = get_ident
+    except ImportError:
+        pass
 
 def patch_socket(aggressive=True):
     """Replace the standard socket object with meinheld's cooperative sockets.
@@ -46,9 +57,11 @@ def patch_ssl():
 
 
 
-def patch_all(socket=True, ssl=True, aggressive=True):
+def patch_all(werkzeug=True, socket=True, ssl=True, aggressive=True):
     """Do all of the default monkey patching (calls every other function in this module."""
     # order is important
+    if werkzeug:
+        patch_werkzeug()
     if socket:
         patch_socket(aggressive=aggressive)
     if ssl:

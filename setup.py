@@ -26,7 +26,7 @@ include_dirs=[]
 
 
 setup(name='meinheld',
-    version="0.4.9",
+    version="0.4.10",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
