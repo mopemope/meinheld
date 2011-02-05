@@ -7,8 +7,8 @@ noisy = True
 __all__ = [
             'patch_all',
             'patch_werkzeug',
-           'patch_socket',
-           'patch_ssl',
+            'patch_socket',
+            'patch_ssl',
           ]
 
 def patch_werkzeug():

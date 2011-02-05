@@ -1,3 +1,6 @@
+from meinheld.patch import patch_werkzeug
+patch_werkzeug()
+
 from werkzeug import BaseRequest, BaseResponse, run_simple, wrap_file
 import meinheld
 
