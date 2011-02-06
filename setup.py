@@ -17,13 +17,23 @@ if "posix" not in os.name:
     print "Be posix compliant is mandatory"
     sys.exit(1)
 
-if "Linux" != platform.system():
-    print "sorry support linux only."
+poller = None
+if "Linux" == platform.system():
+    poller = 'HAVE_EPOLL'
+    poller_file = 'meinheld/server/picoev_epoll.c'
+elif "Darwin" == platform.system():
+    poller = 'HAVE_KQUEUE'
+    poller_file = 'meinheld/server/picoev_kqueue.c'
+else:
+    print "sorry, only linux and MacOS are supported"
     sys.exit(1)
 
 library_dirs=['/usr/local/lib']
 include_dirs=[]
+define_macros=[]
 
+if poller:
+    define_macros.append((poller, '1'))
 
 setup(name='meinheld',
     version="0.4.10",
@@ -33,7 +43,7 @@ setup(name='meinheld',
     author_email='yutaka.matsubara@gmail.com',
     url='http://github.com/mopemope/meinheld',
     license='BSD',
-    platforms='Linux',
+    platforms='Linux, Darwin',
     packages= ['meinheld'],
     install_requires=[
         'greenlet>=0.3.1',
@@ -46,12 +56,13 @@ setup(name='meinheld',
     """,
     ext_modules = [
         Extension('meinheld.server',
-            sources=['meinheld/server/server.c', 'meinheld/server/picoev_epoll.c',
+            sources=['meinheld/server/server.c', poller_file,
                 'meinheld/server/http_parser.c','meinheld/server/http_request_parser.c',
                 'meinheld/server/response.c', 'meinheld/server/time_cache.c', 'meinheld/server/log.c',
                 'meinheld/server/buffer.c', 'meinheld/server/request.c',
                 'meinheld/server/client.c', 'meinheld/server/util.c',
                 'meinheld/server/stringio.c'],
+                define_macros=define_macros,
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 #libraries=["profiler"],

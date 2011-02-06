@@ -11,7 +11,13 @@
 #include <errno.h>
 #include <string.h>
 #include <inttypes.h>
+
+#ifdef linux
 #include <sys/sendfile.h>
+#elif defined __APPLE__
+#include <sys/uio.h>
+#endif
+
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>

@@ -2,7 +2,11 @@
 
 #include <arpa/inet.h>
 #include <signal.h>
+
+#ifndef __APPLE__
 #include <sys/prctl.h>
+#endif
+
 #include <sys/un.h>
 #include <sys/stat.h>
 
@@ -1387,6 +1391,8 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
 PyObject *
 meinheld_set_process_name(PyObject *self, PyObject *args)
 {
+#ifndef __APPLE__
+
     int i = 0,argc,len;
     char **argv;
     char *name;
@@ -1404,6 +1410,8 @@ meinheld_set_process_name(PyObject *self, PyObject *args)
 
     strcpy(*argv, name);
     prctl(15, name, 0, 0, 0);
+#endif
+
     Py_RETURN_NONE;
 }
 
