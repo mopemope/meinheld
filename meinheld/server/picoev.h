@@ -274,6 +274,28 @@ extern "C" {
     return 0;
   }
   
+  /* returns callback for given descriptor */
+  PICOEV_INLINE
+  picoev_handler* picoev_get_callback(picoev_loop* loop __attribute__((unused)),
+				      int fd, void** cb_arg) {
+    assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
+    if (cb_arg != NULL) {
+      *cb_arg = picoev.fds[fd].cb_arg;
+    }
+    return picoev.fds[fd].callback;
+  }
+  
+  /* sets callback for given descriptor */
+  PICOEV_INLINE
+  void picoev_set_callback(picoev_loop* loop __attribute__((unused)), int fd,
+			   picoev_handler* callback, void** cb_arg) {
+    assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
+    if (cb_arg != NULL) {
+      picoev.fds[fd].cb_arg = *cb_arg;
+    }
+    picoev.fds[fd].callback = callback;
+  }
+  
   /* function to iterate registered information. To start iteration, set curfd
      to -1 and call the function until -1 is returned */
   PICOEV_INLINE

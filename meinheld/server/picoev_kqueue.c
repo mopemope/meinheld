@@ -186,11 +186,21 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
     picoev_fd* target = picoev.fds + event->ident;
     assert((event->flags & EV_ERROR) == 0); /* changelist errors are fatal */
     if (loop->loop.loop_id == target->loop_id
-	&& (event->flags & (EVFILT_READ | EVFILT_WRITE)) != 0) {
-      int revents = ((event->flags & EVFILT_READ) != 0 ? PICOEV_READ : 0)
-	| ((event->flags & EVFILT_WRITE) != 0 ? PICOEV_WRITE : 0);
-      (*target->callback)(&loop->loop, event->ident, revents,
-			  target->cb_arg);
+	&& (event->filter & (EVFILT_READ | EVFILT_WRITE)) != 0) {
+      int revents;
+      switch (event->filter) {
+      case EVFILT_READ:
+	revents = PICOEV_READ;
+	break;
+      case EVFILT_WRITE:
+	revents = PICOEV_WRITE;
+	break;
+      default:
+	assert(0);
+	revents = 0; // suppress compiler warning
+	break;
+      }
+      (*target->callback)(&loop->loop, event->ident, revents, target->cb_arg);
     }
   }
   
