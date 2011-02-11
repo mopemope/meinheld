@@ -17,23 +17,18 @@ if "posix" not in os.name:
     print "Be posix compliant is mandatory"
     sys.exit(1)
 
-poller = None
+
 if "Linux" == platform.system():
-    poller = 'HAVE_EPOLL'
     poller_file = 'meinheld/server/picoev_epoll.c'
-elif "Darwin" == platform.system():
-    poller = 'HAVE_KQUEUE'
+elif "Darwin" == platform.system(): # TODO: or *BSD
     poller_file = 'meinheld/server/picoev_kqueue.c'
 else:
-    print "sorry, only linux and MacOS are supported"
-    sys.exit(1)
+    poller_file = 'meinheld/server/picoev_select.c'
+#non-posix OS can't reach here
 
 library_dirs=['/usr/local/lib']
 include_dirs=[]
 define_macros=[]
-
-if poller:
-    define_macros.append((poller, '1'))
 
 setup(name='meinheld',
     version="0.4.10",
