@@ -145,10 +145,15 @@ example ::
         server.run(middleware.WebSocketMiddleware(app))
 
 
-Monkey Patching 
+Patching 
 ---------------------------------
 
-meinheld provide monkeypatch utilityi.This patch replace standard socket module.
+meinheld provide monkeypatch utility.
+
+Socket 
+==========================================
+
+This patch replace standard socket module.
 
 example ::
     
@@ -156,6 +161,23 @@ example ::
     patch.patch_all()
 
 For more info see http://github.com/mopemope/meinheld/tree/master/example/patch/
+
+
+Werkzeug 
+==========================================
+
+This patch replace werkzeug local get_ident function.
+
+If you use werkzeug, you must be call this patch function.
+
+(Otherwize leaked memory)
+
+example ::
+    
+    from meinheld import patch
+    patch.patch_werkzeug()
+
+For more info see http://github.com/mopemope/meinheld/tree/master/example/flask_sample.py
 
 Performance
 ------------------------------

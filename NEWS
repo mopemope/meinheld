@@ -1,3 +1,9 @@
+0.4.10
+=======
+(bug fix release, release 2010-2-7)
+
+* add werkzeug sipport patch
+
 0.4.9
 =======
 (bug fix release, release 2010-2-3)
