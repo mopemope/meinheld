@@ -20,11 +20,11 @@ if "posix" not in os.name:
 
 if "Linux" == platform.system():
     poller_file = 'meinheld/server/picoev_epoll.c'
-elif "Darwin" == platform.system(): # TODO: or *BSD
+elif "Darwin" == platform.system():
     poller_file = 'meinheld/server/picoev_kqueue.c'
 else:
-    poller_file = 'meinheld/server/picoev_select.c'
-#non-posix OS can't reach here
+    print "Sorry, Linux or MacOS only."
+    sys.exit(1)
 
 library_dirs=['/usr/local/lib']
 include_dirs=[]
