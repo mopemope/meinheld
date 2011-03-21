@@ -7,6 +7,11 @@ setup_listen_sock(int fd)
     int on = 1, r;
 #ifdef linux
     r = setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &on, sizeof(on));
+#elif defined(__APPLE__) || defined(__FreeBSD__)
+    struct accept_filter_arg afa;
+    bzero(&afa, sizeof(afa));
+    strcpy(afa.af_name, "httpready");
+    r = setsockopt(fd, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa));
 #endif
     assert(r == 0);
     r = fcntl(fd, F_SETFL, O_NONBLOCK);
