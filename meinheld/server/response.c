@@ -449,7 +449,14 @@ write_sendfile(int out_fd, int in_fd, size_t count)
         size = info.st_size - lseek(in_fd, 0, SEEK_CUR);
     }*/
     return sendfile(out_fd, in_fd, NULL, size);
-#elif defined __APPLE__
+#elif defined(__FreeBSD__)
+    off_t offset;
+    if (sendfile(out_fd, in_fd, 0, 0, NULL, &offset, 0) == 0) {
+      return offset;
+    } else {
+      return -1;
+    }
+#elif defined(__APPLE__) 
     off_t offset;
     if (sendfile(out_fd, in_fd, 0, &offset, NULL, 0) == 0) {
       return offset;

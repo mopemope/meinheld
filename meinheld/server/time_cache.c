@@ -46,7 +46,7 @@ cache_time_init(void)
 }
 
 
-#define get_timezone(isdst) (- (isdst ? timezone + 3600 : timezone) / 60)
+#define get_timezone(isdst) (- ((int)(isdst ? timezone + 3600 : timezone)) / 60)
 
 void
 cache_time_update(void)
@@ -95,7 +95,7 @@ cache_time_update(void)
     struct tm* p = localtime(&tt);
     p->tm_mon++;
     p->tm_year += 1900;
-    tp->gmtoff = get_timezone(p->tm_isdst);
+    tp->gmtoff = (int)get_timezone(p->tm_isdst);
 
     p1 = &cached_err_log_time[slot][0];
 

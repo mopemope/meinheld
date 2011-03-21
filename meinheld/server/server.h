@@ -14,7 +14,7 @@
 
 #ifdef linux
 #include <sys/sendfile.h>
-#elif defined __APPLE__
+#elif defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/uio.h>
 #endif
 

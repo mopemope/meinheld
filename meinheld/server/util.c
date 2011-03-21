@@ -51,7 +51,7 @@ enable_cork(client_t *client)
     int on = 1, r;
 #ifdef linux
     r = setsockopt(client->fd, IPPROTO_TCP, TCP_CORK, &on, sizeof(on));
-#elif defined __APPLE__
+#elif defined(__APPLE__) || defined(__FreeBSD__)
     r = setsockopt(client->fd, IPPROTO_TCP, TCP_NOPUSH, &on, sizeof(on));
 #else
 #error
@@ -68,8 +68,8 @@ disable_cork(client_t *client)
         int on = 1, r;
 #ifdef linux
         r = setsockopt(client->fd, IPPROTO_TCP, TCP_CORK, &off, sizeof(off));
-#elif defined __APPLE__
-	r = setsockopt(client->fd, IPPROTO_TCP, TCP_NOPUSH, &off, sizeof(on));
+#elif defined(__APPLE__) || defined(__FreeBSD__)
+        r = setsockopt(client->fd, IPPROTO_TCP, TCP_NOPUSH, &off, sizeof(on));
 #else
 #error
 #endif

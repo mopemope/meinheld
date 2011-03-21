@@ -22,6 +22,8 @@ if "Linux" == platform.system():
     poller_file = 'meinheld/server/picoev_epoll.c'
 elif "Darwin" == platform.system():
     poller_file = 'meinheld/server/picoev_kqueue.c'
+elif "FreeBSD" == platform.system():
+    poller_file = 'meinheld/server/picoev_kqueue.c'
 else:
     print "Sorry, Linux or MacOS only."
     sys.exit(1)
