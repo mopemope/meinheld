@@ -1,11 +1,11 @@
 What's this
 ---------------------------------
 
-this is a python wsgi web server.
+this is a high performance python wsgi web server.
 
-Thus this is yet an another asynchronous web server like gevent, tornado.
+Thus this is yet an another asynchronous web server like gevent.
 
-And meinheld is a WSGI compliant web server. (Support HTTP 1.1)
+And meinheld is a WSGI compliant web server. (HTTP 1.1 supported)
 
 You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 
@@ -14,7 +14,7 @@ Require
 
 meinheld requires **Python 2.x >= 2.5**. and **greenlet >= 0.3.1**.
 
-sorry meinheld supported linux only.
+meinheld supported platform Linux, FreeBSD, Mac OS X.
 
 Installation
 ---------------------------------

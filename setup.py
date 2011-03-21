@@ -72,6 +72,8 @@ setup(name='meinheld',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: POSIX :: Linux',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: POSIX :: BSD :: FreeBSD',
         'Programming Language :: C',
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP :: WSGI :: Server'
