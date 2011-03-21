@@ -1,0 +1,89 @@
+@charset "UTF-8";
+
+body {
+  margin: 0 0;
+  text-align: center;
+  background-color: #cccccc;
+  font-size: 16pt;
+  font-family: "Georgia", "Century", "Serif";
+  color: #666666;
+}
+
+a {
+  color: #444444;
+}
+
+a:visited {
+  color: #cccccc;
+}
+
+.page {
+  text-align: left;
+  margin: auto;
+  width: 680px;
+  background-color: #eeeeee;
+  -moz-box-shadow: 4px 4px 50px #000;
+  -webkit-box-shadow: 4px 4px 50px #000;
+  box-shadow: 4px 4px 50px #000;
+  overflow: hidden;
+}
+
+.header {
+  margin: 0 0;
+  padding: 24px 50px 24px 50px;
+  color: #aaaaaa;
+}
+
+.header h1 {
+  margin: 0 0;
+  padding: 16px 0 16px 0;
+  font-size: 64pt;
+  color: #888888;
+}
+
+.header .description p {
+  padding: 0 0;
+  margin: 0 0;
+}
+
+.header .description a {
+  color: #888888;
+}
+
+.header .description a:visited {
+  color: #cccccc;
+}
+
+.main {
+  margin: 0 0;
+  padding: 0 50px 32px 50px;
+}
+
+.main h2 {
+  font-size: 24pt;
+  color: #888888;
+}
+
+pre.code, code.block, .syntaxhighlighter {
+  display: block;
+  white-space: pre;
+  background-color: #ccc;
+  padding: 16px 16px;
+  margin: 0 0;
+  font-size: 12pt;
+}
+
+.footer {
+  text-align: center;
+  padding: 16px 0;
+  color: #cccccc;
+}
+
+blockquote.preformatted {
+  background-color: #ccc;
+  padding: 16px 16px;
+  margin: 0 0;
+  font-family: monospace;
+  white-space: pre;
+  font-size: 10pt;
+}
