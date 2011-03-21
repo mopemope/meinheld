@@ -33,7 +33,7 @@ include_dirs=[]
 define_macros=[]
 
 setup(name='meinheld',
-    version="0.4.10",
+    version="0.4.11",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
