@@ -1,18 +1,24 @@
+0.4.11
+=======
+(bug fix release, release 2011-3-21)
+
+* support Mac OS X and FreeBSD
+
 0.4.10
 =======
-(bug fix release, release 2010-2-7)
+(bug fix release, release 2011-2-7)
 
 * add werkzeug sipport patch
 
 0.4.9
 =======
-(bug fix release, release 2010-2-3)
+(bug fix release, release 2011-2-3)
 
 * Fix missing last-chunk's CRLF
 
 0.4.8
 =======
-(bug fix release, release 2010-1-19)
+(bug fix release, release 2011-1-19)
 
 * Fix missing last-chunk's CRLF
 
