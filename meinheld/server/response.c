@@ -430,10 +430,10 @@ error:
 }
 
 static inline int
-write_sendfile(int out_fd, int in_fd, size_t count)
+write_sendfile(int out_fd, int in_fd, int offset, size_t count)
 {
-#ifdef linux
     int size = (int)count;
+#ifdef linux
     /*
     if (size == 0) {
         struct stat info;
@@ -450,18 +450,24 @@ write_sendfile(int out_fd, int in_fd, size_t count)
     }*/
     return sendfile(out_fd, in_fd, NULL, size);
 #elif defined(__FreeBSD__)
-    off_t offset;
-    if (sendfile(out_fd, in_fd, 0, 0, NULL, &offset, 0) == 0) {
-      return offset;
+    off_t len;
+    if (sendfile(in_fd, out_fd, offset, 0, NULL, &len, 0) == 0) {
+        return len;
     } else {
-      return -1;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) { 
+            return len; 
+        }
+        return -1;
     }
 #elif defined(__APPLE__) 
-    off_t offset;
-    if (sendfile(out_fd, in_fd, 0, &offset, NULL, 0) == 0) {
-      return offset;
+    off_t len;
+    if (sendfile(in_fd, out_fd, offset, &len, NULL, 0) == 0) {
+        return len;
     } else {
-      return -1;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) { 
+            return len; 
+        }
+        return -1;
     }
 #endif
 }
@@ -513,7 +519,7 @@ processs_sendfile(register client_t *client)
     }
 
     while(client->content_length > client->write_bytes){
-        ret = write_sendfile(client->fd, in_fd, client->content_length);
+        ret = write_sendfile(client->fd, in_fd, client->write_bytes, client->content_length);
 #ifdef DEBUG
         printf("processs_sendfile send %d \n", ret);
 #endif
