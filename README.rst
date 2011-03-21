@@ -14,7 +14,7 @@ Require
 
 meinheld requires **Python 2.x >= 2.5**. and **greenlet >= 0.3.1**.
 
-meinheld supported platform Linux, FreeBSD, Mac OS X.
+meinheld supported Linux, FreeBSD, Mac OS X.
 
 Installation
 ---------------------------------
