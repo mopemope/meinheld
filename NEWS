@@ -1,3 +1,9 @@
+0.4.12
+=======
+(bug fix release, release 2011-3-22)
+
+* Fix Mac OS X build error(not use SO_ACCEPTFILTER)
+
 0.4.11
 =======
 (bug fix release, release 2011-3-21)
