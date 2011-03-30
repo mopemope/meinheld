@@ -48,6 +48,7 @@
  *
  */
 
+static PyObject *empty_string;
 
 static PyObject *version_key;
 static PyObject *version_val;
@@ -65,7 +66,6 @@ static PyObject *file_wrapper_key;
 static PyObject *file_wrapper_val;
 
 static PyObject *script_key;
-static PyObject *script_val;
 static PyObject *server_name_key;
 static PyObject *server_name_val;
 static PyObject *server_port_key;
@@ -104,6 +104,7 @@ static PyObject *http_method_mkactivity;
 static PyObject *http_method_checkout;
 static PyObject *http_method_merge;
 
+
 static inline PyObject * 
 new_environ(client_t *client)
 {
@@ -116,7 +117,7 @@ new_environ(client_t *client)
     PyDict_SetItem(environ, multithread_key, multithread_val);
     PyDict_SetItem(environ, multiprocess_key, multiprocess_val);
     PyDict_SetItem(environ, run_once_key, run_once_val);
-    PyDict_SetItem(environ, script_key, script_val);
+    PyDict_SetItem(environ, script_key, empty_string);
     PyDict_SetItem(environ, server_name_key, server_name_val);
     PyDict_SetItem(environ, server_port_key, server_port_val);
     PyDict_SetItem(environ, file_wrapper_key, file_wrapper_val);
@@ -520,19 +521,27 @@ headers_complete_cb (http_parser *p)
         PyDict_SetItem(env, path_info_key, obj);
         Py_DECREF(obj);
         req->path = NULL;
+    }else{
+        PyDict_SetItem(env, path_info_key, empty_string);
     }
+    req->path = NULL;
+
     if(req->uri){
         obj = getPyString(req->uri); 
         PyDict_SetItem(env, request_uri_key, obj);
         Py_DECREF(obj);
         req->uri = NULL;
     }
+
     if(req->query_string){
         obj = getPyString(req->query_string); 
         PyDict_SetItem(env, query_string_key, obj);
         Py_DECREF(obj);
-        req->query_string = NULL;
+    }else{
+        PyDict_SetItem(env, query_string_key, empty_string);
     }
+    req->query_string = NULL;
+
     if(req->fragment){
         obj = getPyString(req->fragment); 
         PyDict_SetItem(env, fragment_key, obj);
@@ -697,6 +706,8 @@ inline void
 setup_static_env(char *name, int port)
 {
 
+    empty_string = PyString_FromString("");
+    
     version_val = Py_BuildValue("(ii)", 1, 0);
     version_key = PyString_FromString("wsgi.version");
     
@@ -718,7 +729,6 @@ setup_static_env(char *name, int port)
     file_wrapper_val = PyCFunction_New(&method, NULL);
     file_wrapper_key = PyString_FromString("wsgi.file_wrapper");
 
-    script_val = PyString_FromString("");
     script_key = PyString_FromString("SCRIPT_NAME");
     
     server_name_val = PyString_FromString(name);
@@ -767,6 +777,8 @@ setup_static_env(char *name, int port)
 inline void
 clear_static_env(void)
 {
+    Py_DECREF(empty_string);
+
     Py_DECREF(version_key);
     Py_DECREF(version_val);
     Py_DECREF(scheme_key);
@@ -783,7 +795,6 @@ clear_static_env(void)
     Py_DECREF(file_wrapper_val);
                  
     Py_DECREF(script_key);
-    Py_DECREF(script_val);
     Py_DECREF(server_name_key);
     Py_DECREF(server_name_val);
     Py_DECREF(server_port_key);
