@@ -1,3 +1,9 @@
+0.4.13
+=======
+(bug fix release, release 2011-4-xx)
+
+* Fix release GIL
+
 0.4.12
 =======
 (bug fix release, release 2011-3-22)
