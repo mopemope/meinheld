@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <Python.h>
 #ifndef _WIN32
 # include <sys/select.h>
 #else
@@ -148,7 +149,11 @@ int picoev_poll_once_internal(picoev_loop* loop, int max_wait)
   /* select and handle if any */
   tv.tv_sec = max_wait;
   tv.tv_usec = 0;
+
+  Py_BEGIN_ALLOW_THREADS
   r = select(maxfd + 1, &readfds, &writefds, &errorfds, &tv);
+  Py_END_ALLOW_THREADS
+
   if (r == -1) {
     return -1;
   } else if (r > 0) {

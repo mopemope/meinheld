@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <Python.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/event.h>
@@ -174,8 +175,12 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
   
   ts.tv_sec = max_wait;
   ts.tv_nsec = 0;
+
+  Py_BEGIN_ALLOW_THREADS
   nevents = kevent(loop->kq, loop->changelist, cl_off, loop->events,
 		   sizeof(loop->events) / sizeof(loop->events[0]), &ts);
+  Py_END_ALLOW_THREADS
+
   if (nevents == -1) {
     /* the errors we can only rescue */
     assert(errno == EACCES || errno == EFAULT || errno == EINTR);

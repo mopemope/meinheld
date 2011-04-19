@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <Python.h>
 #include <errno.h>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -138,9 +139,12 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
   picoev_loop_epoll* loop = (picoev_loop_epoll*)_loop;
   int i, nevents;
   
+  Py_BEGIN_ALLOW_THREADS
   nevents = epoll_wait(loop->epfd, loop->events,
 		       sizeof(loop->events) / sizeof(loop->events[0]),
 		       max_wait * 1000);
+  Py_END_ALLOW_THREADS
+
   if (nevents == -1) {
     return -1;
   }
