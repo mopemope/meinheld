@@ -29,7 +29,9 @@ blocking_write(client_t *client, char *data, size_t len)
         if (len < send_len){
              send_len = len;
         }
+        Py_BEGIN_ALLOW_THREADS
         r = write(client->fd, data, send_len);
+        Py_END_ALLOW_THREADS
         switch(r){
             case 0:
                 return 1;
@@ -178,7 +180,9 @@ writev_bucket(write_bucket *data)
 {
     size_t w;
     register int i = 0;
+    Py_BEGIN_ALLOW_THREADS
     w = writev(data->fd, data->iov, data->iov_cnt);
+    Py_END_ALLOW_THREADS
     if(w == -1){
         //error
         if (errno == EAGAIN || errno == EWOULDBLOCK) { 
@@ -433,6 +437,7 @@ static inline int
 write_sendfile(int out_fd, int in_fd, int offset, size_t count)
 {
     int size = (int)count;
+    int res;
 #ifdef linux
     /*
     if (size == 0) {
@@ -448,10 +453,16 @@ write_sendfile(int out_fd, int in_fd, int offset, size_t count)
 
         size = info.st_size - lseek(in_fd, 0, SEEK_CUR);
     }*/
-    return sendfile(out_fd, in_fd, NULL, size);
+    Py_BEGIN_ALLOW_THREADS
+    res = sendfile(out_fd, in_fd, NULL, size);
+    Py_END_ALLOW_THREADS
+    return res;
 #elif defined(__FreeBSD__)
     off_t len;
-    if (sendfile(in_fd, out_fd, offset, 0, NULL, &len, 0) == 0) {
+    Py_BEGIN_ALLOW_THREADS
+    res = sendfile(in_fd, out_fd, offset, 0, NULL, &len, 0);
+    Py_END_ALLOW_THREADS
+    if (res == 0) {
         return len;
     } else {
         if (errno == EAGAIN || errno == EWOULDBLOCK) { 
@@ -461,7 +472,10 @@ write_sendfile(int out_fd, int in_fd, int offset, size_t count)
     }
 #elif defined(__APPLE__) 
     off_t len;
-    if (sendfile(in_fd, out_fd, offset, &len, NULL, 0) == 0) {
+    Py_BEGIN_ALLOW_THREADS
+    res = sendfile(in_fd, out_fd, offset, &len, NULL, 0);
+    Py_END_ALLOW_THREADS
+    if (res == 0) {
         return len;
     } else {
         if (errno == EAGAIN || errno == EWOULDBLOCK) { 

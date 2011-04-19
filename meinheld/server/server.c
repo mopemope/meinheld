@@ -735,7 +735,9 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         if(!cli->keep_alive){
             picoev_set_timeout(loop, cli->fd, READ_TIMEOUT_SECS);
         }
+        Py_BEGIN_ALLOW_THREADS
         r = read(cli->fd, buf, sizeof(buf));
+        Py_END_ALLOW_THREADS
         switch (r) {
             case 0: 
                 cli->keep_alive = 0;
@@ -867,7 +869,9 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     }else if ((events & PICOEV_READ) != 0) {
 
         socklen_t client_len = sizeof(client_addr);
+        Py_BEGIN_ALLOW_THREADS
         client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
+        Py_END_ALLOW_THREADS
 
         if (client_fd != -1) {
 #ifdef DEBUG
@@ -942,7 +946,7 @@ inet_listen(void)
 {
     struct addrinfo hints, *servinfo, *p;
     int flag = 1;
-    int rv;
+    int res;
     char strport[7];
 
     
@@ -953,7 +957,7 @@ inet_listen(void)
     
     snprintf(strport, sizeof (strport), "%d", server_port);
     
-    if ((rv = getaddrinfo(server_name, strport, &hints, &servinfo)) == -1) {
+    if ((res = getaddrinfo(server_name, strport, &hints, &servinfo)) == -1) {
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
@@ -973,7 +977,10 @@ inet_listen(void)
             return -1;
         }
 
-        if (bind(listen_sock, p->ai_addr, p->ai_addrlen) == -1) {
+        Py_BEGIN_ALLOW_THREADS
+        res = bind(listen_sock, p->ai_addr, p->ai_addrlen);
+        Py_END_ALLOW_THREADS
+        if (res == -1) {
             close(listen_sock);
             PyErr_SetFromErrno(PyExc_IOError);
             return -1;
@@ -991,7 +998,10 @@ inet_listen(void)
     freeaddrinfo(servinfo); // all done with this structure
     
     // BACKLOG 
-    if (listen(listen_sock, backlog) == -1) {
+    Py_BEGIN_ALLOW_THREADS
+    res = listen(listen_sock, backlog);
+    Py_END_ALLOW_THREADS
+    if (res == -1) {
         close(listen_sock);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
@@ -1015,6 +1025,7 @@ static inline int
 unix_listen(char *sock_name)
 {
     int flag = 1;
+    int res;
     struct sockaddr_un saddr;
     mode_t old_umask;
 
@@ -1040,8 +1051,11 @@ unix_listen(char *sock_name)
     strcpy(saddr.sun_path, sock_name);
     
     old_umask = umask(0);
-
-    if (bind(listen_sock, (struct sockaddr *)&saddr, sizeof(saddr)) == -1) {
+    
+    Py_BEGIN_ALLOW_THREADS
+    res = bind(listen_sock, (struct sockaddr *)&saddr, sizeof(saddr));
+    Py_END_ALLOW_THREADS
+    if (res == -1) {
         close(listen_sock);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
@@ -1049,7 +1063,10 @@ unix_listen(char *sock_name)
     umask(old_umask);
 
     // BACKLOG 1024
-    if (listen(listen_sock, backlog) == -1) {
+    Py_BEGIN_ALLOW_THREADS
+    res = listen(listen_sock, backlog);
+    Py_END_ALLOW_THREADS
+    if (res == -1) {
         close(listen_sock);
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
@@ -1107,12 +1124,18 @@ meinheld_listen(PyObject *self, PyObject *args)
 static void 
 sigint_cb(int signum)
 {
+#ifdef DEBUG
+    printf("call SIGINT");
+#endif
     loop_done = 0;
 }
 
 static void 
 sigpipe_cb(int signum)
 {
+#ifdef DEBUG
+    printf("call SIGPIPE");
+#endif
 }
 
 static PyObject * 
@@ -1203,7 +1226,9 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     
     /* loop */
     while (loop_done) {
+        Py_BEGIN_ALLOW_THREADS
         picoev_loop_once(main_loop, 10);
+        Py_END_ALLOW_THREADS
         i++;
         // watchdog slow.... skip check
         
@@ -1219,9 +1244,6 @@ meinheld_run_loop(PyObject *self, PyObject *args)
         }else if(tempfile_fd){
             fast_notify();
         }
-#ifdef DEBUG
-        //printf("loop \n");
-#endif
     }
 
     Py_DECREF(wsgi_app);
