@@ -1226,9 +1226,9 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     
     /* loop */
     while (loop_done) {
-        Py_BEGIN_ALLOW_THREADS
+        //Py_BEGIN_ALLOW_THREADS
         picoev_loop_once(main_loop, 10);
-        Py_END_ALLOW_THREADS
+        //Py_END_ALLOW_THREADS
         i++;
         // watchdog slow.... skip check
         
