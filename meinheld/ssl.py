@@ -1,6 +1,5 @@
 # Wrapper module for _ssl. Written by Bill Janssen.
 # Ported to gevent by Denis Bilenko.
-# Copyright (c) 2010 Yutaka Matsubara
 """SSL wrapper for socket objects.
 
 For the documentation, refer to :mod:`ssl` module manual.

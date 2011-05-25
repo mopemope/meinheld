@@ -1,5 +1,4 @@
 # Copyright (c) 2009-2010 Denis Bilenko. See LICENSE for details.
-# Copyright (c) 2010 Yutaka Matsubara. See LICENSE for details.
 import sys
 
 noisy = True
