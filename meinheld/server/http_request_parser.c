@@ -1,6 +1,6 @@
 #include "http_request_parser.h"
+#include "server.h"
 #include "response.h"
-#include "client.h"
 
 
 /**
@@ -10,41 +10,41 @@
  *   The HTTP request method, such as "GET" or "POST". This cannot ever be an empty string, and so is always required.
  *
  * SCRIPT_NAME
- *   The initial portion of the request URL's "path" that corresponds to the application object, 
- *   so that the application knows its virtual "location". 
+ *   The initial portion of the request URL's "path" that corresponds to the application object,
+ *   so that the application knows its virtual "location".
  *   This may be an empty string, if the application corresponds to the "root" of the server.
- * 
+ *
  * PATH_INFO
- *   The remainder of the request URL's "path", designating the virtual "location" of the request's target within the application. 
+ *   The remainder of the request URL's "path", designating the virtual "location" of the request's target within the application.
  *   This may be an empty string, if the request URL targets the application root and does not have a trailing slash.
- * 
+ *
  * QUERY_STRING
  *   The portion of the request URL that follows the "?", if any. May be empty or absent.
- * 
+ *
  * CONTENT_TYPE
  *   The contents of any Content-Type fields in the HTTP request. May be empty or absent.
- * 
+ *
  * CONTENT_LENGTH
  *   The contents of any Content-Length fields in the HTTP request. May be empty or absent.
- * 
+ *
  * SERVER_NAME, SERVER_PORT
- *    When combined with SCRIPT_NAME and PATH_INFO, these variables can be used to complete the URL. Note, however, that HTTP_HOST, 
- *    if present, should be used in preference to SERVER_NAME for reconstructing the request URL. 
- *    See the URL Reconstruction section below for more detail. 
+ *    When combined with SCRIPT_NAME and PATH_INFO, these variables can be used to complete the URL. Note, however, that HTTP_HOST,
+ *    if present, should be used in preference to SERVER_NAME for reconstructing the request URL.
+ *    See the URL Reconstruction section below for more detail.
  *    SERVER_NAME and SERVER_PORT can never be empty strings, and so are always required.
- * 
+ *
  * SERVER_PROTOCOL
- *   The version of the protocol the client used to send the request. 
- *   Typically this will be something like "HTTP/1.0" or "HTTP/1.1" and may be used by the application to determine 
+ *   The version of the protocol the client used to send the request.
+ *   Typically this will be something like "HTTP/1.0" or "HTTP/1.1" and may be used by the application to determine
  *   how to treat any HTTP request headers.
- *   (This variable should probably be called REQUEST_PROTOCOL, since it denotes the protocol used in the request, 
- *   and is not necessarily the protocol that will be used in the server's response. 
+ *   (This variable should probably be called REQUEST_PROTOCOL, since it denotes the protocol used in the request,
+ *   and is not necessarily the protocol that will be used in the server's response.
  *   However, for compatibility with CGI we have to keep the existing name.)
  *
  * HTTP_ Variables
- *   Variables corresponding to the client-supplied HTTP request headers (i.e., variables whose names begin with "HTTP_"). 
- *   The presence or absence of these variables should correspond with the presence or absence of the appropriate 
- *   HTTP header in the request. 
+ *   Variables corresponding to the client-supplied HTTP request headers (i.e., variables whose names begin with "HTTP_").
+ *   The presence or absence of these variables should correspond with the presence or absence of the appropriate
+ *   HTTP header in the request.
  *
  */
 
@@ -105,10 +105,10 @@ static PyObject *http_method_checkout;
 static PyObject *http_method_merge;
 
 
-static inline PyObject * 
+static PyObject*
 new_environ(client_t *client)
 {
-    register PyObject *object, *environ;
+    PyObject *object, *environ;
 
     environ = PyDict_New();
     PyDict_SetItem(environ, version_key, version_val);
@@ -121,7 +121,7 @@ new_environ(client_t *client)
     PyDict_SetItem(environ, server_name_key, server_name_val);
     PyDict_SetItem(environ, server_port_key, server_port_val);
     PyDict_SetItem(environ, file_wrapper_key, file_wrapper_val);
-     
+
     object = PyString_FromString(client->remote_addr);
     PyDict_SetItem(environ, remote_addr_key, object);
     Py_DECREF(object);
@@ -132,11 +132,11 @@ new_environ(client_t *client)
     return environ;
 }
 
-static inline void
+static void
 key_upper(char *s, const char *key, size_t len)
 {
     int i = 0;
-    register int c;
+    int c;
 	for (i = 0; i < len; i++) {
 		c = key[i];
 		if(c == '-'){
@@ -151,33 +151,29 @@ key_upper(char *s, const char *key, size_t len)
 	}
 }
 
-static inline int
+static int
 write_body2file(client_t *client, const char *buffer, size_t buffer_len)
 {
     FILE *tmp = (FILE *)client->body;
     fwrite(buffer, 1, buffer_len, tmp);
     client->body_readed += buffer_len;
-#ifdef DEBUG
-    printf("write_body2file %d bytes \n", buffer_len);
-#endif
+    DEBUG("write_body2file %ld bytes", buffer_len);
     return client->body_readed;
 
 }
 
-static inline int
+static int
 write_body2mem(client_t *client, const char *buf, size_t buf_len)
 {
     buffer *body = (buffer *)client->body;
     write2buf(body, buf, buf_len);
 
     client->body_readed += buf_len;
-#ifdef DEBUG
-    printf("write_body2mem %d bytes \n", buf_len);
-#endif
+    DEBUG("write_body2mem %ld bytes", buf_len);
     return client->body_readed;
 }
 
-static inline int
+static int
 write_body(client_t *cli, const char *buffer, size_t buffer_len)
 {
     if(cli->body_type == BODY_TYPE_TMPFILE){
@@ -193,7 +189,7 @@ typedef enum{
     OTHER
 } wsgi_header_type;
 
-static inline wsgi_header_type
+static wsgi_header_type
 check_header_type(const char *buf)
 {
     if(*buf++ != 'C'){
@@ -231,21 +227,19 @@ check_header_type(const char *buf)
 
 
 
-static inline client_t *
+static client_t *
 get_client(http_parser *p)
 {
     return (client_t *)p->data;
 }
 
-int
+static int
 message_begin_cb(http_parser *p)
 {
-#ifdef DEBUG
-    printf("message_begin_cb \n");
-#endif
+    DEBUG("message_begin_cb");
 
     client_t *client = get_client(p);
-    
+
     client->req = new_request();
     client->environ = new_environ(client);
     client->complete = 0;
@@ -258,13 +252,13 @@ message_begin_cb(http_parser *p)
     return 0;
 }
 
-int
-header_field_cb (http_parser *p, const char *buf, size_t len, char partial)
+static int
+header_field_cb(http_parser *p, const char *buf, size_t len, char partial)
 {
     uint32_t i;
-    register header *h;
+    header *h;
     client_t *client = get_client(p);
-    register request *req = client->req;
+    request *req = client->req;
     char temp[len];
 
     buffer_result ret = MEMORY_ERROR;
@@ -306,14 +300,14 @@ header_field_cb (http_parser *p, const char *buf, size_t len, char partial)
     return 0;
 }
 
-int
-header_value_cb (http_parser *p, const char *buf, size_t len, char partial)
+static int
+header_value_cb(http_parser *p, const char *buf, size_t len, char partial)
 {
     uint32_t i;
-    register header *h;
+    header *h;
     client_t *client = get_client(p);
-    register request *req = client->req;
-    
+    request *req = client->req;
+
     buffer_result ret = MEMORY_ERROR;
     i = req->num_headers;
     h = req->headers[i];
@@ -335,11 +329,11 @@ header_value_cb (http_parser *p, const char *buf, size_t len, char partial)
     return 0;
 }
 
-int
-request_path_cb (http_parser *p, const char *buf, size_t len, char partial)
+static int
+request_path_cb(http_parser *p, const char *buf, size_t len, char partial)
 {
     client_t *client = get_client(p);
-    register request *req = client->req;
+    request *req = client->req;
     buffer_result ret = MEMORY_ERROR;
 
     if(req->path){
@@ -364,10 +358,10 @@ request_path_cb (http_parser *p, const char *buf, size_t len, char partial)
 }
 
 int
-request_uri_cb (http_parser *p, const char *buf, size_t len, char partial)
+request_uri_cb(http_parser *p, const char *buf, size_t len, char partial)
 {
     client_t *client = get_client(p);
-    register request *req = client->req;
+    request *req = client->req;
     buffer_result ret = MEMORY_ERROR;
 
     if(req->uri){
@@ -392,10 +386,10 @@ request_uri_cb (http_parser *p, const char *buf, size_t len, char partial)
 }
 
 int
-query_string_cb (http_parser *p, const char *buf, size_t len, char partial)
+query_string_cb(http_parser *p, const char *buf, size_t len, char partial)
 {
     client_t *client = get_client(p);
-    register request *req = client->req;
+    request *req = client->req;
     buffer_result ret = MEMORY_ERROR;
 
     if(req->query_string){
@@ -419,10 +413,10 @@ query_string_cb (http_parser *p, const char *buf, size_t len, char partial)
 }
 
 int
-fragment_cb (http_parser *p, const char *buf, size_t len, char partial)
+fragment_cb(http_parser *p, const char *buf, size_t len, char partial)
 {
     client_t *client = get_client(p);
-    register request *req = client->req;
+    request *req = client->req;
     buffer_result ret = MEMORY_ERROR;
 
     if(req->fragment){
@@ -447,11 +441,9 @@ fragment_cb (http_parser *p, const char *buf, size_t len, char partial)
 
 
 int
-body_cb (http_parser *p, const char *buf, size_t len, char partial)
+body_cb(http_parser *p, const char *buf, size_t len, char partial)
 {
-#ifdef DEBUG
-    printf("body_cb \n");
-#endif
+    DEBUG("body_cb");
     client_t *client = get_client(p);
     if(max_content_length < client->body_readed + len){
 
@@ -473,19 +465,13 @@ body_cb (http_parser *p, const char *buf, size_t len, char partial)
             }
             client->body = tmp;
             client->body_type = BODY_TYPE_TMPFILE;
-#ifdef DEBUG
-            printf("BODY_TYPE_TMPFILE \n");
-#endif
+            DEBUG("BODY_TYPE_TMPFILE");
         }else{
             //default memory stream
-#ifdef DEBUG
-            printf("client->body_length %d \n", client->body_length);
-#endif
+            DEBUG("client->body_length %d", client->body_length);
             client->body = new_buffer(client->body_length, 0);
             client->body_type = BODY_TYPE_BUFFER;
-#ifdef DEBUG
-            printf("BODY_TYPE_BUFFER \n");
-#endif
+            DEBUG("BODY_TYPE_BUFFER");
         }
     }
     write_body(client, buf, len);
@@ -493,21 +479,21 @@ body_cb (http_parser *p, const char *buf, size_t len, char partial)
 }
 
 int
-headers_complete_cb (http_parser *p)
+headers_complete_cb(http_parser *p)
 {
-    register PyObject *obj, *key;
+    PyObject *obj, *key;
     client_t *client = get_client(p);
     request *req = client->req;
-    register PyObject *env = client->environ;
-    register uint32_t i = 0; 
-    register header *h;
+    PyObject *env = client->environ;
+    uint32_t i = 0;
+    header *h;
 
     if(max_content_length < p->content_length){
 
         client->bad_request_code = 413;
         return -1;
     }
-    
+
 
     if(p->http_major == 1 && p->http_minor == 1){
         obj = server_protocol_val11;
@@ -515,7 +501,7 @@ headers_complete_cb (http_parser *p)
         obj = server_protocol_val10;
     }
     PyDict_SetItem(env, server_protocol_key, obj);
-    
+
     if(req->path){
         obj = getPyStringAndDecode(req->path);
         PyDict_SetItem(env, path_info_key, obj);
@@ -560,7 +546,7 @@ headers_complete_cb (http_parser *p)
             req->headers[i] = NULL;
         }
     }
-     
+
     switch(p->method){
         case HTTP_DELETE:
             obj = http_method_delete;
@@ -623,37 +609,33 @@ headers_complete_cb (http_parser *p)
             obj = http_method_get;
             break;
     }
-    
+
     PyDict_SetItem(env, request_method_key, obj);
 
     //free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
-    
+
     //keep client data
     obj = ClientObject_New(client);
     PyDict_SetItem(env, client_key, obj);
     Py_DECREF(obj);
 
-#ifdef DEBUG
-    printf("headers_complete_cb \n");
-#endif
+    DEBUG("headers_complete_cb");
     return 0;
 }
 
 int
-message_complete_cb (http_parser *p)
+message_complete_cb(http_parser *p)
 {
-#ifdef DEBUG
-    printf("message_complete_cb \n");
-#endif
+    DEBUG("message_complete_cb");
     client_t *client = get_client(p);
     client->complete = 1;
-    
+
     request *req = client->request_queue->tail;
     req->body = client->body;
     req->body_type = client->body_type;
-    
+
     return 0;
 }
 
@@ -673,7 +655,7 @@ static http_parser_settings settings =
 
 static PyMethodDef method = {"file_wrapper", (PyCFunction)file_wrapper, METH_VARARGS, 0};
 
-inline int
+int
 init_parser(client_t *cli, const char *name, const short port)
 {
 
@@ -685,7 +667,7 @@ init_parser(client_t *cli, const char *name, const short port)
     return 0;
 }
 
-inline size_t
+size_t
 execute_parse(client_t *cli, const char *data, size_t len)
 {
     size_t ret = http_parser_execute(cli->http, &settings, data, len);
@@ -696,27 +678,27 @@ execute_parse(client_t *cli, const char *data, size_t len)
 }
 
 
-inline int
+int
 parser_finish(client_t *cli)
 {
     return cli->complete;
 }
 
-inline void
+void
 setup_static_env(char *name, int port)
 {
 
     empty_string = PyString_FromString("");
-    
+
     version_val = Py_BuildValue("(ii)", 1, 0);
     version_key = PyString_FromString("wsgi.version");
-    
+
     scheme_val = PyString_FromString("http");
     scheme_key = PyString_FromString("wsgi.url_scheme");
 
     errors_val = PySys_GetObject("stderr");
     errors_key = PyString_FromString("wsgi.errors");
-    
+
     multithread_val = PyBool_FromLong(0);
     multithread_key = PyString_FromString("wsgi.multithread");
 
@@ -725,21 +707,21 @@ setup_static_env(char *name, int port)
 
     run_once_val = PyBool_FromLong(0);
     run_once_key = PyString_FromString("wsgi.run_once");
-    
+
     file_wrapper_val = PyCFunction_New(&method, NULL);
     file_wrapper_key = PyString_FromString("wsgi.file_wrapper");
 
     script_key = PyString_FromString("SCRIPT_NAME");
-    
+
     server_name_val = PyString_FromString(name);
     server_name_key = PyString_FromString("SERVER_NAME");
-    
+
     server_port_val = PyString_FromFormat("%d", port);
     server_port_key = PyString_FromString("SERVER_PORT");
 
     remote_addr_key = PyString_FromString("REMOTE_ADDR");
     remote_port_key = PyString_FromString("REMOTE_PORT");
-    
+
     server_protocol_key = PyString_FromString("SERVER_PROTOCOL");
     path_info_key = PyString_FromString("PATH_INFO");
     request_uri_key = PyString_FromString("REQUEST_URI");
@@ -747,7 +729,7 @@ setup_static_env(char *name, int port)
     fragment_key = PyString_FromString("HTTP_FRAGMENT");
     request_method_key = PyString_FromString("REQUEST_METHOD");
     client_key = PyString_FromString("meinheld.client");
-    
+
     server_protocol_val10 = PyString_FromString("HTTP/1.0");
     server_protocol_val11 = PyString_FromString("HTTP/1.1");
 
@@ -770,11 +752,11 @@ setup_static_env(char *name, int port)
     http_method_mkactivity = PyString_FromStringAndSize("MKACTIVITY", 10);
     http_method_checkout = PyString_FromStringAndSize("CHECKOUT", 8);
     http_method_merge = PyString_FromStringAndSize("MERGE", 5);
-    
+
     //PycString_IMPORT;
 }
 
-inline void
+void
 clear_static_env(void)
 {
     Py_DECREF(empty_string);
@@ -793,7 +775,7 @@ clear_static_env(void)
     Py_DECREF(run_once_val);
     Py_DECREF(file_wrapper_key);
     Py_DECREF(file_wrapper_val);
-                 
+
     Py_DECREF(script_key);
     Py_DECREF(server_name_key);
     Py_DECREF(server_name_val);

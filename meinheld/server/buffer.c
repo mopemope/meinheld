@@ -7,7 +7,7 @@
 static buffer *buffer_free_list[MAXFREELIST];
 static int numfree = 0;
 
-inline void
+void
 buffer_list_fill(void)
 {
     buffer *buf;
@@ -17,7 +17,7 @@ buffer_list_fill(void)
 	}
 }
 
-inline void
+void
 buffer_list_clear(void)
 {
 	buffer *op;
@@ -28,39 +28,33 @@ buffer_list_clear(void)
 	}
 }
 
-static inline buffer*
+static buffer*
 alloc_buffer(void)
 {
     buffer *buf;
 	if (numfree) {
 		buf = buffer_free_list[--numfree];
-#ifdef DEBUG
-        printf("use pooled buf %p\n", buf);
-#endif
+        DEBUG("use pooled buf %p", buf);
     }else{
         buf = (buffer *)PyMem_Malloc(sizeof(buffer));
-#ifdef DEBUG
-        printf("alloc buf %p\n", buf);
-#endif
+        DEBUG("alloc buf %p", buf);
     }
     memset(buf, 0, sizeof(buffer));
     return buf;
 }
 
-static inline void
+static void
 dealloc_buffer(buffer *buf)
 {
 	if (numfree < MAXFREELIST){
-#ifdef DEBUG
-        printf("back to buffer pool %p\n", buf);
-#endif
+        DEBUG("back to buffer pool %p", buf);
 		buffer_free_list[numfree++] = buf;
     }else{
 	    PyMem_Free(buf);
     }
 }
 
-static inline int
+static int
 hex2int(int i)
 {
     i = toupper(i);
@@ -71,7 +65,7 @@ hex2int(int i)
     return i;
 }
 
-static inline int
+static int
 urldecode(char *buf, int len)
 {
     int c, c1;
@@ -93,11 +87,11 @@ urldecode(char *buf, int len)
     return t - s0;
 }
 
-inline buffer *
+buffer *
 new_buffer(size_t buf_size, size_t limit)
 {
     buffer *buf;
-    
+
     //buf = PyMem_Malloc(sizeof(buffer));
     //memset(buf, 0, sizeof(buffer));
     buf = alloc_buffer();
@@ -113,14 +107,14 @@ new_buffer(size_t buf_size, size_t limit)
     return buf;
 }
 
-inline buffer_result
+buffer_result
 write2buf(buffer *buf, const char *c, size_t  l) {
     size_t newl;
     char *newbuf;
     buffer_result ret = WRITE_OK;
     newl = buf->len + l;
-    
-    
+
+
     if (newl >= buf->buf_size) {
         buf->buf_size *= 2;
         if(buf->buf_size <= newl) {
@@ -148,7 +142,7 @@ write2buf(buffer *buf, const char *c, size_t  l) {
     return ret;
 }
 
-inline void
+void
 free_buffer(buffer *buf)
 {
     PyMem_Free(buf->buf);
@@ -156,7 +150,7 @@ free_buffer(buffer *buf)
     dealloc_buffer(buf);
 }
 
-inline PyObject *
+PyObject *
 getPyString(buffer *buf)
 {
     PyObject *o;
@@ -165,7 +159,7 @@ getPyString(buffer *buf)
     return o;
 }
 
-inline PyObject *
+PyObject *
 getPyStringAndDecode(buffer *buf)
 {
     PyObject *o;
@@ -176,7 +170,7 @@ getPyStringAndDecode(buffer *buf)
 }
 
 
-inline char *
+char *
 getString(buffer *buf)
 {
     buf->buf[buf->len] = '\0';

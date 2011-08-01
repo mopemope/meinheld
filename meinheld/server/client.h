@@ -1,8 +1,8 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include "server.h"
-#include "greenlet.h"
+#include "meinheld.h"
+#include "request.h"
 
 typedef struct _client {
     int fd;
@@ -13,21 +13,21 @@ typedef struct _client {
     request *req;
     request_queue *request_queue;
     int body_length;
-    int body_readed;
+    uint8_t body_readed;
     void *body;
     int bad_request_code;
-    request_body_type body_type;    
+    request_body_type body_type;
     char upgrade;               // new protocol
     uint8_t complete;
 
     http_parser *http;          // http req parser
     PyObject *environ;          // wsgi environ
     int status_code;            // response status code
-    
+
     PyObject *http_status;      // response status line(PyString)
     PyObject *headers;          // http response headers
     uint8_t header_done;            // header write status
-    PyObject *response;         // wsgi response object 
+    PyObject *response;         // wsgi response object
     PyObject *response_iter;    // wsgi response object (iter)
     uint8_t chunked_response;     // use Transfer-Encoding: chunked
     uint8_t content_length_set;     // content_length_set flag
@@ -50,20 +50,15 @@ typedef struct {
 
 extern PyTypeObject ClientObjectType;
 
-inline PyObject* 
-ClientObject_New(client_t* client);
+PyObject* ClientObject_New(client_t* client);
 
-inline void 
-setup_client(void);
+void setup_client(void);
 
-inline int 
-CheckClientObject(PyObject *obj);
+int CheckClientObject(PyObject *obj);
 
-inline void
-ClientObject_list_fill(void);
+void ClientObject_list_fill(void);
 
-inline void
-ClientObject_list_clear(void);
+void ClientObject_list_clear(void);
 
 
 #endif

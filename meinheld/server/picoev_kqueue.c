@@ -34,6 +34,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "picoev.h"
+#include "meinheld.h"
 
 #define EV_QUEUE_SZ 128
 

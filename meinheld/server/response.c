@@ -21,7 +21,7 @@
 
 ResponseObject *start_response = NULL;
 
-static inline int 
+static int
 blocking_write(client_t *client, char *data, size_t len)
 {
     size_t r = 0, send_len = len;
@@ -43,14 +43,12 @@ blocking_write(client_t *client, char *data, size_t len)
                 }else{
                     // fatal error
                     //close
-        
                     if(errno == EPIPE){
                         // Connection reset by peer 
                         client->keep_alive = 0;
                         client->status_code = 500;
                         client->header_done = 1;
                         client->response_closed = 1;
-                        
                     }else{
                         PyErr_SetFromErrno(PyExc_IOError);
                         write_error_log(__FILE__, __LINE__);
@@ -81,9 +79,7 @@ send_error_page(client_t *client)
     int r = status < 0 ? status * -1:status;
     client->status_code = r;
 
-#ifdef DEBUG
-    printf("send_error_page status_code %d client %p \n", status, client);
-#endif
+    DEBUG("send_error_page status_code %d client %p", status, client);
 
     switch(r){
         case 400:
@@ -116,20 +112,20 @@ send_error_page(client_t *client)
 
 
 
-static inline write_bucket *
+static write_bucket *
 new_write_bucket(int fd, int cnt){
 
     write_bucket *bucket;
     bucket = PyMem_Malloc(sizeof(write_bucket));
     memset(bucket, 0, sizeof(write_bucket));
-    
+
     bucket->fd = fd;
     bucket->iov = (iovec_t *)PyMem_Malloc(sizeof(iovec_t) * cnt);
     bucket->iov_size = cnt;
     return bucket;
 }
 
-static inline void
+static void
 free_write_bucket(write_bucket *bucket)
 {
     PyMem_Free(bucket->iov);
@@ -137,7 +133,7 @@ free_write_bucket(write_bucket *bucket)
 }
 
 
-static inline void
+static void
 set2bucket(write_bucket *bucket, char *buf, size_t len)
 {
     bucket->iov[bucket->iov_cnt].iov_base = buf;
@@ -147,7 +143,7 @@ set2bucket(write_bucket *bucket, char *buf, size_t len)
     bucket->total_size += len;
 }
 
-static inline void
+static void
 set_chunked_data(write_bucket *bucket, char *lendata, size_t lenlen, char *data, size_t datalen)
 {
     set2bucket(bucket, lendata, lenlen);
@@ -156,7 +152,7 @@ set_chunked_data(write_bucket *bucket, char *lendata, size_t lenlen, char *data,
     set2bucket(bucket, CRLF, 2);
 }
 
-static inline void
+static void
 set_last_chunked_data(write_bucket *bucket)
 {
     set2bucket(bucket, "0", 1);
@@ -165,7 +161,7 @@ set_last_chunked_data(write_bucket *bucket)
 }
 
 
-static inline void
+static void
 add_header(write_bucket *bucket, char *key, size_t keylen, char *val, size_t vallen)
 {
     set2bucket(bucket, key, keylen);
@@ -175,23 +171,23 @@ add_header(write_bucket *bucket, char *key, size_t keylen, char *val, size_t val
 }
 
 
-static inline int 
+static int
 writev_bucket(write_bucket *data)
 {
     size_t w;
-    register int i = 0;
+    int i = 0;
     Py_BEGIN_ALLOW_THREADS
     w = writev(data->fd, data->iov, data->iov_cnt);
     Py_END_ALLOW_THREADS
     if(w == -1){
         //error
-        if (errno == EAGAIN || errno == EWOULDBLOCK) { 
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
             // try again later
             return 0;
         }else{
             //ERROR
             PyErr_SetFromErrno(PyExc_IOError);
-            write_error_log(__FILE__, __LINE__); 
+            write_error_log(__FILE__, __LINE__);
             return -1;
         }
     }if(w == 0){
@@ -211,9 +207,7 @@ writev_bucket(write_bucket *data)
                 }
             }
             data->total = data->total -w;
-#ifdef DEBUG
-            printf("writev_bucket write %d progeress %d/%d \n", w, data->total, data->total_size);
-#endif
+            DEBUG("writev_bucket write %ld progeress %d/%d", w, data->total, data->total_size);
             //resume
             // again later
             return writev_bucket(data);
@@ -224,7 +218,7 @@ writev_bucket(write_bucket *data)
     return 1;
 }
 
-static inline int 
+static int
 get_len(PyObject *v)
 {
 	Py_ssize_t res;
@@ -236,7 +230,7 @@ get_len(PyObject *v)
 	return (int)res;
 }
 
-static inline void
+static void
 set_content_length(client_t *client, write_bucket *bucket, char *data, size_t datalen )
 {
     PyObject *header, *length;
@@ -246,9 +240,7 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
     if(client->headers && !client->content_length_set){
         if (get_len(client->response) == 1) {
             client->content_length_set = 1;
-#ifdef DEBUG
-            printf("set content_length %d \n", datalen);
-#endif
+            DEBUG("set content_length %ld", datalen);
             length = PyString_FromFormat("%zu", datalen);
 
             header = Py_BuildValue("(sO)", "Content-Length", length);
@@ -262,16 +254,16 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
     }
 }
 
-static inline int
+static int
 write_headers(client_t *client, char *data, size_t datalen)
 {
     if(client->header_done){
         return 1;
     }
     write_bucket *bucket; 
-    register uint32_t i = 0, hlen = 0;
-    register PyObject *headers = NULL;
-    register PyObject *object = NULL;
+    uint32_t i = 0, hlen = 0;
+    PyObject *headers = NULL;
+    PyObject *object = NULL;
     char *name = NULL;
     Py_ssize_t namelen;
     char *value = NULL;
@@ -377,10 +369,9 @@ write_headers(client_t *client, char *data, size_t datalen)
             }
             add_header(bucket, name, namelen, value, valuelen);
         }
-        
+
     }
-    //header done 
-    
+    //header done
     // check content_length_set
     if(data && !client->content_length_set && client->http->http_minor == 1){
         //Transfer-Encoding chunked
@@ -396,16 +387,14 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
 
     set2bucket(bucket, CRLF, 2);
-    
+
     if(data){
         if(client->chunked_response){
             char lendata[32];
             int i = 0;
             i = snprintf(lendata, 32, "%zx", datalen);
-#ifdef DEBUG
-            printf("Transfer-Encoding chunk_size %s \n", lendata);
-#endif
-            set_chunked_data(bucket, lendata, i, data, datalen);  
+            DEBUG("Transfer-Encoding chunk_size %s", lendata);
+            set_chunked_data(bucket, lendata, i, data, datalen);
         }else{
             set2bucket(bucket, data, datalen);
         }
@@ -423,7 +412,7 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
     return ret;
 error:
-    if (PyErr_Occurred()){ 
+    if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
     }
     if(bucket){
@@ -433,7 +422,7 @@ error:
     return -1;
 }
 
-static inline int
+static int
 write_sendfile(int out_fd, int in_fd, int offset, size_t count)
 {
     int size = (int)count;
@@ -442,12 +431,10 @@ write_sendfile(int out_fd, int in_fd, int offset, size_t count)
     /*
     if (size == 0) {
         struct stat info;
-#ifdef DEBUG
-        printf("call fstat \n");
-#endif
+        DEBUG("call fstat");
         if (fstat(in_fd, &info) == -1){
             PyErr_SetFromErrno(PyExc_IOError);
-            write_error_log(__FILE__, __LINE__); 
+            write_error_log(__FILE__, __LINE__);
             return -1;
         }
 
@@ -486,7 +473,7 @@ write_sendfile(int out_fd, int in_fd, int offset, size_t count)
 #endif
 }
 
-inline void 
+void 
 close_response(client_t *client)
 {
     if(!client->response_closed){ 
@@ -516,8 +503,8 @@ close_response(client_t *client)
 }
 
 
-static inline int
-processs_sendfile(register client_t *client)
+static int
+processs_sendfile(client_t *client)
 {
     PyObject *filelike = NULL;
     FileWrapperObject *filewrap = NULL;
@@ -534,18 +521,14 @@ processs_sendfile(register client_t *client)
 
     while(client->content_length > client->write_bytes){
         ret = write_sendfile(client->fd, in_fd, client->write_bytes, client->content_length);
-#ifdef DEBUG
-        printf("processs_sendfile send %d \n", ret);
-#endif
+        DEBUG("processs_sendfile send %d", ret);
         switch (ret) {
             case 0: 
                 break;
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
-                    //next 
-#ifdef DEBUG
-                    printf("processs_sendfile EAGAIN %d \n", ret);
-#endif
+                    //next
+                    DEBUG("processs_sendfile EAGAIN %d", ret);
                     return 0;
                 } else { /* fatal error */
                     client->keep_alive = 0;
@@ -556,7 +539,7 @@ processs_sendfile(register client_t *client)
                 }
             default:
                 client->write_bytes += ret;
-                
+
         }
     }
     close_response(client);
@@ -564,14 +547,14 @@ processs_sendfile(register client_t *client)
     return 1;
 }
 
-static inline int
-processs_write(register client_t *client)
+static int
+processs_write(client_t *client)
 {
-    register PyObject *iterator = NULL;
-    register PyObject *item;
+    PyObject *iterator = NULL;
+    PyObject *item;
     char *buf;
     Py_ssize_t buflen;
-    register write_bucket *bucket;
+    write_bucket *bucket;
     int ret;
 
     iterator = client->response_iter;
@@ -582,14 +565,12 @@ processs_write(register client_t *client)
                 //write
                 if(client->chunked_response){
                     bucket = new_write_bucket(client->fd, 4);
-                    
+
                     char lendata[32];
                     int i = 0;
                     i = snprintf(lendata, 32, "%zx", buflen);
-#ifdef DEBUG
-                    printf("Transfer-Encoding chunk_size %s \n", lendata);
-#endif
-                    set_chunked_data(bucket, lendata, i, buf, buflen);  
+                    DEBUG("Transfer-Encoding chunk_size %s", lendata);
+                    set_chunked_data(bucket, lendata, i, buf, buflen);
                 }else{
                     bucket = new_write_bucket(client->fd, 1);
                     set2bucket(bucket, buf, buflen);
@@ -612,10 +593,10 @@ processs_write(register client_t *client)
                         break;
                     }
                 }
-            }else{ 
+            }else{
                 PyErr_SetString(PyExc_TypeError, "response item must be a string");
                 Py_DECREF(item);
-                if (PyErr_Occurred()){ 
+                if (PyErr_Occurred()){
                     write_error_log(__FILE__, __LINE__);
                     return -1;
                 }
@@ -635,16 +616,16 @@ processs_write(register client_t *client)
 }
 
 
-inline int 
+int
 process_body(client_t *client)
 {
     int ret;
     write_bucket *bucket;
     if(client->bucket){
         bucket = (write_bucket *)client->bucket;
-        //retry send 
+        //retry send
         ret = writev_bucket(bucket);
-    
+
         if(ret != 0){
             client->write_bytes += bucket->total_size;
             //free
@@ -665,7 +646,7 @@ process_body(client_t *client)
     return ret;
 }
 
-static inline int
+static int
 start_response_file(client_t *client)
 {
     PyObject *filelike;
@@ -679,9 +660,7 @@ start_response_file(client_t *client)
     in_fd = PyObject_AsFileDescriptor(filelike);
     if (in_fd == -1) {
         PyErr_Clear();
-#ifdef DEBUG
-        printf("can't get fd \n");
-#endif
+        DEBUG("can't get fd");
         return -1;
     }
     ret = write_headers(client, NULL, 0);
@@ -700,16 +679,16 @@ start_response_file(client_t *client)
 
 }
 
-static inline int
+static int
 start_response_write(client_t *client)
 {
     PyObject *iterator;
     PyObject *item;
     char *buf;
     Py_ssize_t buflen;
-    
+
     iterator = PyObject_GetIter(client->response);
-    if (PyErr_Occurred()){ 
+    if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
         return -1;
     }
@@ -722,29 +701,27 @@ start_response_write(client_t *client)
         buf = PyString_AS_STRING(item);
         buflen = PyString_GET_SIZE(item);
 
-#ifdef DEBUG
-        printf("start_response_write status_code %d buflen %d \n", client->status_code, buflen);
-#endif
+        DEBUG("start_response_write status_code %d buflen %ld", client->status_code, buflen);
         Py_DECREF(item);
         return write_headers(client, buf, buflen);
     }else{
-        if (item == NULL && !PyErr_Occurred()){ 
-            //Stap Iteration
+        if (item == NULL && !PyErr_Occurred()){
+            //Stop Iteration
             return write_headers(client, NULL, 0);
         }else{
             PyErr_SetString(PyExc_TypeError, "response item must be a string");
             Py_XDECREF(item);
-            if (PyErr_Occurred()){ 
+            if (PyErr_Occurred()){
                 write_error_log(__FILE__, __LINE__);
                 return -1;
             }
         }
-        
+
     }
     return -1;
 }
 
-inline int
+int
 response_start(client_t *client)
 {
     int ret ;
@@ -753,41 +730,37 @@ response_start(client_t *client)
     }
     enable_cork(client);
     if (CheckFileWrapper(client->response)) {
-#ifdef DEBUG
-        printf("use sendfile \n");
-#endif 
+        DEBUG("use sendfile");
         ret = start_response_file(client);
         if(ret > 0){
-            // sended header 
+            // sended header
             ret = processs_sendfile(client);
         }
     }else{
         ret = start_response_write(client);
-#ifdef DEBUG
-        printf("start_response_write status_code %d ret = %d \n", client->status_code, ret);
-#endif 
+        DEBUG("start_response_write status_code %d ret = %d", client->status_code, ret);
         if(ret > 0){
-            // sended header 
+            // sended heade 
             ret = processs_write(client);
         }
     }
     return ret;
 }
 
-inline void
+void
 setup_start_response(void)
 {
     start_response = PyObject_NEW(ResponseObject, &ResponseObjectType);
 }
 
-inline void
+void
 clear_start_response(void)
 {
     Py_DECREF(start_response);
 }
 
 
-inline PyObject *  
+PyObject*
 create_start_response(client_t *cli)
 {
     start_response->cli = cli;
@@ -805,16 +778,15 @@ ResponseObject_dealloc(ResponseObject* self)
 static PyObject *
 ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 {
-    
     PyObject *status = NULL, *headers = NULL, *exc_info = NULL ;
     char *status_line = NULL;
     char *status_code = NULL;
 
     ResponseObject *self = NULL;
     self = (ResponseObject *)obj;
-    
-    if (!PyArg_ParseTuple(args, "SO|O:start_response", &status, &headers, &exc_info))
-        return NULL; 
+    if (!PyArg_ParseTuple(args, "SO|O:start_response", &status, &headers, &exc_info)){
+        return NULL;
+    }
 
     if (!PyString_Check(status)) {
         PyErr_Format(PyExc_TypeError, "expected byte string object for "
@@ -845,7 +817,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         PyErr_Restore(type, value, traceback);
         return NULL;
     }
-    
+
     char buf[PyString_GET_SIZE(status)];
     status_line = buf;
     strcpy(status_line, PyString_AS_STRING(status));
@@ -875,7 +847,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     Py_XDECREF(self->cli->headers);
     self->cli->headers = headers;
     Py_INCREF(self->cli->headers);
-    
+
     Py_XDECREF(self->cli->http_status);
 
     if(self->cli->http->http_minor == 1){
@@ -892,15 +864,16 @@ FileWrapperObject_new(PyObject *self, PyObject *filelike, size_t blksize)
 {
     FileWrapperObject *f;
     f = PyObject_NEW(FileWrapperObject, &FileWrapperType);
-    if(f == NULL)
+    if(f == NULL){
         return NULL;
+    }
 
     f->filelike = filelike;
     Py_INCREF(f->filelike);
     return (PyObject *)f;
 }
 
-static PyObject * 
+static PyObject *
 FileWrapperObject_iter(PyObject *o)
 {
     FileWrapperObject *self = (FileWrapperObject *)o;
@@ -909,10 +882,7 @@ FileWrapperObject_iter(PyObject *o)
         PyErr_SetString(PyExc_TypeError, "file-like object must be a iterable object");
         return NULL;
     }
-
-#ifdef DEBUG
-    printf("use FileWrapperObject_iter \n");
-#endif 
+    DEBUG("use FileWrapperObject_iter");
     return (PyObject *)iterator;
 }
 
@@ -942,7 +912,7 @@ FileWrapperObject_close(FileWrapperObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-inline PyObject *
+PyObject *
 file_wrapper(PyObject *self, PyObject *args)
 {
     PyObject *filelike = NULL;
@@ -955,7 +925,7 @@ file_wrapper(PyObject *self, PyObject *args)
     return FileWrapperObject_new(self, filelike, blksize);
 }
 
-inline int 
+int 
 CheckFileWrapper(PyObject *obj)
 {
     FileWrapperObject *f;

@@ -1,7 +1,7 @@
 #ifndef STRINGIO_H
 #define STRINGIO_H
 
-#include <Python.h>
+#include "meinheld.h"
 #include "buffer.h"
 
 typedef struct {
@@ -12,13 +12,10 @@ typedef struct {
 
 extern PyTypeObject StringIOObjectType;
 
-inline void
-StringIOObject_list_fill(void);
+void StringIOObject_list_fill(void);
 
-inline void
-StringIOObject_list_clear(void);
+void StringIOObject_list_clear(void);
 
-inline PyObject* 
-StringIOObject_New(buffer *buffer);
+PyObject* StringIOObject_New(buffer *buffer);
 
 #endif

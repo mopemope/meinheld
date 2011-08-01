@@ -1,16 +1,12 @@
 #ifndef RESPONSE_H
 #define RESPONSE_H
 
-#include <Python.h>
-#include <sys/uio.h>
-#include <inttypes.h>
+#include "meinheld.h"
 
-#include "server.h"
 #include "client.h"
 #include "time_cache.h"
 
 typedef struct iovec iovec_t;
-
 
 typedef struct {
     int fd;
@@ -36,35 +32,25 @@ typedef struct {
 
 extern PyTypeObject ResponseObjectType;
 extern PyTypeObject FileWrapperType;
-
 extern ResponseObject *start_response;
 
-inline PyObject * 
-create_start_response(client_t *cli);
+PyObject* create_start_response(client_t *cli);
 
-inline PyObject * 
-file_wrapper(PyObject *self, PyObject *args);
+PyObject* file_wrapper(PyObject *self, PyObject *args);
 
-inline int 
-CheckFileWrapper(PyObject *obj);
+int CheckFileWrapper(PyObject *obj);
 
-inline int
-response_start(client_t *client);
+int response_start(client_t *client);
 
-inline int 
-process_body(client_t *client);
+int process_body(client_t *client);
 
-inline void 
-close_response(client_t *client);
+void close_response(client_t *client);
 
-inline void
-setup_start_response(void);
+void setup_start_response(void);
 
-inline void
-clear_start_response(void);
+void clear_start_response(void);
 
-inline void
-send_error_page(client_t *client);
+void send_error_page(client_t *client);
 
 
 #endif

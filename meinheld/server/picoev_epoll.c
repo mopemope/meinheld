@@ -32,6 +32,7 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include "picoev.h"
+#include "meinheld.h"
 
 #ifndef PICOEV_EPOLL_DEFER_DELETES
 # define PICOEV_EPOLL_DEFER_DELETES 1
@@ -148,16 +149,13 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
   if (nevents == -1) {
     return -1;
   }
-  for (i = 0; i < nevents; ++i) {
+  for (i = 0; likely(i < nevents); ++i) {
     struct epoll_event* event = loop->events + i;
     picoev_fd* target = picoev.fds + event->data.fd;
-    if (loop->loop.loop_id == target->loop_id
-	&& (target->events & PICOEV_READWRITE) != 0) {
-      int revents = ((event->events & EPOLLIN) != 0 ? PICOEV_READ : 0)
-	| ((event->events & EPOLLOUT) != 0 ? PICOEV_WRITE : 0);
-      if (revents != 0) {
-	(*target->callback)(&loop->loop, event->data.fd, revents,
-			    target->cb_arg);
+    if (loop->loop.loop_id == target->loop_id && likely((target->events & PICOEV_READWRITE) != 0)) {
+      int revents = ((event->events & EPOLLIN) != 0 ? PICOEV_READ : 0) | ((event->events & EPOLLOUT) != 0 ? PICOEV_WRITE : 0);
+      if (likely(revents != 0)) {
+        (*target->callback)(&loop->loop, event->data.fd, revents, target->cb_arg);
       }
     } else {
 #if PICOEV_EPOLL_DEFER_DELETES

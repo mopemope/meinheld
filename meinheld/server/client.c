@@ -1,12 +1,11 @@
 #include "client.h"
-#include "greenlet.h"
 
 #define CLIENT_MAXFREELIST 1024
 
 static ClientObject *client_free_list[CLIENT_MAXFREELIST];
 static int client_numfree = 0;
 
-inline void
+void
 ClientObject_list_fill(void)
 {
     ClientObject *client;
@@ -16,7 +15,7 @@ ClientObject_list_fill(void)
 	}
 }
 
-inline void
+void
 ClientObject_list_clear(void)
 {
 	ClientObject *op;
@@ -27,40 +26,34 @@ ClientObject_list_clear(void)
 	}
 }
 
-static inline ClientObject*
+static ClientObject*
 alloc_ClientObject(void)
 {
     ClientObject *client;
 	if (client_numfree) {
 		client = client_free_list[--client_numfree];
 		_Py_NewReference((PyObject *)client);
-#ifdef DEBUG
-        printf("use pooled ClientObject %p\n", client);
-#endif
+        DEBUG("use pooled ClientObject %p", client);
     }else{
         client = PyObject_NEW(ClientObject, &ClientObjectType);
-#ifdef DEBUG
-        printf("alloc ClientObject %p\n", client);
-#endif
+        DEBUG("alloc ClientObject %p", client);
     }
     return client;
 }
 
-static inline void
+static  void
 dealloc_ClientObject(ClientObject *client)
 {
     Py_CLEAR(client->greenlet);
 	if (client_numfree < CLIENT_MAXFREELIST){
-#ifdef DEBUG
-        printf("back to ClientObject pool %p\n", client);
-#endif
+        DEBUG("back to ClientObject pool %p", client);
 		client_free_list[client_numfree++] = client;
     }else{
 	    PyObject_DEL(client);
     }
 }
 
-inline int 
+int
 CheckClientObject(PyObject *obj)
 {
     if (obj->ob_type != &ClientObjectType){
@@ -69,7 +62,7 @@ CheckClientObject(PyObject *obj)
     return 1;
 }
 
-inline PyObject* 
+ PyObject* 
 ClientObject_New(client_t* client)
 {
     ClientObject *o = alloc_ClientObject();
@@ -83,42 +76,26 @@ ClientObject_New(client_t* client)
     o->greenlet = NULL;
     o->args = NULL;
     o->kwargs = NULL;
-    o->suspended = 0;    
-    o->resumed = 0;    
+    o->suspended = 0;
+    o->resumed = 0;
 
-#ifdef DEBUG
-    if(o->client){
-        printf("ClientObject_New pyclient:%p client:%p fd:%d \n", o, o->client, o->client->fd);
-    }else{
-        printf("ClientObject_New pyclient:%p client is null \n", o);
-    }
-#endif
-    
+    DEBUG("ClientObject_New pyclient:%p client:%p fd:%d", o, o->client, o->client->fd);
     return (PyObject *)o;
 }
 
-static inline void
+static  void
 ClientObject_dealloc(ClientObject* self)
 {
 
-#ifdef DEBUG
-    if(self->client){
-        printf("ClientObject_dealloc pyclient:%p client:%p fd:%d \n", self, self->client, self->client->fd);
-    }else{
-        printf("ClientObject_dealloc pyclient:%p client is null \n", self);
-    }
-#endif
+    DEBUG("ClientObject_dealloc pyclient:%p client:%p fd:%d", self, self->client, self->client->fd);
     //self->client = NULL;
-#ifdef DEBUG
-    printf("XDECREF greenlet:%p \n", self->greenlet);
-#endif
-    
+    DEBUG("XDECREF greenlet:%p", self->greenlet);
     dealloc_ClientObject(self);
     //Py_XDECREF(self->greenlet);
     //PyObject_DEL(self);
 }
 
-static inline PyObject *
+static  PyObject *
 ClientObject_set_greenlet(ClientObject *self, PyObject *args)
 {
     PyObject *temp;
@@ -130,7 +107,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
         PyErr_SetString(PyExc_TypeError, "must be greenlet object");
         return NULL;
     }
-    
+
     if(self->greenlet){
         // not set
         Py_RETURN_NONE;
@@ -142,7 +119,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static inline PyObject *
+static  PyObject *
 ClientObject_get_greenlet(ClientObject *self, PyObject *args)
 {
     if(self->greenlet){
@@ -151,13 +128,13 @@ ClientObject_get_greenlet(ClientObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static inline PyObject *
+static  PyObject *
 ClientObject_get_fd(ClientObject *self, PyObject *args)
 {
     return Py_BuildValue("i", self->client->fd);
 }
 
-static inline PyObject *
+static  PyObject *
 ClientObject_set_closed(ClientObject *self, PyObject *args)
 {
     int closed;
@@ -227,8 +204,9 @@ PyTypeObject ClientObjectType = {
     0,                           /* tp_new */
 };
 
-inline void 
+void
 setup_client(void)
 {
     PyGreenlet_Import();
 }
+

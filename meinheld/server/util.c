@@ -1,7 +1,7 @@
 #include "util.h"
 
 
-inline void 
+void
 setup_listen_sock(int fd)
 {
     int on = 1, r;
@@ -18,7 +18,7 @@ setup_listen_sock(int fd)
     assert(r == 0);
 }
 
-inline void 
+void
 set_so_keepalive(int fd, int flag)
 {
     int r;
@@ -27,7 +27,7 @@ set_so_keepalive(int fd, int flag)
 
 }
 
-inline void 
+void
 setup_sock(int fd)
 {
     int on = 1, r;
@@ -50,7 +50,7 @@ setup_sock(int fd)
     assert(r == 0);
 }
 
-inline void 
+void
 enable_cork(client_t *client)
 {
     int on = 1, r;
@@ -65,7 +65,7 @@ enable_cork(client_t *client)
     client->use_cork = 1;
 }
 
-inline void 
+void
 disable_cork(client_t *client)
 {
     if(client->use_cork == 1){

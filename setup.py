@@ -30,10 +30,9 @@ else:
 
 library_dirs=['/usr/local/lib']
 include_dirs=[]
-define_macros=[]
 
 setup(name='meinheld',
-    version="0.4.13",
+    version="0.5dev",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
@@ -59,11 +58,10 @@ setup(name='meinheld',
                 'meinheld/server/buffer.c', 'meinheld/server/request.c',
                 'meinheld/server/client.c', 'meinheld/server/util.c',
                 'meinheld/server/stringio.c'],
-                define_macros=define_macros,
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 #libraries=["profiler"],
-                #extra_compile_args=["-DDEBUG"],
+                define_macros=[ ("DEVELOP",None) ],
             )],
 
     classifiers=[

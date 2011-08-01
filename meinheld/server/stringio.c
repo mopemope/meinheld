@@ -5,7 +5,7 @@
 static StringIOObject *io_free_list[IO_MAXFREELIST];
 static int io_numfree = 0;
 
-inline void
+void
 StringIOObject_list_fill(void)
 {
     StringIOObject *io;
@@ -15,7 +15,7 @@ StringIOObject_list_fill(void)
 	}
 }
 
-inline void
+void
 StringIOObject_list_clear(void)
 {
 	StringIOObject *op;
@@ -26,26 +26,22 @@ StringIOObject_list_clear(void)
 	}
 }
 
-static inline StringIOObject*
+static StringIOObject*
 alloc_StringIOObject(void)
 {
     StringIOObject *io;
 	if (io_numfree) {
 		io = io_free_list[--io_numfree];
 		_Py_NewReference((PyObject *)io);
-#ifdef DEBUG
-        printf("use pooled StringIOObject %p\n", io);
-#endif
+        DEBUG("use pooled StringIOObject %p", io);
     }else{
         io = PyObject_NEW(StringIOObject, &StringIOObjectType);
-#ifdef DEBUG
-        printf("alloc StringIOObject %p\n", io);
-#endif
+        DEBUG("alloc StringIOObject %p", io);
     }
     return io;
 }
 
-static inline void
+static void
 dealloc_StringIOObject(StringIOObject *io)
 {
     if(io->buffer){
@@ -53,16 +49,14 @@ dealloc_StringIOObject(StringIOObject *io)
         io->buffer = NULL;
     }
 	if (io_numfree < IO_MAXFREELIST){
-#ifdef DEBUG
-        printf("back to StringIOObject pool %p\n", io);
-#endif
+        DEBUG("back to StringIOObject pool %p\n", io);
 		io_free_list[io_numfree++] = io;
     }else{
 	    PyObject_DEL(io);
     }
 }
 
-inline int 
+int
 CheckStringIOObject(PyObject *obj)
 {
     if (obj->ob_type != &StringIOObjectType){
@@ -71,7 +65,7 @@ CheckStringIOObject(PyObject *obj)
     return 1;
 }
 
-inline PyObject*
+PyObject*
 StringIOObject_New(buffer *buffer)
 {
     StringIOObject *io;
@@ -81,7 +75,7 @@ StringIOObject_New(buffer *buffer)
     return (PyObject *)io;
 }
 
-inline void
+void
 StringIOObject_dealloc(StringIOObject *self)
 {
     if(self->buffer){
@@ -91,7 +85,7 @@ StringIOObject_dealloc(StringIOObject *self)
     dealloc_StringIOObject(self);
 }
 
-static inline int
+static int
 is_close(StringIOObject *self)
 {
     if(self->buffer == NULL){
@@ -101,13 +95,13 @@ is_close(StringIOObject *self)
     return 0;
 }
 
-static inline PyObject*
+static PyObject*
 StringIOObject_flush(StringIOObject *self, PyObject *args)
 {
     Py_RETURN_NONE;
 }
 
-static inline PyObject* 
+static PyObject*
 StringIOObject_getval(StringIOObject *self, PyObject *args)
 {
     if(self->buffer == NULL){
@@ -119,14 +113,14 @@ StringIOObject_getval(StringIOObject *self, PyObject *args)
     return o;
 }
 
-static inline PyObject* 
+static PyObject*
 StringIOObject_isatty(PyObject *self, PyObject *args)
 {
     Py_INCREF(Py_False);
     return Py_False;
 }
 
-static inline PyObject* 
+static PyObject*
 StringIOObject_read(StringIOObject *self, PyObject *args)
 {
     Py_ssize_t n = -1, l = 0;
@@ -151,14 +145,14 @@ StringIOObject_read(StringIOObject *self, PyObject *args)
     return s;
 }
 
-static inline int
+static int
 inner_readline(StringIOObject *self, char **output) {
     char *start, *end;
     Py_ssize_t l = 0;
-    
+
     start = self->buffer->buf + self->pos;
-    end = self->buffer->buf + self->buffer->len; 
-    
+    end = self->buffer->buf + self->buffer->len;
+
     while(start < end){
         if(*start == '\n'){
             break;
@@ -177,7 +171,7 @@ inner_readline(StringIOObject *self, char **output) {
     return (int)l;
 }
 
-static inline PyObject* 
+static PyObject* 
 StringIOObject_readline(StringIOObject *self, PyObject *args)
 {
     int len, size = -1, delta;
@@ -204,7 +198,7 @@ StringIOObject_readline(StringIOObject *self, PyObject *args)
     return PyString_FromStringAndSize(output, len);
 }
 
-static inline PyObject* 
+static PyObject* 
 StringIOObject_readlines(StringIOObject *self, PyObject *args)
 {
 	int len;
@@ -250,20 +244,20 @@ StringIOObject_readlines(StringIOObject *self, PyObject *args)
     return NULL;
 }
 
-static inline PyObject* 
+static PyObject* 
 StringIOObject_reset(StringIOObject *self, PyObject *args)
 {
     self->pos = 0;
     Py_RETURN_NONE;
 }
 
-static inline PyObject* 
+static PyObject* 
 StringIOObject_tell(StringIOObject *self, PyObject *args)
 {
     return PyInt_FromSsize_t(self->pos);
 }
 
-static inline PyObject* 
+static PyObject* 
 StringIOObject_truncate(StringIOObject *self, PyObject *args)
 {
     Py_ssize_t pos = -1;
@@ -294,7 +288,7 @@ StringIOObject_truncate(StringIOObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static inline PyObject* 
+static PyObject* 
 StringIOObject_close(StringIOObject *self, PyObject *args)
 {
     free_buffer(self->buffer);
@@ -303,7 +297,7 @@ StringIOObject_close(StringIOObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static inline PyObject* 
+static PyObject* 
 StringIOObject_seek(StringIOObject *self, PyObject *args)
 {
     Py_ssize_t position;
@@ -331,7 +325,7 @@ StringIOObject_seek(StringIOObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static inline PyObject *
+static PyObject *
 StringIOObject_get_closed(StringIOObject *self, void *closure)
 {
 	PyObject *result = Py_False;
@@ -343,7 +337,7 @@ StringIOObject_get_closed(StringIOObject *self, void *closure)
 	return result;
 }
 
-static inline PyObject *
+static PyObject *
 StringIOObject_iternext(StringIOObject *self)
 {
 	PyObject *next;
