@@ -9,12 +9,12 @@ And meinheld is a WSGI compliant web server. (HTTP 1.1 supported)
 
 You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 
-Require
+Requirements
 ---------------------------------
 
 meinheld requires **Python 2.x >= 2.5**. and **greenlet >= 0.3.1**.
 
-meinheld supported Linux, FreeBSD, Mac OS X.
+meinheld supports Linux, FreeBSD, Mac OS X.
 
 Installation
 ---------------------------------
@@ -27,10 +27,10 @@ Install from source::
 
   $ python setup.py install
 
-meinheld support gunicorn .
+meinheld supports gunicorn.
 
 To install gunicorn::
-    
+
   $ easy_install -ZU gunicorn
 
 
@@ -59,14 +59,13 @@ with gunicorn. user worker class "egg:meinheld#gunicorn_worker" or "meinheld.gme
 Continuation
 ---------------------------------
 
-meinheld provide simple continuation API (based on greenlet).
+meinheld provides a simple continuation API (based on greenlet).
 
-to enable continuation, use ContinuationMiddleware. get Continuation from wsgi environ.
+To enable continuations, use ContinuationMiddleware. get Continuation from wsgi environ.
 
-Continuation Object has couple method, suspend and resume.
+Continuation objects have two very interesting methods, `suspend` and `resume`.
 
-
-example ::
+For example::
 
     from meinheld import server
     from meinheld import middleware
@@ -99,9 +98,9 @@ For more info see http://github.com/mopemope/meinheld/tree/master/example/chat/
 Websocket 
 ---------------------------------
 
-meinheld support Websocket. use WebSocketMiddleware. 
+meinheld support Websockets. use WebSocketMiddleware. 
 
-example ::
+For example::
 
     from flask import Flask, render_template, request
     from meinheld import server, middleware
@@ -148,14 +147,14 @@ example ::
 Patching 
 ---------------------------------
 
-meinheld provide monkeypatch utility.
+meinheld provides a few monkeypatches.
 
 Socket 
 ==========================================
 
-This patch replace standard socket module.
+This patch replaces the standard socket module.
 
-example ::
+For Example::
     
     from meinheld import patch
     patch.patch_all()
@@ -166,13 +165,11 @@ For more info see http://github.com/mopemope/meinheld/tree/master/example/patch/
 Werkzeug 
 ==========================================
 
-This patch replace werkzeug local get_ident function.
+This patch replaces Werkzeug's local get_ident function.
 
-If you use werkzeug, you must be call this patch function.
+If you use Werkzeug, and you don't want to leak memory, you must call this patch function.
 
-(Otherwize leaked memory)
-
-example ::
+For example::
     
     from meinheld import patch
     patch.patch_werkzeug()
@@ -182,11 +179,11 @@ For more info see http://github.com/mopemope/meinheld/tree/master/example/flask_
 Performance
 ------------------------------
 
-meinheld is used high performance http_parser.
+For parsing HTTP requests, meinheld uses Ryan Dahl's http-parser library.
 
-(see http://github.com/ry/http-parser)
+(see https://github.com/joyent/http-parser)
 
-and useing high performance event library picoev.
+It is built around the high performance event library picoev.
 
 (see http://developer.cybozu.co.jp/kazuho/2009/08/picoev-a-tiny-e.html)
 
@@ -195,7 +192,7 @@ and useing high performance event library picoev.
 sendfile
 ===========================
 
-meinheld use sendfile(2), over wgsi.file_wrapper.
+meinheld uses sendfile(2), over wgsi.file_wrapper.
 
 
 
