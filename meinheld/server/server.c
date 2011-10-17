@@ -737,7 +737,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
-                DEBUG("********************\n%.*s", r, buf);
+                DEBUG("********************\n%.*s", (int)r, buf);
                 nread = execute_parse(cli, buf, r);
                 DEBUG("read request fd %d readed %ld nread %d", cli->fd, r, nread);
 
@@ -944,6 +944,7 @@ inet_listen(void)
 static int
 check_unix_sockpath(char *sock_name)
 {
+
     if(!access(sock_name, F_OK)){
         if(unlink(sock_name) < 0){
             PyErr_SetFromErrno(PyExc_IOError);
@@ -954,7 +955,7 @@ check_unix_sockpath(char *sock_name)
 }
 
 static int
-unix_listen(char *sock_name)
+unix_listen(char *sock_name, int len)
 {
     int flag = 1;
     int res;
@@ -962,8 +963,16 @@ unix_listen(char *sock_name)
     mode_t old_umask;
 
     DEBUG("unix domain socket %s", sock_name);
+
+    if(len >= sizeof(saddr.sun_path)) {
+        PyErr_SetString(PyExc_OSError, "AF_UNIX path too long");
+        return -1;
+    }
+
     memset(&saddr, 0, sizeof(saddr));
-    check_unix_sockpath(sock_name);
+    if(check_unix_sockpath(sock_name) == -1){
+        return -1;
+    }
 
     if ((listen_sock = socket(AF_UNIX, SOCK_STREAM,0)) == -1) {
         PyErr_SetFromErrno(PyExc_IOError);
@@ -1021,7 +1030,8 @@ static PyObject *
 meinheld_listen(PyObject *self, PyObject *args)
 {
     PyObject *o;
-    int ret;
+    char *path;
+    int ret, len;
 
     if (!PyArg_ParseTuple(args, "O:listen", &o))
         return NULL;
@@ -1030,21 +1040,25 @@ meinheld_listen(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_Exception, "already set listen socket");
         return NULL;
     }
-    
+
     if(PyTuple_Check(o)){
-        //inet 
-        if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port))
+        //inet
+        if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port)){
             return NULL;
+        }
         ret = inet_listen();
     }else if(PyString_Check(o)){
-        // unix domain 
-        ret = unix_listen(PyString_AS_STRING(o));
+        // unix domain
+        if(!PyArg_Parse(o, "s#", &path, &len)){
+            return NULL;
+        }
+        ret = (path, len);
     }else{
         PyErr_SetString(PyExc_TypeError, "args tuple or string(path)");
         return NULL;
     }
     if(ret < 0){
-        //error 
+        //error
         listen_sock = -1;
         return NULL;
     }

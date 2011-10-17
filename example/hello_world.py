@@ -8,7 +8,7 @@ def hello_world(environ, start_response):
 #    print environ
     return [res]
 
-server.listen(("0.0.0.0", 8000))
+server.listen(("0.0.0.0", 8000)
 #server.access_log('stdout')
 #server.error_log('/tmp/err.log')
 server.run(hello_world)
