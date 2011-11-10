@@ -34,10 +34,10 @@ alloc_buffer(void)
     buffer *buf;
 	if (numfree) {
 		buf = buffer_free_list[--numfree];
-        DEBUG("use pooled buf %p", buf);
+        //DEBUG("use pooled buf %p", buf);
     }else{
         buf = (buffer *)PyMem_Malloc(sizeof(buffer));
-        DEBUG("alloc buf %p", buf);
+        //DEBUG("alloc buf %p", buf);
     }
     memset(buf, 0, sizeof(buffer));
     return buf;
@@ -47,7 +47,7 @@ static void
 dealloc_buffer(buffer *buf)
 {
 	if (numfree < MAXFREELIST){
-        DEBUG("back to buffer pool %p", buf);
+        //DEBUG("back to buffer pool %p", buf);
 		buffer_free_list[numfree++] = buf;
     }else{
 	    PyMem_Free(buf);

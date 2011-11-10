@@ -33,10 +33,10 @@ alloc_StringIOObject(void)
 	if (io_numfree) {
 		io = io_free_list[--io_numfree];
 		_Py_NewReference((PyObject *)io);
-        DEBUG("use pooled StringIOObject %p", io);
+        //DEBUG("use pooled StringIOObject %p", io);
     }else{
         io = PyObject_NEW(StringIOObject, &StringIOObjectType);
-        DEBUG("alloc StringIOObject %p", io);
+        //DEBUG("alloc StringIOObject %p", io);
     }
     return io;
 }
@@ -49,7 +49,7 @@ dealloc_StringIOObject(StringIOObject *io)
         io->buffer = NULL;
     }
 	if (io_numfree < IO_MAXFREELIST){
-        DEBUG("back to StringIOObject pool %p\n", io);
+        //DEBUG("back to StringIOObject pool %p\n", io);
 		io_free_list[io_numfree++] = io;
     }else{
 	    PyObject_DEL(io);

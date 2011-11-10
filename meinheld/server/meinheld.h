@@ -36,13 +36,21 @@
 #ifdef DEVELOP
 #define DEBUG(...) \
     do { \
-        printf("DEBUG: "); \
-        printf("%-40s %-28s%4u: ", __FILE__, __func__, __LINE__); \
+        /*printf("DEBUG: ");*/ \
+        printf("%-40s %-22s%4u: ", __FILE__, __func__, __LINE__); \
         printf(__VA_ARGS__); \
         printf("\n"); \
     } while(0)
+#define RDEBUG(...) \
+    do { \
+        /*printf("%-22s%4u: ", __FILE__, __LINE__);*/ \
+        printf("\x1B[31m%-40s %-22s%4u: ", __FILE__, __func__, __LINE__); \
+        printf(__VA_ARGS__); \
+        printf("\x1B[0m\n"); \
+    } while(0)
 #else
 #define DEBUG(...) do{}while(0)
+#define RDEBUG(...) do{}while(0)
 #endif
 
 #if __GNUC__ >= 3

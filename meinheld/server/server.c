@@ -126,10 +126,10 @@ alloc_client_t(void)
     client_t *client;
 	if (client_numfree) {
 		client = client_free_list[--client_numfree];
-        DEBUG("use pooled client %p", client);
+        //DEBUG("use pooled client %p", client);
     }else{
         client = (client_t *)PyMem_Malloc(sizeof(client_t));
-        DEBUG("alloc client %p", client);
+        //DEBUG("alloc client %p", client);
     }
     memset(client, 0, sizeof(client_t));
     return client;
@@ -737,9 +737,9 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
-                DEBUG("********************\n%.*s", (int)r, buf);
+                RDEBUG("\n%.*s", (int)r, buf);
                 nread = execute_parse(cli, buf, r);
-                DEBUG("read request fd %d readed %ud nread %d", cli->fd, r, nread);
+                DEBUG("read request fd %d readed %d nread %d", cli->fd, r, nread);
 
                 if(cli->bad_request_code > 0){
                     DEBUG("fd %d bad_request code %d",cli->fd,  cli->bad_request_code);
@@ -757,7 +757,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                     finish = 1;
                     break;
                 }
-                DEBUG("parse ok, fd %d %d nread", cli->fd, nread);
+                //DEBUG("parse ok, fd %d %d nread", cli->fd, nread);
 
                 if(parser_finish(cli) > 0){
                     if(cli->upgrade){

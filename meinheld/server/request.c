@@ -39,10 +39,10 @@ alloc_request(void)
     request *req;
 	if (request_numfree) {
 		req = request_free_list[--request_numfree];
-        DEBUG("use pooled req %p", req);
+        //DEBUG("use pooled req %p", req);
     }else{
         req = (request *)PyMem_Malloc(sizeof(request));
-        DEBUG("alloc req %p", req);
+        //DEBUG("alloc req %p", req);
     }
     memset(req, 0, sizeof(request));
     return req;
@@ -52,7 +52,7 @@ void
 dealloc_request(request *req)
 {
 	if (request_numfree < REQUEST_MAXFREELIST){
-        DEBUG("back to request pool %p", req);
+        //DEBUG("back to request pool %p", req);
 		request_free_list[request_numfree++] = req;
     }else{
 	    PyMem_Free(req);
@@ -150,10 +150,10 @@ alloc_header(void)
     header *h;
 	if (header_numfree) {
 		h = header_free_list[--header_numfree];
-        DEBUG("use pooled header %p", h);
+        //DEBUG("use pooled header %p", h);
     }else{
         h = (header *)PyMem_Malloc(sizeof(header));
-        DEBUG("alloc header %p", h);
+        //DEBUG("alloc header %p", h);
     }
     memset(h, 0, sizeof(header));
     return h;
@@ -163,7 +163,7 @@ void
 dealloc_header(header *h)
 {
 	if (header_numfree < HEADER_MAXFREELIST){
-        DEBUG("back to header pool %p", h);
+        //DEBUG("back to header pool %p", h);
 		header_free_list[header_numfree++] = h;
     }else{
 	    PyMem_Free(h);
