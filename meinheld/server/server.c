@@ -1052,7 +1052,7 @@ meinheld_listen(PyObject *self, PyObject *args)
         if(!PyArg_Parse(o, "s#", &path, &len)){
             return NULL;
         }
-        ret = (path, len);
+        ret = unix_listen(path, len);
     }else{
         PyErr_SetString(PyExc_TypeError, "args tuple or string(path)");
         return NULL;
