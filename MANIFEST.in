@@ -1,6 +1,6 @@
 include README.rst
 include LICENSE
-include NEWS
+include CHANGES.rst
 include meinheld/server/picoev_epoll.c
 include meinheld/server/picoev_kqueue.c
 include meinheld/server/picoev_select.c
