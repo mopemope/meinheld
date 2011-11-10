@@ -75,7 +75,7 @@ static PyObject *remote_port_key;
 
 static PyObject *server_protocol_key;
 static PyObject *path_info_key;
-static PyObject *request_uri_key;
+//static PyObject *request_uri_key;
 static PyObject *query_string_key;
 static PyObject *fragment_key;
 static PyObject *request_method_key;
@@ -253,7 +253,7 @@ message_begin_cb(http_parser *p)
 }
 
 static int
-header_field_cb(http_parser *p, const char *buf, size_t len, char partial)
+header_field_cb(http_parser *p, const char *buf, size_t len)
 {
     uint32_t i;
     header *h;
@@ -301,7 +301,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len, char partial)
 }
 
 static int
-header_value_cb(http_parser *p, const char *buf, size_t len, char partial)
+header_value_cb(http_parser *p, const char *buf, size_t len)
 {
     uint32_t i;
     header *h;
@@ -330,7 +330,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len, char partial)
 }
 
 static int
-request_path_cb(http_parser *p, const char *buf, size_t len, char partial)
+request_path_cb(http_parser *p, const char *buf, size_t len)
 {
     client_t *client = get_client(p);
     request *req = client->req;
@@ -358,7 +358,7 @@ request_path_cb(http_parser *p, const char *buf, size_t len, char partial)
 }
 
 int
-request_uri_cb(http_parser *p, const char *buf, size_t len, char partial)
+request_uri_cb(http_parser *p, const char *buf, size_t len)
 {
     client_t *client = get_client(p);
     request *req = client->req;
@@ -386,7 +386,7 @@ request_uri_cb(http_parser *p, const char *buf, size_t len, char partial)
 }
 
 int
-query_string_cb(http_parser *p, const char *buf, size_t len, char partial)
+query_string_cb(http_parser *p, const char *buf, size_t len)
 {
     client_t *client = get_client(p);
     request *req = client->req;
@@ -413,7 +413,7 @@ query_string_cb(http_parser *p, const char *buf, size_t len, char partial)
 }
 
 int
-fragment_cb(http_parser *p, const char *buf, size_t len, char partial)
+fragment_cb(http_parser *p, const char *buf, size_t len)
 {
     client_t *client = get_client(p);
     request *req = client->req;
@@ -441,7 +441,7 @@ fragment_cb(http_parser *p, const char *buf, size_t len, char partial)
 
 
 int
-body_cb(http_parser *p, const char *buf, size_t len, char partial)
+body_cb(http_parser *p, const char *buf, size_t len)
 {
     DEBUG("body_cb");
     client_t *client = get_client(p);
@@ -485,7 +485,7 @@ headers_complete_cb(http_parser *p)
     client_t *client = get_client(p);
     request *req = client->req;
     PyObject *env = client->environ;
-    uint32_t i = 0;
+    unsigned int i = 0;
     header *h;
 
     if(max_content_length < p->content_length){
@@ -512,12 +512,6 @@ headers_complete_cb(http_parser *p)
     }
     req->path = NULL;
 
-    if(req->uri){
-        obj = getPyString(req->uri); 
-        PyDict_SetItem(env, request_uri_key, obj);
-        Py_DECREF(obj);
-        req->uri = NULL;
-    }
 
     if(req->query_string){
         obj = getPyString(req->query_string); 
@@ -615,13 +609,14 @@ headers_complete_cb(http_parser *p)
     //free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
+    
 
     //keep client data
     obj = ClientObject_New(client);
     PyDict_SetItem(env, client_key, obj);
     Py_DECREF(obj);
 
-    DEBUG("headers_complete_cb");
+    DEBUG("fin headers_complete_cb");
     return 0;
 }
 
@@ -643,10 +638,7 @@ static http_parser_settings settings =
   {.on_message_begin = message_begin_cb
   ,.on_header_field = header_field_cb
   ,.on_header_value = header_value_cb
-  ,.on_path = request_path_cb
-  ,.on_url = request_uri_cb
-  ,.on_fragment = fragment_cb
-  ,.on_query_string = query_string_cb
+  ,.on_url = request_path_cb
   ,.on_body = body_cb
   ,.on_headers_complete = headers_complete_cb
   ,.on_message_complete = message_complete_cb
@@ -724,7 +716,7 @@ setup_static_env(char *name, int port)
 
     server_protocol_key = PyString_FromString("SERVER_PROTOCOL");
     path_info_key = PyString_FromString("PATH_INFO");
-    request_uri_key = PyString_FromString("REQUEST_URI");
+    //request_uri_key = PyString_FromString("REQUEST_URI");
     query_string_key = PyString_FromString("QUERY_STRING");
     fragment_key = PyString_FromString("HTTP_FRAGMENT");
     request_method_key = PyString_FromString("REQUEST_METHOD");
@@ -786,7 +778,7 @@ clear_static_env(void)
 
     Py_DECREF(server_protocol_key);
     Py_DECREF(path_info_key);
-    Py_DECREF(request_uri_key);
+    //Py_DECREF(request_uri_key);
     Py_DECREF(query_string_key);
     Py_DECREF(fragment_key);
     Py_DECREF(request_method_key);
