@@ -739,7 +739,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             default:
                 DEBUG("********************\n%.*s", (int)r, buf);
                 nread = execute_parse(cli, buf, r);
-                DEBUG("read request fd %d readed %ld nread %d", cli->fd, r, nread);
+                DEBUG("read request fd %d readed %ud nread %d", cli->fd, r, nread);
 
                 if(cli->bad_request_code > 0){
                     DEBUG("fd %d bad_request code %d",cli->fd,  cli->bad_request_code);
@@ -1651,10 +1651,10 @@ initserver(void)
 	Py_INCREF(timeout_error);
 	PyModule_AddObject(m, "timeout", timeout_error);
 
-    DEBUG("client size %ld", sizeof(client_t));
-    DEBUG("request size %ld", sizeof(request));
-    DEBUG("header size %ld", sizeof(header));
-    DEBUG("header bucket %ld", sizeof(write_bucket));
+    DEBUG("client size %ud", sizeof(client_t));
+    DEBUG("request size %ud", sizeof(request));
+    DEBUG("header size %ud", sizeof(header));
+    DEBUG("header bucket %ud", sizeof(write_bucket));
 }
 
 

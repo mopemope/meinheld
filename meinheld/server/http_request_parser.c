@@ -157,7 +157,7 @@ write_body2file(client_t *client, const char *buffer, size_t buffer_len)
     FILE *tmp = (FILE *)client->body;
     fwrite(buffer, 1, buffer_len, tmp);
     client->body_readed += buffer_len;
-    DEBUG("write_body2file %ld bytes", buffer_len);
+    DEBUG("write_body2file %ud bytes", buffer_len);
     return client->body_readed;
 
 }
@@ -169,7 +169,7 @@ write_body2mem(client_t *client, const char *buf, size_t buf_len)
     write2buf(body, buf, buf_len);
 
     client->body_readed += buf_len;
-    DEBUG("write_body2mem %ld bytes", buf_len);
+    DEBUG("write_body2mem %ud bytes", buf_len);
     return client->body_readed;
 }
 

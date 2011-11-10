@@ -207,7 +207,7 @@ writev_bucket(write_bucket *data)
                 }
             }
             data->total = data->total -w;
-            DEBUG("writev_bucket write %ld progeress %d/%d", w, data->total, data->total_size);
+            DEBUG("writev_bucket write %ud progeress %d/%d", w, data->total, data->total_size);
             //resume
             // again later
             return writev_bucket(data);
@@ -240,7 +240,7 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
     if(client->headers && !client->content_length_set){
         if (get_len(client->response) == 1) {
             client->content_length_set = 1;
-            DEBUG("set content_length %ld", datalen);
+            DEBUG("set content_length %ud", datalen);
             length = PyString_FromFormat("%zu", datalen);
 
             header = Py_BuildValue("(sO)", "Content-Length", length);
@@ -701,7 +701,7 @@ start_response_write(client_t *client)
         buf = PyString_AS_STRING(item);
         buflen = PyString_GET_SIZE(item);
 
-        DEBUG("start_response_write status_code %d buflen %ld", client->status_code, buflen);
+        DEBUG("start_response_write status_code %d buflen %ud", client->status_code, buflen);
         Py_DECREF(item);
         return write_headers(client, buf, buflen);
     }else{
