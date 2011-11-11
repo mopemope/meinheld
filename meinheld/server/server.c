@@ -1,4 +1,4 @@
-#include "meinheld.h"
+#include "server.h"
 
 #include <arpa/inet.h>
 #include <signal.h>
@@ -16,13 +16,12 @@
 #include "client.h"
 #include "util.h"
 #include "stringio.h"
-#include "picoev.h"
+
 
 #define ACCEPT_TIMEOUT_SECS 1
 #define READ_TIMEOUT_SECS 30
 
-#define MAX_BUFSIZE 1024 * 8
-#define INPUT_BUF_SIZE 1024 * 8
+#define READ_BUF_SIZE 1024 * 64
 
 static char *server_name = "127.0.0.1";
 static short server_port = 8000;
@@ -680,7 +679,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }
 
     } else if ((events & PICOEV_READ) != 0) {
-        char buf[INPUT_BUF_SIZE];
+        char buf[READ_BUF_SIZE];
         ssize_t r;
         if(!cli->keep_alive){
             picoev_set_timeout(loop, cli->fd, READ_TIMEOUT_SECS);
