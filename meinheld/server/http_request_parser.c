@@ -139,8 +139,29 @@ new_environ(client_t *client)
     return environ;
 }
 
-static inline void
-PyDict_ReplaceKey(PyObject* dict, PyObject* old_key, PyObject* new_key)
+static PyObject*
+concat_string(PyObject *o, char *buf, size_t len)
+{
+    PyObject *ret;
+    size_t l;
+    char *dest, *origin;
+
+    l = PyString_GET_SIZE(o);
+
+    ret = PyString_FromStringAndSize((char*)0, l + len);
+    if(ret == NULL){
+        return ret;
+    }
+    dest = PyString_AS_STRING(ret);
+    origin = PyString_AS_STRING(o);
+    memcpy(dest, origin , strlen);
+    memcpy(dest + l, buf , len);
+    Py_DECREF(o);
+    return ret;
+}
+
+static void
+replace_env_key(PyObject* dict, PyObject* old_key, PyObject* new_key)
 {
     PyObject* value = PyDict_GetItem(dict, old_key);
     if(value) {
@@ -151,7 +172,7 @@ PyDict_ReplaceKey(PyObject* dict, PyObject* old_key, PyObject* new_key)
     }
 }
 
-static inline int
+static int
 hex2int(int i)
 {
     i = toupper(i);
@@ -162,7 +183,7 @@ hex2int(int i)
     return i;
 }
 
-static inline int
+static int
 urldecode(char *buf, int len)
 {
     int c, c1;
@@ -187,7 +208,7 @@ urldecode(char *buf, int len)
     return t - s0;
 }
 
-static inline PyObject*
+static PyObject*
 get_http_header_key(char *s, int len)
 {
     PyObject *obj;
