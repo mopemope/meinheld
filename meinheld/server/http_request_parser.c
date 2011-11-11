@@ -154,7 +154,7 @@ concat_string(PyObject *o, char *buf, size_t len)
     }
     dest = PyString_AS_STRING(ret);
     origin = PyString_AS_STRING(o);
-    memcpy(dest, origin , strlen);
+    memcpy(dest, origin , l);
     memcpy(dest + l, buf , len);
     Py_DECREF(o);
     return ret;
