@@ -28,7 +28,6 @@
 #include <sys/time.h>
 
 #include "greenlet.h"
-#include "picoev.h"
 #include "http_parser.h"
 
 #define SERVER "meinheld/0.5dev"

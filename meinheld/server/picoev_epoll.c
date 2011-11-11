@@ -32,7 +32,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include "picoev.h"
-#include "meinheld.h"
 
 #ifndef PICOEV_EPOLL_DEFER_DELETES
 # define PICOEV_EPOLL_DEFER_DELETES 1
@@ -91,7 +90,7 @@ int picoev_update_events_internal(picoev_loop* _loop, int fd, int events)
   
   assert(PICOEV_FD_BELONGS_TO_LOOP(&loop->loop, fd));
   
-  if ((events & PICOEV_READWRITE) == target->events) {
+  if (unlikely((events & PICOEV_READWRITE) == target->events)) {
     return 0;
   }
   

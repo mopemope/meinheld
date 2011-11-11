@@ -16,6 +16,7 @@
 #include "client.h"
 #include "util.h"
 #include "stringio.h"
+#include "picoev.h"
 
 #define ACCEPT_TIMEOUT_SECS 1
 #define READ_TIMEOUT_SECS 30

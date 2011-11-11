@@ -37,6 +37,7 @@ extern "C" {
 # define PICOEV_INLINE static __inline__
 #endif
 
+#include "meinheld.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -225,7 +226,7 @@ extern "C" {
     target->loop_id = loop->loop_id;
     target->events = 0;
     target->timeout_idx = PICOEV_TIMEOUT_IDX_UNUSED;
-    if (picoev_update_events_internal(loop, fd, events | PICOEV_ADD) != 0) {
+    if ( unlikely(picoev_update_events_internal(loop, fd, events | PICOEV_ADD) != 0)) {
       target->loop_id = 0;
       return -1;
     }
@@ -239,7 +240,7 @@ extern "C" {
     picoev_fd* target;
     assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
     target = picoev.fds + fd;
-    if (picoev_update_events_internal(loop, fd, PICOEV_DEL) != 0) {
+    if (unlikely(picoev_update_events_internal(loop, fd, PICOEV_DEL) != 0)) {
       return -1;
     }
     picoev_set_timeout(loop, fd, 0);
@@ -385,7 +386,7 @@ extern "C" {
     if (max_wait > loop->timeout.resolution) {
       max_wait = loop->timeout.resolution;
     }
-    if (picoev_poll_once_internal(loop, max_wait) != 0) {
+    if ( unlikely(picoev_poll_once_internal(loop, max_wait) != 0) ) {
       return -1;
     }
     if (max_wait != 0) {
