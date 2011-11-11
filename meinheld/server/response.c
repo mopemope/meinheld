@@ -728,7 +728,11 @@ response_start(client_t *client)
     if(client->status_code == 304){
         return write_headers(client, NULL, 0);
     }
-    enable_cork(client);
+    
+    if(enable_cork(client) == -1){
+        return -1; 
+    }
+
     if (CheckFileWrapper(client->response)) {
         DEBUG("use sendfile");
         ret = start_response_file(client);

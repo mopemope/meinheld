@@ -4,14 +4,14 @@
 #include "meinheld.h"
 #include "client.h"
 
-void setup_listen_sock(int fd);
+int setup_listen_sock(int fd);
 
-void setup_sock(int fd);
+int setup_sock(int fd);
 
-void enable_cork(client_t *client);
+int enable_cork(client_t *client);
 
-void disable_cork(client_t *client);
+int disable_cork(client_t *client);
 
-void set_so_keepalive(int fd, int flag);
+int set_so_keepalive(int fd, int flag);
 
 #endif

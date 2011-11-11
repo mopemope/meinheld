@@ -810,7 +810,13 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         if (client_fd != -1) {
             DEBUG("accept fd %d", client_fd);
             //printf("connected: %d\n", client_fd);
-            setup_sock(client_fd);
+            if(setup_sock(client_fd) == -1){
+                PyErr_SetFromErrno(PyExc_IOError);
+                write_error_log(__FILE__, __LINE__);
+                // die
+                loop_done = 0;
+                return;
+            }
             remote_addr = inet_ntoa (client_addr.sin_addr);
             remote_port = ntohs(client_addr.sin_port);
             client = new_client_t(client_fd, remote_addr, remote_port);
