@@ -48,6 +48,8 @@
  *
  */
 
+static int prefix_len;
+
 static PyObject *empty_string;
 
 static PyObject *version_key;
@@ -80,6 +82,11 @@ static PyObject *query_string_key;
 static PyObject *fragment_key;
 static PyObject *request_method_key;
 static PyObject *client_key;
+
+static PyObject *content_type_key;
+static PyObject *content_length_key;
+static PyObject *h_content_type_key;
+static PyObject *h_content_length_key;
 
 static PyObject *server_protocol_val10;
 static PyObject *server_protocol_val11;
@@ -130,6 +137,84 @@ new_environ(client_t *client)
     PyDict_SetItem(environ, remote_port_key, object);
     Py_DECREF(object);
     return environ;
+}
+
+static inline void
+PyDict_ReplaceKey(PyObject* dict, PyObject* old_key, PyObject* new_key)
+{
+    PyObject* value = PyDict_GetItem(dict, old_key);
+    if(value) {
+        Py_INCREF(value);
+        PyDict_DelItem(dict, old_key);
+        PyDict_SetItem(dict, new_key, value);
+        Py_DECREF(value);
+    }
+}
+
+static inline int
+hex2int(int i)
+{
+    i = toupper(i);
+    i = i - '0';
+    if(i > 9){ 
+        i = i - 'A' + '9' + 1;
+    }
+    return i;
+}
+
+static inline int
+urldecode(char *buf, int len)
+{
+    int c, c1;
+    char *s0, *t;
+
+    t = s0 = buf;
+    while(len > 0){
+        c = *buf++;
+        if(c == '%' && len > 2){
+            c = *buf++;
+            c1 = c;
+            c = *buf++;
+            c = hex2int(c1) * 16 + hex2int(c);
+            len -= 2;
+        }else if(c == '#' || c == '?'){
+            break;
+        }
+        *t++ = c;
+        len--;
+    }
+    *t = 0;
+    return t - s0;
+}
+
+static inline PyObject*
+get_http_header_key(char *s, int len)
+{
+    PyObject *obj;
+    char *dest;
+    char c;
+
+    obj = PyString_FromStringAndSize(NULL, len + prefix_len);
+    dest = (char*)PyString_AS_STRING(obj);
+
+    *dest++ = 'H';
+    *dest++ = 'T';
+    *dest++ = 'T';
+    *dest++ = 'P';
+    *dest++ = '_';
+
+    while(len--) {
+        c = *s++;
+        if(c == '-'){
+            *dest++ = '_';
+        }else if(c >= 'a' && c <= 'z'){
+            *dest++ = c - ('a'-'A');
+        }else{
+            *dest++ = c;
+        }
+    }
+
+    return obj;
 }
 
 static void
@@ -679,6 +764,7 @@ parser_finish(client_t *cli)
 void
 setup_static_env(char *name, int port)
 {
+    prefix_len = strlen("HTTP_");
 
     empty_string = PyString_FromString("");
 
@@ -721,6 +807,12 @@ setup_static_env(char *name, int port)
     fragment_key = PyString_FromString("HTTP_FRAGMENT");
     request_method_key = PyString_FromString("REQUEST_METHOD");
     client_key = PyString_FromString("meinheld.client");
+
+    content_type_key = PyString_FromString("CONTENT_TYPE");
+    content_length_key = PyString_FromString("CONTENT_LENGTH");
+
+    h_content_type_key = PyString_FromString("HTTP_CONTENT_TYPE");
+    h_content_length_key = PyString_FromString("HTTP_CONTENT_LENGTH");
 
     server_protocol_val10 = PyString_FromString("HTTP/1.0");
     server_protocol_val11 = PyString_FromString("HTTP/1.1");
@@ -783,6 +875,11 @@ clear_static_env(void)
     Py_DECREF(fragment_key);
     Py_DECREF(request_method_key);
     Py_DECREF(client_key);
+
+    Py_DECREF(content_type_key);
+    Py_DECREF(content_length_key);
+    Py_DECREF(h_content_type_key);
+    Py_DECREF(h_content_length_key);
 
     Py_DECREF(server_protocol_val10);
     Py_DECREF(server_protocol_val11);

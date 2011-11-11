@@ -1657,10 +1657,10 @@ initserver(void)
 	Py_INCREF(timeout_error);
 	PyModule_AddObject(m, "timeout", timeout_error);
 
-    DEBUG("client size %ud", sizeof(client_t));
-    DEBUG("request size %ud", sizeof(request));
-    DEBUG("header size %ud", sizeof(header));
-    DEBUG("header bucket %ud", sizeof(write_bucket));
+    DEBUG("client size %lu", sizeof(client_t));
+    DEBUG("request size %lu", sizeof(request));
+    DEBUG("header size %lu", sizeof(header));
+    DEBUG("header bucket %lu", sizeof(write_bucket));
 }
 
 
