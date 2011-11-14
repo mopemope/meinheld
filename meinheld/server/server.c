@@ -846,7 +846,6 @@ setup_server_env(void)
     ClientObject_list_fill();
     client_t_list_fill();
     request_list_fill();
-    header_list_fill();
     buffer_list_fill();
     StringIOObject_list_fill();
 
@@ -868,7 +867,6 @@ clear_server_env(void)
     
     ClientObject_list_clear();
     request_list_clear();
-    header_list_clear();
     buffer_list_clear();
     StringIOObject_list_clear();
 
@@ -1659,7 +1657,6 @@ initserver(void)
 
     DEBUG("client size %lu", sizeof(client_t));
     DEBUG("request size %lu", sizeof(request));
-    DEBUG("header size %lu", sizeof(header));
     DEBUG("header bucket %lu", sizeof(write_bucket));
 }
 

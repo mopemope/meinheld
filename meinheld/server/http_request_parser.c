@@ -512,7 +512,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
 }*/
 
 static int
-request_path_cb(http_parser *p, const char *buf, size_t len)
+url_cb(http_parser *p, const char *buf, size_t len)
 {
     client_t *client = get_client(p);
     request *req = client->req;
@@ -539,6 +539,7 @@ request_path_cb(http_parser *p, const char *buf, size_t len)
     return 0;
 }
 
+/*
 int
 request_uri_cb(http_parser *p, const char *buf, size_t len)
 {
@@ -565,8 +566,9 @@ request_uri_cb(http_parser *p, const char *buf, size_t len)
 
 
     return 0;
-}
+}*/
 
+/*
 int
 query_string_cb(http_parser *p, const char *buf, size_t len)
 {
@@ -592,8 +594,9 @@ query_string_cb(http_parser *p, const char *buf, size_t len)
     }
 
     return 0;
-}
+}*/
 
+/*
 int
 fragment_cb(http_parser *p, const char *buf, size_t len)
 {
@@ -620,6 +623,7 @@ fragment_cb(http_parser *p, const char *buf, size_t len)
 
     return 0;
 }
+*/
 
 
 int
@@ -663,12 +667,10 @@ body_cb(http_parser *p, const char *buf, size_t len)
 int
 headers_complete_cb(http_parser *p)
 {
-    PyObject *obj, *key;
+    PyObject *obj;
     client_t *client = get_client(p);
     request *req = client->req;
     PyObject *env = client->environ;
-    unsigned int i = 0;
-    header *h;
 
     if(max_content_length < p->content_length){
 
@@ -700,36 +702,6 @@ headers_complete_cb(http_parser *p)
         req->field = NULL;
         req->value = NULL;
     }
-
-    /*
-    if(req->query_string){
-        obj = getPyString(req->query_string);
-        PyDict_SetItem(env, query_string_key, obj);
-        Py_DECREF(obj);
-    }else{
-        PyDict_SetItem(env, query_string_key, empty_string);
-    }
-    req->query_string = NULL;
-
-    if(req->fragment){
-        obj = getPyString(req->fragment); 
-        PyDict_SetItem(env, fragment_key, obj);
-        Py_DECREF(obj);
-        req->fragment = NULL;
-    }
-    for(i = 0; i < req->num_headers+1; i++){
-        h = req->headers[i];
-        if(h){
-            key = getPyString(h->field);
-            obj = getPyString(h->value);
-            PyDict_SetItem(env, key, obj);
-            Py_DECREF(key);
-            Py_DECREF(obj);
-            free_header(h);
-            req->headers[i] = NULL;
-        }
-    }
-    */
 
     switch(p->method){
         case HTTP_DELETE:
@@ -828,7 +800,7 @@ static http_parser_settings settings =
   {.on_message_begin = message_begin_cb
   ,.on_header_field = header_field_cb
   ,.on_header_value = header_value_cb
-  ,.on_url = request_path_cb
+  ,.on_url = url_cb
   ,.on_body = body_cb
   ,.on_headers_complete = headers_complete_cb
   ,.on_message_complete = message_complete_cb

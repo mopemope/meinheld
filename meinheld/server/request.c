@@ -8,10 +8,6 @@
 static request *request_free_list[REQUEST_MAXFREELIST];
 static int request_numfree = 0;
 
-
-static header *header_free_list[HEADER_MAXFREELIST];
-static int header_numfree = 0;
-
 void
 request_list_fill(void)
 {
@@ -118,105 +114,17 @@ new_request(void)
 {
     request *req = alloc_request();
     //request *req = (request *)PyMem_Malloc(sizeof(request));
-
     memset(req, 0, sizeof(request));
     return req;
 }
 
-void
-header_list_fill(void)
-{
-    header *h;
-	while (header_numfree < HEADER_MAXFREELIST) {
-        h = (header *)PyMem_Malloc(sizeof(header));
-		header_free_list[header_numfree++] = h;
-	}
-}
-
-void
-header_list_clear(void)
-{
-	header *op;
-
-	while (header_numfree) {
-		op = header_free_list[--header_numfree];
-		PyMem_Free(op);
-	}
-}
-
-static header*
-alloc_header(void)
-{
-    header *h;
-	if (header_numfree) {
-		h = header_free_list[--header_numfree];
-        //DEBUG("use pooled header %p", h);
-    }else{
-        h = (header *)PyMem_Malloc(sizeof(header));
-        //DEBUG("alloc header %p", h);
-    }
-    memset(h, 0, sizeof(header));
-    return h;
-}
-
-void
-dealloc_header(header *h)
-{
-	if (header_numfree < HEADER_MAXFREELIST){
-        //DEBUG("back to header pool %p", h);
-		header_free_list[header_numfree++] = h;
-    }else{
-	    PyMem_Free(h);
-    }
-}
-
-header *
-new_header(size_t fsize, size_t flimit, size_t vsize, size_t vlimit)
-{
-    header *h;
-    //h = PyMem_Malloc(sizeof(header));
-    h = alloc_header();
-    h->field = new_buffer(fsize, flimit);
-    h->value = new_buffer(vsize, vlimit);
-    return h;
-}
-
-void
-free_header(header *h)
-{
-    //PyMem_Free(h);
-    dealloc_header(h);
-}
 
 void
 free_request(request *req)
 {
-    uint32_t i;
-    header *h;
     if(req->path){
-        free_buffer(req->path);
+        Py_DECREF(req->path);
         req->path = NULL;
-    }
-    if(req->uri){
-        free_buffer(req->uri);
-        req->uri = NULL;
-    }
-    if(req->query_string){
-        free_buffer(req->query_string);
-        req->query_string = NULL;
-    }
-    if(req->fragment){
-        free_buffer(req->fragment);
-        req->fragment = NULL;
-    }
-    for(i = 0; i < req->num_headers+1; i++){
-        h = req->headers[i];
-        if(h){
-            free_buffer(h->field);
-            free_buffer(h->value);
-            free_header(h);
-            req->headers[i] = NULL;
-        }
     }
     dealloc_request(req);
     //PyMem_Free(req);

@@ -25,16 +25,7 @@ typedef enum {
 } field_type;
 
 typedef struct {
-    buffer *field;
-    buffer *value;
-} header;
-
-typedef struct {
     buffer *path;
-    buffer *uri;
-    buffer *query_string;
-    buffer *fragment;
-    header *headers[LIMIT_REQUEST_FIELDS];
     uint32_t num_headers;
     field_type last_header_element;
 
@@ -67,10 +58,6 @@ void free_request_queue(request_queue *q);
 
 request* new_request(void);
 
-header* new_header(size_t fsize, size_t flimit, size_t vsize, size_t vlimit);
-
-void free_header(header *h);
-
 void free_request(request *req);
 
 void dealloc_request(request *req);
@@ -78,9 +65,5 @@ void dealloc_request(request *req);
 void request_list_fill(void);
 
 void request_list_clear(void);
-
-void header_list_fill(void);
-
-void header_list_clear(void);
 
 #endif
