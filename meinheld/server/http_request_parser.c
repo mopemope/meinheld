@@ -177,17 +177,18 @@ hex2int(int i)
 {
     i = toupper(i);
     i = i - '0';
-    if(i > 9){ 
+    if(i > 9){
         i = i - 'A' + '9' + 1;
     }
     return i;
 }
 
 static int
-urldecode(char *buf, int len)
+set_path(PyObject *env, char *buf, int len)
 {
     int c, c1;
     char *s0, *t;
+    PyObject *obj;
 
     t = s0 = buf;
     while(len > 0){
@@ -198,13 +199,30 @@ urldecode(char *buf, int len)
             c = *buf++;
             c = hex2int(c1) * 16 + hex2int(c);
             len -= 2;
-        }else if(c == '#' || c == '?'){
+        }else if(c == '?'){
+            //stop
+            obj = PyString_FromStringAndSize(buf, len-1);
+            DEBUG("query:%.*s", len, PyString_AS_STRING(obj));
+            if(obj){
+                PyDict_SetItem(env, query_string_key, obj);
+                Py_DECREF(obj);
+            }
+            break;
+        }else if(c == '#'){
+            //stop 
+            //ignore fragment
             break;
         }
         *t++ = c;
         len--;
     }
-    *t = 0;
+    //*t = 0;
+    obj = PyString_FromStringAndSize(s0, t - s0);
+    DEBUG("path:%.*s", t-s0, PyString_AS_STRING(obj));
+    if(obj != NULL){
+        PyDict_SetItem(env, path_info_key, obj);
+        Py_DECREF(obj);
+    }
     return t - s0;
 }
 
@@ -631,6 +649,9 @@ body_cb(http_parser *p, const char *buf, size_t len)
 {
     DEBUG("body_cb");
     client_t *client = get_client(p);
+
+    DEBUG("content_length:%d", p->content_length);
+
     if(max_content_length < client->body_readed + len){
 
         client->bad_request_code = 413;
@@ -678,7 +699,6 @@ headers_complete_cb(http_parser *p)
         return -1;
     }
 
-
     if(p->http_major == 1 && p->http_minor == 1){
         obj = server_protocol_val11;
     }else{
@@ -687,14 +707,17 @@ headers_complete_cb(http_parser *p)
     PyDict_SetItem(env, server_protocol_key, obj);
 
     if(req->path){
-        obj = getPyStringAndDecode(req->path);
-        PyDict_SetItem(env, path_info_key, obj);
-        Py_DECREF(obj);
+        set_path(env, req->path->buf, req->path->len);
+        //obj = getPyStringAndDecode(req->path);
+        //PyDict_SetItem(env, path_info_key, obj);
+        //Py_DECREF(obj);
         req->path = NULL;
     }else{
         PyDict_SetItem(env, path_info_key, empty_string);
     }
     req->path = NULL;
+
+    //Last header
     if(req->field && req->value){
         PyDict_SetItem(env, req->field, req->value);
         Py_DECREF(req->field);
@@ -702,6 +725,8 @@ headers_complete_cb(http_parser *p)
         req->field = NULL;
         req->value = NULL;
     }
+    replace_env_key(env, h_content_type_key, content_type_key);
+    replace_env_key(env, h_content_length_key, content_length_key);
 
     switch(p->method){
         case HTTP_DELETE:
@@ -767,8 +792,6 @@ headers_complete_cb(http_parser *p)
     }
 
     PyDict_SetItem(env, request_method_key, obj);
-    replace_env_key(env, h_content_type_key, content_type_key);
-    replace_env_key(env, h_content_length_key, content_length_key);
     //free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
