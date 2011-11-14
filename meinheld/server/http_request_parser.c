@@ -140,7 +140,7 @@ new_environ(client_t *client)
 }
 
 static PyObject*
-concat_string(PyObject *o, char *buf, size_t len)
+concat_string(PyObject *o, const char *buf, size_t len)
 {
     PyObject *ret;
     size_t l;
@@ -209,7 +209,7 @@ urldecode(char *buf, int len)
 }
 
 static PyObject*
-get_http_header_key(char *s, int len)
+get_http_header_key(const char *s, int len)
 {
     PyObject *obj;
     char *dest;
@@ -263,7 +263,7 @@ write_body2file(client_t *client, const char *buffer, size_t buffer_len)
     FILE *tmp = (FILE *)client->body;
     fwrite(buffer, 1, buffer_len, tmp);
     client->body_readed += buffer_len;
-    DEBUG("write_body2file %ud bytes", buffer_len);
+    DEBUG("write_body2file %d bytes", (int)buffer_len);
     return client->body_readed;
 
 }
@@ -275,7 +275,7 @@ write_body2mem(client_t *client, const char *buf, size_t buf_len)
     write2buf(body, buf, buf_len);
 
     client->body_readed += buf_len;
-    DEBUG("write_body2mem %ud bytes", buf_len);
+    DEBUG("write_body2mem %d bytes", (int)buf_len);
     return client->body_readed;
 }
 
@@ -295,6 +295,7 @@ typedef enum{
     OTHER
 } wsgi_header_type;
 
+/*
 static wsgi_header_type
 check_header_type(const char *buf)
 {
@@ -330,7 +331,7 @@ check_header_type(const char *buf)
     }
     return OTHER;
 }
-
+*/
 
 
 static client_t *
@@ -358,6 +359,52 @@ message_begin_cb(http_parser *p)
     return 0;
 }
 
+
+static int
+header_field_cb(http_parser *p, const char *buf, size_t len)
+{
+    client_t *client = get_client(p);
+    request *req = client->req;
+    PyObject *env = NULL, *obj;
+
+    if (req->last_header_element != FIELD){
+        env = req->env;
+        if(LIMIT_REQUEST_FIELDS <= req->num_headers){
+            client->bad_request_code = 400;
+            return -1;
+        }
+        PyDict_SetItem(env, req->field, req->value);
+        Py_DECREF(req->field);
+        Py_DECREF(req->value);
+        req->field = NULL;
+        req->value = NULL;
+        req->num_headers++;
+    }
+
+    if(likely(req->field == NULL)){
+        obj = get_http_header_key(buf, len);
+    }else{
+        char temp[len];
+        key_upper(temp, buf, len);
+        obj = concat_string(req->field, temp, len);
+    }
+
+    if(unlikely(obj == NULL)){
+        //TODO Set error
+        client->bad_request_code = 500;
+        return -1;
+    }
+    if(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE){
+        client->bad_request_code = 400;
+        return -1;
+    }
+
+    req->field = obj;
+    req->last_header_element = FIELD;
+    return 0;
+}
+
+/*
 static int
 header_field_cb(http_parser *p, const char *buf, size_t len)
 {
@@ -405,7 +452,36 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     req->last_header_element = FIELD;
     return 0;
 }
+*/
 
+static int
+header_value_cb(http_parser *p, const char *buf, size_t len)
+{
+    client_t *client = get_client(p);
+    request *req = client->req;
+    PyObject *obj;
+
+    if(likely(req->value== NULL)){
+        obj = PyString_FromStringAndSize(buf, len);
+    }else{
+        obj = concat_string(req->value, buf, len);
+    }
+
+    if(unlikely(obj == NULL)){
+        //TODO Set error
+        client->bad_request_code = 500;
+        return -1; 
+    }
+    if(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE){
+        client->bad_request_code = 400;
+        return -1;
+    }
+
+    req->value = obj;
+    req->last_header_element = VALUE;
+    return 0;
+}
+/*
 static int
 header_value_cb(http_parser *p, const char *buf, size_t len)
 {
@@ -433,7 +509,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     }
     req->last_header_element = VALUE;
     return 0;
-}
+}*/
 
 static int
 request_path_cb(http_parser *p, const char *buf, size_t len)
@@ -617,10 +693,17 @@ headers_complete_cb(http_parser *p)
         PyDict_SetItem(env, path_info_key, empty_string);
     }
     req->path = NULL;
+    if(req->field && req->value){
+        PyDict_SetItem(env, req->field, req->value);
+        Py_DECREF(req->field);
+        Py_DECREF(req->value);
+        req->field = NULL;
+        req->value = NULL;
+    }
 
-
+    /*
     if(req->query_string){
-        obj = getPyString(req->query_string); 
+        obj = getPyString(req->query_string);
         PyDict_SetItem(env, query_string_key, obj);
         Py_DECREF(obj);
     }else{
@@ -646,6 +729,7 @@ headers_complete_cb(http_parser *p)
             req->headers[i] = NULL;
         }
     }
+    */
 
     switch(p->method){
         case HTTP_DELETE:
@@ -711,11 +795,11 @@ headers_complete_cb(http_parser *p)
     }
 
     PyDict_SetItem(env, request_method_key, obj);
-
+    replace_env_key(env, h_content_type_key, content_type_key);
+    replace_env_key(env, h_content_length_key, content_length_key);
     //free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
-    
 
     //keep client data
     obj = ClientObject_New(client);

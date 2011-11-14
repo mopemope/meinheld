@@ -45,6 +45,8 @@ typedef struct {
     int bad_request_code;
     void *body;
     request_body_type body_type;
+    PyObject *field;
+    PyObject *value;
 
 } request;
 
