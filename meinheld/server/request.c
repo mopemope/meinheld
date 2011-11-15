@@ -122,10 +122,9 @@ new_request(void)
 void
 free_request(request *req)
 {
-    if(req->path){
-        Py_DECREF(req->path);
-        req->path = NULL;
-    }
+    Py_XDECREF(req->path);
+    Py_XDECREF(req->field);
+    Py_XDECREF(req->value);
     dealloc_request(req);
     //PyMem_Free(req);
 }
