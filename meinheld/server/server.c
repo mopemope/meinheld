@@ -15,7 +15,7 @@
 #include "log.h"
 #include "client.h"
 #include "util.h"
-#include "stringio.h"
+#include "input.h"
 
 
 #define ACCEPT_TIMEOUT_SECS 1
@@ -592,6 +592,7 @@ prepare_call_wsgi(client_t *client)
             }
         }
     }
+    /*
     if(client->body_type == BODY_TYPE_TMPFILE){
         FILE *tmp = (FILE *)client->body;
         fflush(tmp);
@@ -614,7 +615,7 @@ prepare_call_wsgi(client_t *client)
         }
         client->body = NULL;;
         Py_DECREF(input);
-    }
+    }*/
 
     if(is_keep_alive){
         //support keep-alive
@@ -837,7 +838,7 @@ setup_server_env(void)
     client_t_list_fill();
     request_list_fill();
     buffer_list_fill();
-    StringIOObject_list_fill();
+    InputObject_list_fill();
 
     PyGreenlet_Import();
     
@@ -858,7 +859,7 @@ clear_server_env(void)
     ClientObject_list_clear();
     request_list_clear();
     buffer_list_clear();
-    StringIOObject_list_clear();
+    InputObject_list_clear();
 
     Py_DECREF(hub_switch_value);
     Py_DECREF(client_key);
@@ -1644,7 +1645,7 @@ initserver(void)
         return;
     }
 
-    if(PyType_Ready(&StringIOObjectType) < 0){
+    if(PyType_Ready(&InputObjectType) < 0){
         return;
     }
 

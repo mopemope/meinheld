@@ -1,6 +1,7 @@
 #include "http_request_parser.h"
 #include "server.h"
 #include "response.h"
+#include "input.h"
 
 
 /**
@@ -66,6 +67,7 @@ static PyObject *run_once_key;
 static PyObject *run_once_val;
 static PyObject *file_wrapper_key;
 static PyObject *file_wrapper_val;
+static PyObject *wsgi_input_key;
 
 static PyObject *script_key;
 static PyObject *server_name_key;
@@ -77,9 +79,7 @@ static PyObject *remote_port_key;
 
 static PyObject *server_protocol_key;
 static PyObject *path_info_key;
-//static PyObject *request_uri_key;
 static PyObject *query_string_key;
-static PyObject *fragment_key;
 static PyObject *request_method_key;
 static PyObject *client_key;
 
@@ -653,9 +653,22 @@ headers_complete_cb(http_parser *p)
     //free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
+    
+    obj = InputObject_New(client);
+    if(unlikely(obj == NULL)){
+        return -1;
+    }
+    ret = PyDict_SetItem(env, wsgi_input_key, obj);
+    Py_DECREF(obj);
+    if(unlikely(ret == -1)){
+        return -1;
+    }
 
     //keep client data
     obj = ClientObject_New(client);
+    if(unlikely(obj == NULL)){
+        return -1;
+    }
     ret = PyDict_SetItem(env, client_key, obj);
     Py_DECREF(obj);
     if(unlikely(ret == -1)){
@@ -750,6 +763,8 @@ setup_static_env(char *name, int port)
     file_wrapper_val = PyCFunction_New(&method, NULL);
     file_wrapper_key = PyString_FromString("wsgi.file_wrapper");
 
+    wsgi_input_key = PyString_FromString("wsgi.input");
+    
     script_key = PyString_FromString("SCRIPT_NAME");
 
     server_name_val = PyString_FromString(name);
@@ -763,9 +778,7 @@ setup_static_env(char *name, int port)
 
     server_protocol_key = PyString_FromString("SERVER_PROTOCOL");
     path_info_key = PyString_FromString("PATH_INFO");
-    //request_uri_key = PyString_FromString("REQUEST_URI");
     query_string_key = PyString_FromString("QUERY_STRING");
-    fragment_key = PyString_FromString("HTTP_FRAGMENT");
     request_method_key = PyString_FromString("REQUEST_METHOD");
     client_key = PyString_FromString("meinheld.client");
 
@@ -820,6 +833,7 @@ clear_static_env(void)
     Py_DECREF(run_once_val);
     Py_DECREF(file_wrapper_key);
     Py_DECREF(file_wrapper_val);
+    Py_DECREF(wsgi_input_key);
 
     Py_DECREF(script_key);
     Py_DECREF(server_name_key);
@@ -833,7 +847,6 @@ clear_static_env(void)
     Py_DECREF(path_info_key);
     //Py_DECREF(request_uri_key);
     Py_DECREF(query_string_key);
-    Py_DECREF(fragment_key);
     Py_DECREF(request_method_key);
     Py_DECREF(client_key);
 
