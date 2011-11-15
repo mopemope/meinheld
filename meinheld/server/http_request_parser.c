@@ -650,7 +650,7 @@ body_cb(http_parser *p, const char *buf, size_t len)
     DEBUG("body_cb");
     client_t *client = get_client(p);
 
-    DEBUG("content_length:%d", p->content_length);
+    DEBUG("content_length:%lu", (unsigned long)p->content_length);
 
     if(max_content_length < client->body_readed + len){
 
