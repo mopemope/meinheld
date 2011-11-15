@@ -145,7 +145,7 @@ concat_string(PyObject *o, const char *buf, size_t len)
     PyObject *ret;
     size_t l;
     char *dest, *origin;
-
+    
     l = PyString_GET_SIZE(o);
 
     ret = PyString_FromStringAndSize((char*)0, l + len);
@@ -387,7 +387,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     
     DEBUG("field:%.*s", len, buf);
 
-    if (req->last_header_element != FIELD){
+    if(req->last_header_element != FIELD){
         env = req->env;
         if(LIMIT_REQUEST_FIELDS <= req->num_headers){
             client->bad_request_code = 400;
@@ -413,7 +413,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
         client->bad_request_code = 500;
         return -1;
     }
-    if(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE){
+    if(unlikely(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
         client->bad_request_code = 400;
         return -1;
     }
@@ -441,7 +441,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
         client->bad_request_code = 500;
         return -1; 
     }
-    if(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE){
+    if(unlikely(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
         client->bad_request_code = 400;
         return -1;
     }
@@ -458,7 +458,7 @@ url_cb(http_parser *p, const char *buf, size_t len)
     request *req = client->req;
     buffer_result ret = MEMORY_ERROR;
 
-    if(req->path){
+    if(unlikely(req->path)){
         ret = write2buf(req->path, buf, len);
     }else{
         req->path = new_buffer(1024, LIMIT_PATH);
@@ -544,14 +544,14 @@ headers_complete_cb(http_parser *p)
     }
 
     ret = PyDict_SetItem(env, server_protocol_key, obj);
-    if(ret == -1){
+    if(unlikely(ret == -1)){
         return -1;
     }
 
-    if(req->path){
+    if(likely(req->path)){
         ret = set_path(env, req->path->buf, req->path->len);
         free_buffer(req->path);
-        if(ret == -1){
+        if(unlikely(ret == -1)){
            //TODO Error 
            return -1;
         }
@@ -564,22 +564,22 @@ headers_complete_cb(http_parser *p)
     req->path = NULL;
 
     //Last header
-    if(req->field && req->value){
+    if(likely(req->field && req->value)){
         ret = PyDict_SetItem(env, req->field, req->value);
         Py_DECREF(req->field);
         Py_DECREF(req->value);
         req->field = NULL;
         req->value = NULL;
-        if(ret == -1){
+        if(unlikely(ret == -1)){
             return -1;
         }
     }
     ret = replace_env_key(env, h_content_type_key, content_type_key);
-    if(ret == -1){
+    if(unlikely(ret == -1)){
         return -1;
     }
     ret = replace_env_key(env, h_content_length_key, content_length_key);
-    if(ret == -1){
+    if(unlikely(ret == -1)){
         return -1;
     }
 
@@ -647,7 +647,7 @@ headers_complete_cb(http_parser *p)
     }
 
     ret = PyDict_SetItem(env, request_method_key, obj);
-    if(ret == -1){
+    if(unlikely(ret == -1)){
         return -1;
     }
     //free_request(req);
@@ -658,7 +658,7 @@ headers_complete_cb(http_parser *p)
     obj = ClientObject_New(client);
     ret = PyDict_SetItem(env, client_key, obj);
     Py_DECREF(obj);
-    if(ret == -1){
+    if(unlikely(ret == -1)){
         return -1;
     }
 

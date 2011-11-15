@@ -26,6 +26,14 @@
 #include <stddef.h>
 
 
+#if __GNUC__ >= 3
+# define likely(x)	__builtin_expect(!!(x), 1)
+# define unlikely(x)	__builtin_expect(!!(x), 0)
+#else
+# define likely(x) (x)
+# define unlikely(x) (x)
+#endif
+
 #ifndef MIN
 # define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
@@ -418,10 +426,10 @@ size_t http_parser_execute (http_parser *parser,
   for (p=data, pe=data+len; p != pe; p++) {
     ch = *p;
 
-    if (PARSING_HEADER(state)) {
+    if (likely( PARSING_HEADER(state) )) {
       ++nread;
       /* Buffer overflow attack */
-      if (nread > HTTP_MAX_HEADER_SIZE) {
+      if (unlikely( nread > HTTP_MAX_HEADER_SIZE )) {
         SET_ERRNO(HPE_HEADER_OVERFLOW);
         goto error;
       }
@@ -1154,7 +1162,7 @@ size_t http_parser_execute (http_parser *parser,
 
         c = TOKEN(ch);
 
-        if (!c) {
+        if (unlikely(!c)) {
           SET_ERRNO(HPE_INVALID_HEADER_TOKEN);
           goto error;
         }
@@ -1192,7 +1200,7 @@ size_t http_parser_execute (http_parser *parser,
       {
         c = TOKEN(ch);
 
-        if (c) {
+        if (likely(c)) {
           switch (header_state) {
             case h_general:
               break;

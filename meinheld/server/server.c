@@ -89,16 +89,6 @@ call_wsgi_app(client_t *client, picoev_loop* loop);
 static int
 check_status_code(client_t *client);
 
-static int
-setsig(int sig, void* handler)
-{
-    struct sigaction context, ocontext;
-    context.sa_handler = handler;
-    sigemptyset(&context.sa_mask);
-    context.sa_flags = 0;
-    return sigaction(sig, &context, &ocontext);
-}
-
 static void
 client_t_list_fill(void)
 {
