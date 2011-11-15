@@ -61,7 +61,10 @@ setup(name='meinheld',
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 #libraries=["profiler"],
-                define_macros=[ ("DEVELOP",None) ],
+                define_macros=[
+                    ("DEVELOP",None),
+                    ("HTTP_PARSER_DEBUG", "0")
+                    ],
             )],
 
     classifiers=[
