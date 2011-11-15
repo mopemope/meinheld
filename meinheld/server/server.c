@@ -27,7 +27,7 @@ static char *server_name = "127.0.0.1";
 static short server_port = 8000;
 static int listen_sock;  // listen socket
 
-static int loop_done; // main loop flag
+static volatile sig_atomic_t loop_done;
 
 picoev_loop* main_loop; //main loop
 
@@ -1147,13 +1147,13 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     PyObject *watchdog_result;
     if (!PyArg_ParseTuple(args, "O:run", &wsgi_app))
         return NULL; 
-    
+
     if(listen_sock <= 0){
         PyErr_Format(PyExc_TypeError, "not found listen socket");
         return NULL;
-        
+
     }
-    
+
     Py_INCREF(wsgi_app);
     setup_server_env();
 
@@ -1162,13 +1162,13 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     /* create loop */
     main_loop = picoev_create_loop(60);
     loop_done = 1;
-    
-    setsig(SIGPIPE, sigpipe_cb);
-    setsig(SIGINT, sigint_cb);
-    setsig(SIGTERM, sigint_cb);
+
+    PyOS_setsig(SIGPIPE, sigpipe_cb);
+    PyOS_setsig(SIGINT, sigint_cb);
+    PyOS_setsig(SIGTERM, sigint_cb);
 
     picoev_add(main_loop, listen_sock, PICOEV_READ, ACCEPT_TIMEOUT_SECS, accept_callback, NULL);
-    
+
     /* loop */
     while (loop_done) {
         //Py_BEGIN_ALLOW_THREADS
@@ -1176,7 +1176,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
         //Py_END_ALLOW_THREADS
         i++;
         // watchdog slow.... skip check
-        
+
         //if(watchdog && i > 1){
         if(watchdog){
             watchdog_result = PyObject_CallFunction(watchdog, NULL);
@@ -1193,16 +1193,16 @@ meinheld_run_loop(PyObject *self, PyObject *args)
 
     Py_DECREF(wsgi_app);
     Py_XDECREF(watchdog);
-    
+
     picoev_destroy_loop(main_loop);
     picoev_deinit();
-    
+
     clear_server_env();
 
     if(unix_sock_name){
         unlink(unix_sock_name);
     }
-    printf("Bye.\n");
+    //printf("Bye.\n");
     Py_RETURN_NONE;
 }
 
@@ -1333,7 +1333,7 @@ meinheld_set_fastwatchdog(PyObject *self, PyObject *args)
     int _ppid;
     if (!PyArg_ParseTuple(args, "ii", &_fd, &_ppid))
         return NULL;
-    
+
     tempfile_fd = _fd;
     ppid = _ppid;
     Py_RETURN_NONE;
@@ -1345,7 +1345,7 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
     PyObject *temp;
     if (!PyArg_ParseTuple(args, "O:watchdog", &temp))
         return NULL;
-    
+
     if(!PyCallable_Check(temp)){
         PyErr_SetString(PyExc_TypeError, "must be callable");
         return NULL;
@@ -1398,7 +1398,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_ValueError, "timeout value out of range ");
         return NULL;
     }
-    
+
     // check client object
     if(!CheckClientObject(temp)){
         PyErr_SetString(PyExc_TypeError, "must be a client object");
@@ -1562,10 +1562,10 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 
     pyclient =(ClientObject *) current_client;
-    
+
     picoev_del(main_loop, fd);
     picoev_add(main_loop, fd, event, timeout, trampoline_switch_callback, (void *)pyclient);
-   
+
     // switch to hub
     current = pyclient->greenlet;
     parent = PyGreenlet_GET_PARENT(current);
@@ -1595,10 +1595,10 @@ static PyMethodDef WsMethods[] = {
 
     {"set_keepalive", meinheld_set_keepalive, METH_VARARGS, "set keep-alive support. value set timeout sec. default 0. (disable keep-alive)"},
     {"get_keepalive", meinheld_get_keepalive, METH_VARARGS, "return keep-alive support."},
-    
+
     {"set_max_content_length", meinheld_set_max_content_length, METH_VARARGS, "set max_content_length"},
     {"get_max_content_length", meinheld_get_max_content_length, METH_VARARGS, "return max_content_length"},
-    
+
     {"set_client_body_buffer_size", meinheld_set_client_body_buffer_size, METH_VARARGS, "set client_body_buffer_size"},
     {"get_client_body_buffer_size", meinheld_get_client_body_buffer_size, METH_VARARGS, "return client_body_buffer_size"},
 
@@ -1610,7 +1610,7 @@ static PyMethodDef WsMethods[] = {
 
     {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"},
     {"stop", meinheld_stop, METH_VARARGS, "stop main loop"},
-    // support gunicorn 
+    // support gunicorn
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
     {"set_fastwatchdog", meinheld_set_fastwatchdog, METH_VARARGS, "set watchdog"},
@@ -1635,7 +1635,7 @@ initserver(void)
         return;
     }
 
-    if(PyType_Ready(&FileWrapperType) < 0){ 
+    if(PyType_Ready(&FileWrapperType) < 0){
         return;
     }
 

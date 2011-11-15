@@ -44,7 +44,7 @@ setup(name='meinheld',
     install_requires=[
         'greenlet>=0.3.1',
     ],
-    
+
     entry_points="""
 
     [gunicorn.workers]
