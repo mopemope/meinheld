@@ -28,6 +28,7 @@ static short server_port = 8000;
 static int listen_sock;  // listen socket
 
 static volatile sig_atomic_t loop_done;
+static volatile sig_atomic_t catch_signal = 0;
 
 picoev_loop* main_loop; //main loop
 
@@ -1064,6 +1065,9 @@ sigint_cb(int signum)
 {
     DEBUG("call SIGINT");
     loop_done = 0;
+    if(!catch_signal){
+        catch_signal = 1;
+    }
 }
 
 static void
@@ -1193,6 +1197,13 @@ meinheld_run_loop(PyObject *self, PyObject *args)
         unlink(unix_sock_name);
     }
     //printf("Bye.\n");
+    if(catch_signal){
+        //override
+        PyErr_Clear();
+        PyErr_SetNone(PyExc_KeyboardInterrupt);
+        catch_signal = 0;
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
