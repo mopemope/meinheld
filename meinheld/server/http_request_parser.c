@@ -352,51 +352,6 @@ write_body(client_t *cli, const char *buffer, size_t buffer_len)
     }
 }
 
-typedef enum{
-    CONTENT_TYPE,
-    CONTENT_LENGTH,
-    OTHER
-} wsgi_header_type;
-
-/*
-static wsgi_header_type
-check_header_type(const char *buf)
-{
-    if(*buf++ != 'C'){
-        return OTHER;
-    }
-    if(*buf++ != 'O'){
-        return OTHER;
-    }
-    if(*buf++ != 'N'){
-        return OTHER;
-    }
-    if(*buf++ != 'T'){
-        return OTHER;
-    }
-    if(*buf++ != 'E'){
-        return OTHER;
-    }
-    if(*buf++ != 'N'){
-        return OTHER;
-    }
-    if(*buf++ != 'T'){
-        return OTHER;
-    }
-    if(*buf++ != '_'){
-        return OTHER;
-    }
-    char c = *buf++;
-    if(c == 'L'){
-        return CONTENT_LENGTH;
-    }else if(c == 'T'){
-        return CONTENT_TYPE;
-    }
-    return OTHER;
-}
-*/
-
-
 static client_t *
 get_client(http_parser *p)
 {
@@ -455,7 +410,6 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     }
 
     if(unlikely(obj == NULL)){
-        //TODO Set error
         client->bad_request_code = 500;
         return -1;
     }
@@ -468,56 +422,6 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     req->last_header_element = FIELD;
     return 0;
 }
-
-/*
-static int
-header_field_cb(http_parser *p, const char *buf, size_t len)
-{
-    uint32_t i;
-    header *h;
-    client_t *client = get_client(p);
-    request *req = client->req;
-    char temp[len];
-
-    buffer_result ret = MEMORY_ERROR;
-    if (req->last_header_element != FIELD){
-        if(LIMIT_REQUEST_FIELDS <= req->num_headers){
-            client->bad_request_code = 400;
-            return -1;
-        }
-        req->num_headers++;
-    }
-    i = req->num_headers;
-    h = req->headers[i];
-
-    key_upper(temp, buf, len);
-    if(h){
-        ret = write2buf(h->field, temp, len);
-    }else{
-        req->headers[i] = h = new_header(128, LIMIT_REQUEST_FIELD_SIZE, 2048, LIMIT_REQUEST_FIELD_SIZE);
-        wsgi_header_type type = check_header_type(temp);
-        if(type == OTHER){
-            ret = write2buf(h->field, "HTTP_", 5);
-        }
-        ret = write2buf(h->field, temp, len);
-        //printf("%s \n", getString(h->field));
-
-    }
-    switch(ret){
-        case MEMORY_ERROR:
-            client->bad_request_code = 500;
-            return -1;
-        case LIMIT_OVER:
-            client->bad_request_code = 400;
-            return -1;
-        default:
-            break;
-    }
-
-    req->last_header_element = FIELD;
-    return 0;
-}
-*/
 
 static int
 header_value_cb(http_parser *p, const char *buf, size_t len)
@@ -534,7 +438,6 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     }
 
     if(unlikely(obj == NULL)){
-        //TODO Set error
         client->bad_request_code = 500;
         return -1; 
     }
@@ -547,35 +450,6 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     req->last_header_element = VALUE;
     return 0;
 }
-/*
-static int
-header_value_cb(http_parser *p, const char *buf, size_t len)
-{
-    uint32_t i;
-    header *h;
-    client_t *client = get_client(p);
-    request *req = client->req;
-
-    buffer_result ret = MEMORY_ERROR;
-    i = req->num_headers;
-    h = req->headers[i];
-
-    if(h){
-        ret = write2buf(h->value, buf, len);
-    }
-    switch(ret){
-        case MEMORY_ERROR:
-            client->bad_request_code = 500;
-            return -1;
-        case LIMIT_OVER:
-            client->bad_request_code = 400;
-            return -1;
-        default:
-            break;
-    }
-    req->last_header_element = VALUE;
-    return 0;
-}*/
 
 static int
 url_cb(http_parser *p, const char *buf, size_t len)
@@ -605,94 +479,8 @@ url_cb(http_parser *p, const char *buf, size_t len)
     return 0;
 }
 
-/*
-int
-request_uri_cb(http_parser *p, const char *buf, size_t len)
-{
-    client_t *client = get_client(p);
-    request *req = client->req;
-    buffer_result ret = MEMORY_ERROR;
 
-    if(req->uri){
-        ret = write2buf(req->uri, buf, len);
-    }else{
-        req->uri = new_buffer(1024, LIMIT_URI);
-        ret = write2buf(req->uri, buf, len);
-    }
-    switch(ret){
-        case MEMORY_ERROR:
-            client->bad_request_code = 500;
-            return -1;
-        case LIMIT_OVER:
-            client->bad_request_code = 400;
-            return -1;
-        default:
-            break;
-    }
-
-
-    return 0;
-}*/
-
-/*
-int
-query_string_cb(http_parser *p, const char *buf, size_t len)
-{
-    client_t *client = get_client(p);
-    request *req = client->req;
-    buffer_result ret = MEMORY_ERROR;
-
-    if(req->query_string){
-        ret = write2buf(req->query_string, buf, len);
-    }else{
-        req->query_string = new_buffer(1024*2, LIMIT_QUERY_STRING);
-        ret = write2buf(req->query_string, buf, len);
-    }
-    switch(ret){
-        case MEMORY_ERROR:
-            client->bad_request_code = 500;
-            return -1;
-        case LIMIT_OVER:
-            client->bad_request_code = 400;
-            return -1;
-        default:
-            break;
-    }
-
-    return 0;
-}*/
-
-/*
-int
-fragment_cb(http_parser *p, const char *buf, size_t len)
-{
-    client_t *client = get_client(p);
-    request *req = client->req;
-    buffer_result ret = MEMORY_ERROR;
-
-    if(req->fragment){
-        ret = write2buf(req->fragment, buf, len);
-    }else{
-        req->fragment = new_buffer(1024, LIMIT_FRAGMENT);
-        ret = write2buf(req->fragment, buf, len);
-    }
-    switch(ret){
-        case MEMORY_ERROR:
-            client->bad_request_code = 500;
-            return -1;
-        case LIMIT_OVER:
-            client->bad_request_code = 400;
-            return -1;
-        default:
-            break;
-    }
-
-    return 0;
-}
-*/
-
-
-int
+static int
 body_cb(http_parser *p, const char *buf, size_t len)
 {
     DEBUG("body_cb");

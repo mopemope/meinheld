@@ -24,8 +24,6 @@ void free_buffer(buffer *buf);
 
 PyObject* getPyString(buffer *buf);
 
-PyObject* getPyStringAndDecode(buffer *buf);
-
 char* getString(buffer *buf);
 
 void buffer_list_fill(void);

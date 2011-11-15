@@ -54,12 +54,13 @@ dealloc_buffer(buffer *buf)
     }
 }
 
+/*
 static int
 hex2int(int i)
 {
     i = toupper(i);
     i = i - '0';
-    if(i > 9){ 
+    if(i > 9){
         i = i - 'A' + '9' + 1;
     }
     return i;
@@ -85,7 +86,7 @@ urldecode(char *buf, int len)
     }
     *t = 0;
     return t - s0;
-}
+}*/
 
 buffer *
 new_buffer(size_t buf_size, size_t limit)
@@ -158,17 +159,6 @@ getPyString(buffer *buf)
     free_buffer(buf);
     return o;
 }
-
-PyObject *
-getPyStringAndDecode(buffer *buf)
-{
-    PyObject *o;
-    int l = urldecode(buf->buf, buf->len);
-    o = PyString_FromStringAndSize(buf->buf, l);
-    free_buffer(buf);
-    return o;
-}
-
 
 char *
 getString(buffer *buf)
