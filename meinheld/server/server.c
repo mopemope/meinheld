@@ -267,7 +267,6 @@ check_status_code(client_t *client)
     if(req->bad_request_code > 200){
         //error
         //shift
-        DEBUG("bad_request_code");
         set_current_request(client);
         send_error_page(client);
         close_conn(client, main_loop);
@@ -751,7 +750,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 
                 if(!cli->upgrade && nread != r){
                     // parse error
-                    DEBUG("fd %d parse error Bad Request %d", cli->fd, cli->bad_request_code);
+                    DEBUG("fd:%d parse error bad_status_code=%d", cli->fd, cli->bad_request_code);
                     set_bad_request_code(cli, 400);
                     ///force end
                     finish = 1;

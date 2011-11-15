@@ -160,16 +160,22 @@ concat_string(PyObject *o, const char *buf, size_t len)
     return ret;
 }
 
-static void
+static int
 replace_env_key(PyObject* dict, PyObject* old_key, PyObject* new_key)
 {
+    int ret = 1;
+
     PyObject* value = PyDict_GetItem(dict, old_key);
     if(value) {
         Py_INCREF(value);
-        PyDict_DelItem(dict, old_key);
-        PyDict_SetItem(dict, new_key, value);
+        ret = PyDict_DelItem(dict, old_key);
+        if(ret == -1){
+            return ret;
+        }
+        ret = PyDict_SetItem(dict, new_key, value);
         Py_DECREF(value);
     }
+    return ret;
 }
 
 static int
@@ -182,6 +188,43 @@ hex2int(int i)
     }
     return i;
 }
+
+static int
+set_query(PyObject *env, char *buf, int len)
+{
+    int c, ret, slen = 0;
+    char *s0;
+    PyObject *obj;
+
+    s0 = buf;
+    while(len > 0){
+        c = *buf++;
+        if(c == '#'){
+            slen++;
+            break;
+        }
+        len--;
+        slen++;
+    }
+
+    if(slen > 1){
+        obj = PyString_FromStringAndSize(s0, slen -1);
+        DEBUG("query:%.*s", len, PyString_AS_STRING(obj));
+        if(unlikely(obj == NULL)){
+            return -1;
+        }
+        
+        ret = PyDict_SetItem(env, query_string_key, obj);
+        Py_DECREF(obj);
+        
+        if(unlikely(ret == -1)){
+            return -1;
+        }
+    }
+    
+    return 1; 
+}
+
 
 static int
 set_path(PyObject *env, char *buf, int len)
@@ -201,11 +244,9 @@ set_path(PyObject *env, char *buf, int len)
             len -= 2;
         }else if(c == '?'){
             //stop
-            obj = PyString_FromStringAndSize(buf, len-1);
-            DEBUG("query:%.*s", len, PyString_AS_STRING(obj));
-            if(obj){
-                PyDict_SetItem(env, query_string_key, obj);
-                Py_DECREF(obj);
+            if(set_query(env, buf, len) == -1){
+                //Error
+                return -1;
             }
             break;
         }else if(c == '#'){
@@ -219,11 +260,15 @@ set_path(PyObject *env, char *buf, int len)
     //*t = 0;
     obj = PyString_FromStringAndSize(s0, t - s0);
     DEBUG("path:%.*s", t-s0, PyString_AS_STRING(obj));
-    if(obj != NULL){
+    
+    if(likely(obj != NULL)){
         PyDict_SetItem(env, path_info_key, obj);
         Py_DECREF(obj);
+        return t - s0;
+    }else{
+        return -1;
     }
-    return t - s0;
+    
 }
 
 static PyObject*
@@ -384,6 +429,8 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     client_t *client = get_client(p);
     request *req = client->req;
     PyObject *env = NULL, *obj;
+    
+    DEBUG("field:%.*s", len, buf);
 
     if (req->last_header_element != FIELD){
         env = req->env;
@@ -479,6 +526,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     request *req = client->req;
     PyObject *obj;
 
+    DEBUG("value:%.*s", len, buf);
     if(likely(req->value== NULL)){
         obj = PyString_FromStringAndSize(buf, len);
     }else{
@@ -689,6 +737,8 @@ int
 headers_complete_cb(http_parser *p)
 {
     PyObject *obj;
+    int ret;
+
     client_t *client = get_client(p);
     request *req = client->req;
     PyObject *env = client->environ;
@@ -704,29 +754,46 @@ headers_complete_cb(http_parser *p)
     }else{
         obj = server_protocol_val10;
     }
-    PyDict_SetItem(env, server_protocol_key, obj);
+
+    ret = PyDict_SetItem(env, server_protocol_key, obj);
+    if(ret == -1){
+        return -1;
+    }
 
     if(req->path){
-        set_path(env, req->path->buf, req->path->len);
-        //obj = getPyStringAndDecode(req->path);
-        //PyDict_SetItem(env, path_info_key, obj);
-        //Py_DECREF(obj);
-        req->path = NULL;
+        ret = set_path(env, req->path->buf, req->path->len);
+        free_buffer(req->path);
+        if(ret == -1){
+           //TODO Error 
+           return -1;
+        }
     }else{
-        PyDict_SetItem(env, path_info_key, empty_string);
+        ret = PyDict_SetItem(env, path_info_key, empty_string);
+        if(ret == -1){
+            return -1;
+        }
     }
     req->path = NULL;
 
     //Last header
     if(req->field && req->value){
-        PyDict_SetItem(env, req->field, req->value);
+        ret = PyDict_SetItem(env, req->field, req->value);
         Py_DECREF(req->field);
         Py_DECREF(req->value);
         req->field = NULL;
         req->value = NULL;
+        if(ret == -1){
+            return -1;
+        }
     }
-    replace_env_key(env, h_content_type_key, content_type_key);
-    replace_env_key(env, h_content_length_key, content_length_key);
+    ret = replace_env_key(env, h_content_type_key, content_type_key);
+    if(ret == -1){
+        return -1;
+    }
+    ret = replace_env_key(env, h_content_length_key, content_length_key);
+    if(ret == -1){
+        return -1;
+    }
 
     switch(p->method){
         case HTTP_DELETE:
@@ -791,15 +858,21 @@ headers_complete_cb(http_parser *p)
             break;
     }
 
-    PyDict_SetItem(env, request_method_key, obj);
+    ret = PyDict_SetItem(env, request_method_key, obj);
+    if(ret == -1){
+        return -1;
+    }
     //free_request(req);
     client->req = NULL;
     client->body_length = p->content_length;
 
     //keep client data
     obj = ClientObject_New(client);
-    PyDict_SetItem(env, client_key, obj);
+    ret = PyDict_SetItem(env, client_key, obj);
     Py_DECREF(obj);
+    if(ret == -1){
+        return -1;
+    }
 
     DEBUG("fin headers_complete_cb");
     return 0;
