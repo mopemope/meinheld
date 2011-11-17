@@ -23,6 +23,21 @@ DEFAULT_HEADER = [
             ("Cache-Control", "max-age=0"),
         ]
 
+def app_factory():
+
+    class Handler(object):
+
+        def __call__(self, environ, start_response):
+            status = '200 OK'
+            res = "Hello world!"
+            response_headers = [('Content-type','text/plain')]
+            start_response(status, response_headers)
+            self.environ = environ.copy()
+            print(environ)
+            return [res]
+
+    return Handler()
+
 def send_data(addr=DEFAULT_ADDR, method=DEFAULT_METHOD, path=DEFAULT_PATH,
         version=DEFAULT_VERSION, headers=DEFAULT_HEADER, post_data=None):
 
@@ -39,25 +54,13 @@ def send_data(addr=DEFAULT_ADDR, method=DEFAULT_METHOD, path=DEFAULT_PATH,
     data = sock.recv(1024 * 2)
     return data
 
-def start_server():
+def start_server(app):
 
     from meinheld import server
 
-    class Handler(object):
-
-        def __call__(self, environ, start_response):
-            status = '200 OK'
-            res = "Hello world!"
-            response_headers = [('Content-type','text/plain')]
-            start_response(status, response_headers)
-            self.env = environ.copy()
-            print(environ)
-            return [res]
-
-    h = Handler()
     server.listen(("0.0.0.0", 8000))
-    server.run(h)
-    return h.env
+    server.run(app)
+    return app.environ
 
 
 class ClientRunner(threading.Thread):
@@ -76,10 +79,10 @@ class ClientRunner(threading.Thread):
         self.receive_data = send_data(*args, **kwargs)
         server.shutdown()
 
-def run_client(*args, **kwargs):
+def run_client(app_factory=app_factory, *args, **kwargs):
     r = ClientRunner(*args, **kwargs)
     r.start()
-    env = start_server()
+    env = start_server(app_factory())
     r.join()
     return env, r.receive_data
 
