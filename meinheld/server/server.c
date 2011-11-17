@@ -28,12 +28,14 @@ static short server_port = 8000;
 static int listen_sock;  // listen socket
 
 static volatile sig_atomic_t loop_done;
+static volatile sig_atomic_t call_shutdown = 0;
 static volatile sig_atomic_t catch_signal = 0;
 
 picoev_loop* main_loop; //main loop
 
 static PyObject *wsgi_app = NULL; //wsgi app
 
+static uint8_t watch_loop = 0;
 static PyObject *watchdog = NULL; //watchdog
 
 static char *log_path = NULL; //access log path
@@ -1106,7 +1108,7 @@ meinheld_access_log(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static PyObject * 
+static PyObject *
 meinheld_error_log(PyObject *self, PyObject *args)
 {
     if (!PyArg_ParseTuple(args, "s:error_log", &error_log_path))
@@ -1131,6 +1133,14 @@ static PyObject *
 meinheld_stop(PyObject *self, PyObject *args)
 {
     loop_done = 0;
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+meinheld_shutdown(PyObject *self, PyObject *args)
+{
+    loop_done = 0;
+    call_shutdown = 1;
     Py_RETURN_NONE;
 }
 
@@ -1165,7 +1175,7 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     picoev_add(main_loop, listen_sock, PICOEV_READ, ACCEPT_TIMEOUT_SECS, accept_callback, NULL);
 
     /* loop */
-    while (loop_done) {
+    while (likely(loop_done)) {
         //Py_BEGIN_ALLOW_THREADS
         picoev_loop_once(main_loop, 10);
         //Py_END_ALLOW_THREADS
@@ -1173,16 +1183,18 @@ meinheld_run_loop(PyObject *self, PyObject *args)
         // watchdog slow.... skip check
 
         //if(watchdog && i > 1){
-        if(watchdog){
-            watchdog_result = PyObject_CallFunction(watchdog, NULL);
-            if(PyErr_Occurred()){
-                PyErr_Print();
-                PyErr_Clear();
+        if(watch_loop){
+            if(watchdog){
+                watchdog_result = PyObject_CallFunction(watchdog, NULL);
+                if(PyErr_Occurred()){
+                    PyErr_Print();
+                    PyErr_Clear();
+                }
+                Py_XDECREF(watchdog_result);
+                i = 0;
+            }else if(tempfile_fd){
+                fast_notify();
             }
-            Py_XDECREF(watchdog_result);
-            i = 0;
-        }else if(tempfile_fd){
-            fast_notify();
         }
     }
 
@@ -1194,9 +1206,17 @@ meinheld_run_loop(PyObject *self, PyObject *args)
 
     clear_server_env();
 
-    if(unix_sock_name){
-        unlink(unix_sock_name);
+    if(call_shutdown){
+        DEBUG("shutdown...");
+        close(listen_sock);
+        listen_sock = 0;
+        if(unix_sock_name){
+           unlink(unix_sock_name);
+           unix_sock_name = NULL;
+        }
+        call_shutdown = 0;
     }
+
     //printf("Bye.\n");
     if(catch_signal){
         //override
@@ -1338,6 +1358,7 @@ meinheld_set_fastwatchdog(PyObject *self, PyObject *args)
 
     tempfile_fd = _fd;
     ppid = _ppid;
+    watch_loop = 1;
     Py_RETURN_NONE;
 }
 
@@ -1354,6 +1375,7 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
     }
     watchdog = temp;
     Py_INCREF(watchdog);
+    watch_loop = 1;
     Py_RETURN_NONE;
 }
 
@@ -1611,7 +1633,9 @@ static PyMethodDef WsMethods[] = {
     {"get_picoev_max_fd", meinheld_get_picoev_max_fd, METH_VARARGS, "return picoev max fd size"},
 
     {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"},
-    {"stop", meinheld_stop, METH_VARARGS, "stop main loop"},
+    {"stop", meinheld_stop, METH_NOARGS, "stop main loop"},
+    {"shutdown", meinheld_shutdown, METH_NOARGS, "stop and close listen socket "},
+
     // support gunicorn
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
@@ -1623,7 +1647,7 @@ static PyMethodDef WsMethods[] = {
     // io
     {"cancel_wait", meinheld_cancel_wait, METH_VARARGS, "cancel wait"},
     {"trampoline", (PyCFunction)meinheld_trampoline, METH_VARARGS | METH_KEYWORDS, "trampoline"},
-    {"get_ident", meinheld_get_ident, METH_VARARGS, "return thread ident "},
+    {"get_ident", meinheld_get_ident, METH_VARARGS, "return thread ident id"},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

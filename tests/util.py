@@ -24,7 +24,7 @@ DEFAULT_HEADER = [
         ]
 
 def send_data(addr=DEFAULT_ADDR, method=DEFAULT_METHOD, path=DEFAULT_PATH,
-        version=DEFAULT_VERSION, headers=DEFAULT_HEADER):
+        version=DEFAULT_VERSION, headers=DEFAULT_HEADER, post_data=None):
 
     sock = socket.create_connection(addr)
     sock.send("%s %s %s\r\n" % (method, urllib.quote(path), version))
@@ -32,6 +32,10 @@ def send_data(addr=DEFAULT_ADDR, method=DEFAULT_METHOD, path=DEFAULT_PATH,
     for h in  headers:
         sock.send("%s: %s\r\n" % h)
     sock.send("\r\n")
+    if post_data:
+        sock.send(post_data)
+        sock.send("\r\n")
+
     data = sock.recv(1024 * 2)
     return data
 
@@ -70,7 +74,7 @@ class ClientRunner(threading.Thread):
         args = self.args
         kwargs = self.kwargs
         self.receive_data = send_data(*args, **kwargs)
-        server.stop()
+        server.shutdown()
 
 def run_client(*args, **kwargs):
     r = ClientRunner(*args, **kwargs)
