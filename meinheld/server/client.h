@@ -41,7 +41,7 @@ typedef struct _client {
 typedef struct {
     PyObject_HEAD
     client_t *client;
-    PyGreenlet *greenlet;
+    PyObject *greenlet;     //greenlet
     PyObject *args;         //greenlet.switch value
     PyObject *kwargs;       //greenlet.switch value
     uint8_t suspended;
@@ -51,8 +51,6 @@ typedef struct {
 extern PyTypeObject ClientObjectType;
 
 PyObject* ClientObject_New(client_t* client);
-
-void setup_client(void);
 
 int CheckClientObject(PyObject *obj);
 

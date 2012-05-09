@@ -17,6 +17,10 @@
 #include "util.h"
 #include "input.h"
 
+#ifdef WITH_GREENLET
+#include "greensupport.h"
+#endif
+
 
 #define ACCEPT_TIMEOUT_SECS 1
 #define READ_TIMEOUT_SECS 30
@@ -286,9 +290,9 @@ process_resume_wsgi_app(ClientObject *pyclient)
         PyErr_Fetch(&err_type, &err_val, &err_tb);
         PyErr_Clear();
         //set error
-        res = PyGreenlet_Throw(pyclient->greenlet, err_type, err_val, err_tb);
+        res = greenlet_throw(pyclient->greenlet, err_type, err_val, err_tb);
     }else{
-        res = PyGreenlet_Switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
+        res = greenlet_switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
     }
     start_response->cli = old_client;
 
@@ -321,7 +325,7 @@ static int
 process_wsgi_app(client_t *cli)
 {
     PyObject *args = NULL, *start = NULL, *res = NULL;
-    PyGreenlet *greenlet;
+    PyObject *greenlet;
     ClientObject *pyclient;
     start = create_start_response(cli);
 
@@ -335,17 +339,22 @@ process_wsgi_app(client_t *cli)
 
     DEBUG("start client %p", cli);
     DEBUG("start environ %p", cli->environ);
-
+    
+#ifdef WITH_GREENLET
     //new greenlet
-    greenlet = PyGreenlet_New(wsgi_app, NULL);
+    greenlet = greenlet_new(wsgi_app, NULL);
     // set_greenlet
     pyclient->greenlet = greenlet;
     Py_INCREF(pyclient->greenlet);
 
-    res = PyGreenlet_Switch(greenlet, args, NULL);
+    res = greenlet_switch(greenlet, args, NULL);
     //res = PyObject_CallObject(wsgi_app, args);
     Py_DECREF(args);
     Py_DECREF(greenlet);
+#else
+    res = PyObject_CallObject(wsgi_app, args);
+    Py_DECREF(args);
+#endif
 
     //check response & PyErr_Occurred
     if(res && res == Py_None){
@@ -366,9 +375,9 @@ process_wsgi_app(client_t *cli)
 
     //next send response 
     cli->response = res;
-    
+
     return 1;
-    
+
 }
 
 void
@@ -849,15 +858,12 @@ setup_server_env(void)
     cache_time_init();
     setup_static_env(server_name, server_port);
     setup_start_response();
-    setup_client();
     
     ClientObject_list_fill();
     client_t_list_fill();
     request_list_fill();
     buffer_list_fill();
     InputObject_list_fill();
-
-    PyGreenlet_Import();
     
     hub_switch_value = Py_BuildValue("(i)", -1);
     client_key = PyString_FromString("meinheld.client");
@@ -1424,10 +1430,12 @@ meinheld_set_process_name(PyObject *self, PyObject *args)
 PyObject *
 meinheld_suspend_client(PyObject *self, PyObject *args)
 {
+
+#ifdef WITH_GREENLET
     PyObject *temp;
     ClientObject *pyclient;
     client_t *client;
-    PyGreenlet *parent;
+    PyObject *parent;
     int timeout = 0;
 
     if (!PyArg_ParseTuple(args, "O|i:_suspend_client", &temp, &timeout)){
@@ -1460,7 +1468,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
 
     if(client && !(pyclient->suspended)){
         pyclient->suspended = 1;
-        parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
+        parent = greenlet_getparent(pyclient->greenlet);
 
         set_so_keepalive(client->fd, 1);
         DEBUG("meinheld_suspend_client pyclient:%p client:%p fd:%d", pyclient, client, client->fd);
@@ -1472,12 +1480,15 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         }else{
             picoev_add(main_loop, client->fd, PICOEV_TIMEOUT, 300, timeout_callback, (void *)pyclient);
         }
-        return PyGreenlet_Switch(parent, hub_switch_value, NULL);
+        return greenlet_switch(parent, hub_switch_value, NULL);
     }else{
         PyErr_SetString(PyExc_Exception, "already suspended");
         return NULL;
     }
     Py_RETURN_NONE;
+#else
+    NO_GREENLET_ERR;
+#endif
 }
 
 PyObject *
@@ -1565,15 +1576,16 @@ trampoline_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static PyObject*
 meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyGreenlet *current, *parent;
+#ifdef WITH_GREENLET
+    PyObject *current, *parent;
     ClientObject *pyclient;
     int fd, event, timeout = 0;
     PyObject *read = Py_None, *write = Py_None;
 
-	static char *keywords[] = {"fileno", "read", "write", "timeout", NULL};
+    static char *keywords[] = {"fileno", "read", "write", "timeout", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:trampoline", keywords, &fd, &read, &write, &timeout)){
-		return NULL;
+        return NULL;
     }
 
     if(fd < 0){
@@ -1607,8 +1619,11 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 
     // switch to hub
     current = pyclient->greenlet;
-    parent = PyGreenlet_GET_PARENT(current);
-    return PyGreenlet_Switch(parent, hub_switch_value, NULL);
+    parent = greenlet_getparent(current);
+    return greenlet_switch(parent, hub_switch_value, NULL);
+#else
+    NO_GREENLET_ERR;
+#endif
 
 }
 

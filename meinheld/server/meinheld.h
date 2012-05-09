@@ -27,7 +27,6 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "greenlet.h"
 #include "http_parser.h"
 
 #define SERVER "meinheld/0.5dev"
@@ -59,6 +58,10 @@
 # define likely(x) (x)
 # define unlikely(x) (x)
 #endif
+
+#define NO_GREENLET_ERROR \
+    PyErr_SetString(PyExc_NotImplementedError, "greenlet not support"); \
+    return NULL;\
 
 #endif
 
