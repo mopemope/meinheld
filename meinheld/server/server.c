@@ -560,6 +560,43 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
     }
 }
 
+static int
+check_http_expect(client_t *client)
+{
+    PyObject *c = NULL;
+    char *val = NULL;
+    int ret;
+
+    if(client->http->http_minor == 1){
+        c = PyDict_GetItemString(client->environ, "HTTP_EXPECT");
+        if(c){
+            val = PyString_AS_STRING(c);
+            if(!strncasecmp(val, "100-continue", 12)){
+                ret = write(client->fd, "HTTP/1.1 100 Continue\r\n\r\n", 25);
+                if(ret < 0){
+                    //fail
+                    PyErr_SetFromErrno(PyExc_IOError);
+                    write_error_log(__FILE__, __LINE__); 
+                    client->keep_alive = 0;
+                    client->status_code = 500;
+                    send_error_page(client);
+                    close_conn(client, main_loop);
+                    return -1;
+                }
+            }else{
+                //417
+                client->keep_alive = 0;
+                client->status_code = 417;
+                send_error_page(client);
+                close_conn(client, main_loop);
+                return -1;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
+
 static void
 prepare_call_wsgi(client_t *client)
 {
@@ -569,30 +606,8 @@ prepare_call_wsgi(client_t *client)
     set_current_request(client);
 
     //check Expect
-    if(client->http->http_minor == 1){
-        c = PyDict_GetItemString(client->environ, "HTTP_EXPECT");
-        if(c){
-            val = PyString_AS_STRING(c);
-            if(!strcasecmp(val, "100-continue")){
-                int ret = write(client->fd, "HTTP/1.1 100 Continue\r\n\r\n", 25);
-                if(ret < 0){
-                    PyErr_SetFromErrno(PyExc_IOError);
-                    write_error_log(__FILE__, __LINE__); 
-                    client->keep_alive = 0;
-                    client->status_code = 500;
-                    send_error_page(client);
-                    close_conn(client, main_loop);
-                    return;
-                }
-            }else{
-                //417
-                client->keep_alive = 0;
-                client->status_code = 417;
-                send_error_page(client);
-                close_conn(client, main_loop);
-                return;
-            }
-        }
+    if (check_http_expect(client) < 0) {
+        return;
     }
     /*
     if(client->body_type == BODY_TYPE_TMPFILE){
