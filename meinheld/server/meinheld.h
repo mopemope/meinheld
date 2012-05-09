@@ -52,8 +52,8 @@
 #endif
 
 #if __GNUC__ >= 3
-# define likely(x)	__builtin_expect(!!(x), 1)
-# define unlikely(x)	__builtin_expect(!!(x), 0)
+# define likely(x)    __builtin_expect(!!(x), 1)
+# define unlikely(x)    __builtin_expect(!!(x), 0)
 #else
 # define likely(x) (x)
 # define unlikely(x) (x)
@@ -65,3 +65,42 @@
 
 #endif
 
+#if (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 2) || PY_MAJOR_VERSION > 3
+#define PY3
+#endif
+
+#if PY_MAJOR_VERSION < 3
+#ifndef Py_REFCNT
+#  define Py_REFCNT(ob) (((PyObject *) (ob))->ob_refcnt)
+#endif
+#ifndef Py_TYPE
+#  define Py_TYPE(ob)   (((PyObject *) (ob))->ob_type)
+#endif
+#endif
+
+#ifdef PY3
+static char*
+from_unicode(PyObject* obj)
+{
+    char *c;
+    PyObject *latin1;
+
+    latin1 = PyUnicode_AsLatin1String(obj);
+    if(latin1 == NULL){
+        return NULL;
+    }
+    c = PyBytes_AsString(latin1);
+    Py_DECREF(latin1);
+    return c;
+}
+
+#define AS_STRING(x)  from_unicode(x);
+//latin1
+#define FROM_STRING(x)  PyUnicode_FromString(x);
+
+#else
+
+#define AS_STRING(x)  PyBytes_AsString(x);
+#define FROM_STRING(x)  PyBytes_FromString(x);
+
+#endif

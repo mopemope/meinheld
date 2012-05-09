@@ -13,8 +13,8 @@ def read(name):
     return open(os.path.join(os.path.dirname(__file__), name)).read()
 
 if "posix" not in os.name:
-    print "Are you really running a posix compliant OS ?"
-    print "Be posix compliant is mandatory"
+    print("Are you really running a posix compliant OS ?")
+    print("Be posix compliant is mandatory")
     sys.exit(1)
 
 
@@ -25,7 +25,7 @@ elif "Darwin" == platform.system():
 elif "FreeBSD" == platform.system():
     poller_file = 'meinheld/server/picoev_kqueue.c'
 else:
-    print "Sorry, Linux or MacOS only."
+    print("Sorry, not support .")
     sys.exit(1)
 
 library_dirs=['/usr/local/lib']

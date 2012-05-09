@@ -241,14 +241,14 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
         if (get_len(client->response) == 1) {
             client->content_length_set = 1;
             DEBUG("set content_length %d", (int)datalen);
-            length = PyString_FromFormat("%zu", datalen);
+            length = PyBytes_FromFormat("%zu", datalen);
 
             header = Py_BuildValue("(sO)", "Content-Length", length);
             Py_DECREF(length);
 
             PyList_Append(client->headers, header);
             Py_DECREF(header); 
-            PyString_AsStringAndSize(length, &value, &valuelen);
+            PyBytes_AsStringAndSize(length, &value, &valuelen);
             add_header(bucket, "Content-Length", 14, value, valuelen);
         }
     }
@@ -278,7 +278,7 @@ write_headers(client_t *client, char *data, size_t datalen)
     
     object = client->http_status;
     if(object){
-        PyString_AsStringAndSize(object, &value, &valuelen);
+        PyBytes_AsStringAndSize(object, &value, &valuelen);
     
         //write status code
         set2bucket(bucket, value, valuelen);
@@ -316,8 +316,8 @@ write_headers(client_t *client, char *data, size_t datalen)
             object1 = PyTuple_GET_ITEM(tuple, 0);
             object2 = PyTuple_GET_ITEM(tuple, 1);
             
-            if (PyString_Check(object1)) {
-                PyString_AsStringAndSize(object1, &name, &namelen);
+            if (PyBytes_Check(object1)) {
+                PyBytes_AsStringAndSize(object1, &name, &namelen);
             }else {
                 PyErr_Format(PyExc_TypeError, "expected byte string object "
                              "for header name, value of type %.200s "
@@ -325,8 +325,8 @@ write_headers(client_t *client, char *data, size_t datalen)
                 goto error;
             }
 
-            if (PyString_Check(object2)) {
-                PyString_AsStringAndSize(object2, &value, &valuelen);
+            if (PyBytes_Check(object2)) {
+                PyBytes_AsStringAndSize(object2, &value, &valuelen);
             }else {
                 PyErr_Format(PyExc_TypeError, "expected byte string object "
                              "for header value, value of type %.200s "
@@ -560,8 +560,8 @@ processs_write(client_t *client)
     iterator = client->response_iter;
     if(iterator != NULL){
         while((item =  PyIter_Next(iterator))){
-            if(PyString_Check(item)){
-                PyString_AsStringAndSize(item, &buf, &buflen);
+            if(PyBytes_Check(item)){
+                PyBytes_AsStringAndSize(item, &buf, &buflen);
                 //write
                 if(client->chunked_response){
                     bucket = new_write_bucket(client->fd, 4);
@@ -695,11 +695,11 @@ start_response_write(client_t *client)
     client->response_iter = iterator;
 
     item =  PyIter_Next(iterator);
-    if(item != NULL && PyString_Check(item)){
+    if(item != NULL && PyBytes_Check(item)){
 
         //write string only
-        buf = PyString_AS_STRING(item);
-        buflen = PyString_GET_SIZE(item);
+        buf = PyBytes_AS_STRING(item);
+        buflen = PyBytes_GET_SIZE(item);
 
         DEBUG("start_response_write status_code %d buflen %d", client->status_code, (int)buflen);
         Py_DECREF(item);
@@ -792,7 +792,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         return NULL;
     }
 
-    if (!PyString_Check(status)) {
+    if (!PyBytes_Check(status)) {
         PyErr_Format(PyExc_TypeError, "expected byte string object for "
                      "status, value of type %.200s found",
                      status->ob_type->tp_name);
@@ -822,9 +822,9 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         return NULL;
     }
 
-    char buf[PyString_GET_SIZE(status)];
+    char buf[PyBytes_GET_SIZE(status)];
     status_line = buf;
-    strcpy(status_line, PyString_AS_STRING(status));
+    strcpy(status_line, PyBytes_AS_STRING(status));
 
     status_code = strsep((char **)&status_line, " ");
 
@@ -855,9 +855,9 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     Py_XDECREF(self->cli->http_status);
 
     if(self->cli->http->http_minor == 1){
-        self->cli->http_status =  PyString_FromFormat("HTTP/1.1 %s\r\n", PyString_AS_STRING(status));
+        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.1 %s\r\n", PyBytes_AS_STRING(status));
     }else{
-        self->cli->http_status =  PyString_FromFormat("HTTP/1.0 %s\r\n", PyString_AS_STRING(status));
+        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(status));
     }
 
     Py_RETURN_NONE;
@@ -957,8 +957,12 @@ static PyMethodDef FileWrapperObject_method[] = {
 };
 
 PyTypeObject ResponseObjectType = {
-	PyObject_HEAD_INIT(NULL)
-    0,
+#ifdef PY3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
+    PyObject_HEAD_INIT(NULL)
+    0,                    /* ob_size */
+#endif
     "meinheld.start_response",             /*tp_name*/
     sizeof(ResponseObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -979,12 +983,12 @@ PyTypeObject ResponseObjectType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
     "wsgi start_response ",           /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    0,                       /* tp_iter */
+    0,                       /* tp_iternext */
     0,             /* tp_methods */
     0,             /* tp_members */
     0,                         /* tp_getset */
@@ -999,8 +1003,12 @@ PyTypeObject ResponseObjectType = {
 };
 
 PyTypeObject FileWrapperType = {
-	PyObject_HEAD_INIT(&PyType_Type)
-    0,
+#ifdef PY3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
+    PyObject_HEAD_INIT(NULL)
+    0,                    /* ob_size */
+#endif
     "meinheld.file_wrapper",             /*tp_name*/
     sizeof(FileWrapperObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -1021,12 +1029,12 @@ PyTypeObject FileWrapperType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
     "wsgi file_wrapper",           /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    FileWrapperObject_iter,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    FileWrapperObject_iter,                       /* tp_iter */
+    0,                       /* tp_iternext */
     FileWrapperObject_method,             /* tp_methods */
     0,             /* tp_members */
     0,                         /* tp_getset */

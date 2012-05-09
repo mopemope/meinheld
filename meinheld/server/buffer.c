@@ -11,29 +11,29 @@ void
 buffer_list_fill(void)
 {
     buffer *buf;
-	while (numfree < MAXFREELIST) {
+    while (numfree < MAXFREELIST) {
         buf = (buffer *)PyMem_Malloc(sizeof(buffer));
-		buffer_free_list[numfree++] = buf;
-	}
+        buffer_free_list[numfree++] = buf;
+    }
 }
 
 void
 buffer_list_clear(void)
 {
-	buffer *op;
+    buffer *op;
 
-	while (numfree) {
-		op = buffer_free_list[--numfree];
-		PyMem_Free(op);
-	}
+    while (numfree) {
+        op = buffer_free_list[--numfree];
+        PyMem_Free(op);
+    }
 }
 
 static buffer*
 alloc_buffer(void)
 {
     buffer *buf;
-	if (numfree) {
-		buf = buffer_free_list[--numfree];
+    if (numfree) {
+        buf = buffer_free_list[--numfree];
         //DEBUG("use pooled buf %p", buf);
     }else{
         buf = (buffer *)PyMem_Malloc(sizeof(buffer));
@@ -46,11 +46,11 @@ alloc_buffer(void)
 static void
 dealloc_buffer(buffer *buf)
 {
-	if (numfree < MAXFREELIST){
+    if (numfree < MAXFREELIST){
         //DEBUG("back to buffer pool %p", buf);
-		buffer_free_list[numfree++] = buf;
+        buffer_free_list[numfree++] = buf;
     }else{
-	    PyMem_Free(buf);
+        PyMem_Free(buf);
     }
 }
 
@@ -155,7 +155,7 @@ PyObject *
 getPyString(buffer *buf)
 {
     PyObject *o;
-    o = PyString_FromStringAndSize(buf->buf, buf->len);
+    o = PyBytes_FromStringAndSize(buf->buf, buf->len);
     free_buffer(buf);
     return o;
 }

@@ -129,11 +129,11 @@ new_environ(client_t *client)
     PyDict_SetItem(environ, server_port_key, server_port_val);
     PyDict_SetItem(environ, file_wrapper_key, file_wrapper_val);
 
-    object = PyString_FromString(client->remote_addr);
+    object = PyBytes_FromString(client->remote_addr);
     PyDict_SetItem(environ, remote_addr_key, object);
     Py_DECREF(object);
 
-    object = PyString_FromFormat("%d", client->remote_port);
+    object = PyBytes_FromFormat("%d", client->remote_port);
     PyDict_SetItem(environ, remote_port_key, object);
     Py_DECREF(object);
     return environ;
@@ -146,14 +146,14 @@ concat_string(PyObject *o, const char *buf, size_t len)
     size_t l;
     char *dest, *origin;
     
-    l = PyString_GET_SIZE(o);
+    l = PyBytes_GET_SIZE(o);
 
-    ret = PyString_FromStringAndSize((char*)0, l + len);
+    ret = PyBytes_FromStringAndSize((char*)0, l + len);
     if(ret == NULL){
         return ret;
     }
-    dest = PyString_AS_STRING(ret);
-    origin = PyString_AS_STRING(o);
+    dest = PyBytes_AS_STRING(ret);
+    origin = PyBytes_AS_STRING(o);
     memcpy(dest, origin , l);
     memcpy(dest + l, buf , len);
     Py_DECREF(o);
@@ -208,8 +208,8 @@ set_query(PyObject *env, char *buf, int len)
     }
 
     if(slen > 1){
-        obj = PyString_FromStringAndSize(s0, slen -1);
-        DEBUG("query:%.*s", len, PyString_AS_STRING(obj));
+        obj = PyBytes_FromStringAndSize(s0, slen -1);
+        DEBUG("query:%.*s", len, PyBytes_AS_STRING(obj));
         if(unlikely(obj == NULL)){
             return -1;
         }
@@ -259,8 +259,8 @@ set_path(PyObject *env, char *buf, int len)
     }
     //*t = 0;
     slen = t - s0;
-    obj = PyString_FromStringAndSize(s0, slen);
-    DEBUG("path:%.*s", (int)len, PyString_AS_STRING(obj));
+    obj = PyBytes_FromStringAndSize(s0, slen);
+    DEBUG("path:%.*s", (int)len, PyBytes_AS_STRING(obj));
 
     if(likely(obj != NULL)){
         PyDict_SetItem(env, path_info_key, obj);
@@ -279,8 +279,8 @@ get_http_header_key(const char *s, int len)
     char *dest;
     char c;
 
-    obj = PyString_FromStringAndSize(NULL, len + prefix_len);
-    dest = (char*)PyString_AS_STRING(obj);
+    obj = PyBytes_FromStringAndSize(NULL, len + prefix_len);
+    dest = (char*)PyBytes_AS_STRING(obj);
 
     *dest++ = 'H';
     *dest++ = 'T';
@@ -433,7 +433,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
 
     DEBUG("field value:%.*s", (int)len, buf);
     if(likely(req->value== NULL)){
-        obj = PyString_FromStringAndSize(buf, len);
+        obj = PyBytes_FromStringAndSize(buf, len);
     }else{
         obj = concat_string(req->value, buf, len);
     }
@@ -741,76 +741,76 @@ setup_static_env(char *name, int port)
 {
     prefix_len = strlen("HTTP_");
 
-    empty_string = PyString_FromString("");
+    empty_string = PyBytes_FromString("");
 
     version_val = Py_BuildValue("(ii)", 1, 0);
-    version_key = PyString_FromString("wsgi.version");
+    version_key = PyBytes_FromString("wsgi.version");
 
-    scheme_val = PyString_FromString("http");
-    scheme_key = PyString_FromString("wsgi.url_scheme");
+    scheme_val = PyBytes_FromString("http");
+    scheme_key = PyBytes_FromString("wsgi.url_scheme");
 
     errors_val = PySys_GetObject("stderr");
-    errors_key = PyString_FromString("wsgi.errors");
+    errors_key = PyBytes_FromString("wsgi.errors");
 
     multithread_val = PyBool_FromLong(0);
-    multithread_key = PyString_FromString("wsgi.multithread");
+    multithread_key = PyBytes_FromString("wsgi.multithread");
 
     multiprocess_val = PyBool_FromLong(1);
-    multiprocess_key = PyString_FromString("wsgi.multiprocess");
+    multiprocess_key = PyBytes_FromString("wsgi.multiprocess");
 
     run_once_val = PyBool_FromLong(0);
-    run_once_key = PyString_FromString("wsgi.run_once");
+    run_once_key = PyBytes_FromString("wsgi.run_once");
 
     file_wrapper_val = PyCFunction_New(&method, NULL);
-    file_wrapper_key = PyString_FromString("wsgi.file_wrapper");
+    file_wrapper_key = PyBytes_FromString("wsgi.file_wrapper");
 
-    wsgi_input_key = PyString_FromString("wsgi.input");
+    wsgi_input_key = PyBytes_FromString("wsgi.input");
     
-    script_key = PyString_FromString("SCRIPT_NAME");
+    script_key = PyBytes_FromString("SCRIPT_NAME");
 
-    server_name_val = PyString_FromString(name);
-    server_name_key = PyString_FromString("SERVER_NAME");
+    server_name_val = PyBytes_FromString(name);
+    server_name_key = PyBytes_FromString("SERVER_NAME");
 
-    server_port_val = PyString_FromFormat("%d", port);
-    server_port_key = PyString_FromString("SERVER_PORT");
+    server_port_val = PyBytes_FromFormat("%d", port);
+    server_port_key = PyBytes_FromString("SERVER_PORT");
 
-    remote_addr_key = PyString_FromString("REMOTE_ADDR");
-    remote_port_key = PyString_FromString("REMOTE_PORT");
+    remote_addr_key = PyBytes_FromString("REMOTE_ADDR");
+    remote_port_key = PyBytes_FromString("REMOTE_PORT");
 
-    server_protocol_key = PyString_FromString("SERVER_PROTOCOL");
-    path_info_key = PyString_FromString("PATH_INFO");
-    query_string_key = PyString_FromString("QUERY_STRING");
-    request_method_key = PyString_FromString("REQUEST_METHOD");
-    client_key = PyString_FromString("meinheld.client");
+    server_protocol_key = PyBytes_FromString("SERVER_PROTOCOL");
+    path_info_key = PyBytes_FromString("PATH_INFO");
+    query_string_key = PyBytes_FromString("QUERY_STRING");
+    request_method_key = PyBytes_FromString("REQUEST_METHOD");
+    client_key = PyBytes_FromString("meinheld.client");
 
-    content_type_key = PyString_FromString("CONTENT_TYPE");
-    content_length_key = PyString_FromString("CONTENT_LENGTH");
+    content_type_key = PyBytes_FromString("CONTENT_TYPE");
+    content_length_key = PyBytes_FromString("CONTENT_LENGTH");
 
-    h_content_type_key = PyString_FromString("HTTP_CONTENT_TYPE");
-    h_content_length_key = PyString_FromString("HTTP_CONTENT_LENGTH");
+    h_content_type_key = PyBytes_FromString("HTTP_CONTENT_TYPE");
+    h_content_length_key = PyBytes_FromString("HTTP_CONTENT_LENGTH");
 
-    server_protocol_val10 = PyString_FromString("HTTP/1.0");
-    server_protocol_val11 = PyString_FromString("HTTP/1.1");
+    server_protocol_val10 = PyBytes_FromString("HTTP/1.0");
+    server_protocol_val11 = PyBytes_FromString("HTTP/1.1");
 
-    http_method_delete = PyString_FromStringAndSize("DELETE", 6);
-    http_method_get = PyString_FromStringAndSize("GET", 3);
-    http_method_head = PyString_FromStringAndSize("HEAD", 4);
-    http_method_post = PyString_FromStringAndSize("POST", 4);
-    http_method_put = PyString_FromStringAndSize("PUT", 3);
-    http_method_connect = PyString_FromStringAndSize("CONNECT", 7);
-    http_method_options = PyString_FromStringAndSize("OPTIONS", 7);
-    http_method_trace = PyString_FromStringAndSize("TRACE", 5);
-    http_method_copy = PyString_FromStringAndSize("COPY", 4);
-    http_method_lock = PyString_FromStringAndSize("LOCK", 4);
-    http_method_mkcol = PyString_FromStringAndSize("MKCOL", 5);
-    http_method_move = PyString_FromStringAndSize("MOVE", 4);
-    http_method_propfind= PyString_FromStringAndSize("PROPFIND", 8);
-    http_method_proppatch = PyString_FromStringAndSize("PROPPATCH", 9);
-    http_method_unlock = PyString_FromStringAndSize("UNLOCK", 6);
-    http_method_report = PyString_FromStringAndSize("REPORT", 6);
-    http_method_mkactivity = PyString_FromStringAndSize("MKACTIVITY", 10);
-    http_method_checkout = PyString_FromStringAndSize("CHECKOUT", 8);
-    http_method_merge = PyString_FromStringAndSize("MERGE", 5);
+    http_method_delete = PyBytes_FromStringAndSize("DELETE", 6);
+    http_method_get = PyBytes_FromStringAndSize("GET", 3);
+    http_method_head = PyBytes_FromStringAndSize("HEAD", 4);
+    http_method_post = PyBytes_FromStringAndSize("POST", 4);
+    http_method_put = PyBytes_FromStringAndSize("PUT", 3);
+    http_method_connect = PyBytes_FromStringAndSize("CONNECT", 7);
+    http_method_options = PyBytes_FromStringAndSize("OPTIONS", 7);
+    http_method_trace = PyBytes_FromStringAndSize("TRACE", 5);
+    http_method_copy = PyBytes_FromStringAndSize("COPY", 4);
+    http_method_lock = PyBytes_FromStringAndSize("LOCK", 4);
+    http_method_mkcol = PyBytes_FromStringAndSize("MKCOL", 5);
+    http_method_move = PyBytes_FromStringAndSize("MOVE", 4);
+    http_method_propfind= PyBytes_FromStringAndSize("PROPFIND", 8);
+    http_method_proppatch = PyBytes_FromStringAndSize("PROPPATCH", 9);
+    http_method_unlock = PyBytes_FromStringAndSize("UNLOCK", 6);
+    http_method_report = PyBytes_FromStringAndSize("REPORT", 6);
+    http_method_mkactivity = PyBytes_FromStringAndSize("MKACTIVITY", 10);
+    http_method_checkout = PyBytes_FromStringAndSize("CHECKOUT", 8);
+    http_method_merge = PyBytes_FromStringAndSize("MERGE", 5);
 
     //PycString_IMPORT;
 }

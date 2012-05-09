@@ -21,11 +21,12 @@
 #include "greensupport.h"
 #endif
 
-
 #define ACCEPT_TIMEOUT_SECS 1
 #define READ_TIMEOUT_SECS 30
 
 #define READ_BUF_SIZE 1024 * 64
+
+#define MODULE_NAME "meinheld.server"
 
 static char *server_name = "127.0.0.1";
 static short server_port = 8000;
@@ -100,29 +101,29 @@ static void
 client_t_list_fill(void)
 {
     client_t *client;
-	while (client_numfree < CLIENT_MAXFREELIST) {
+    while (client_numfree < CLIENT_MAXFREELIST) {
         client = (client_t *)PyMem_Malloc(sizeof(client_t));
-		client_free_list[client_numfree++] = client;
-	}
+        client_free_list[client_numfree++] = client;
+    }
 }
 
 static void
 client_t_list_clear(void)
 {
-	client_t *op;
+    client_t *op;
 
-	while (client_numfree) {
-		op = client_free_list[--client_numfree];
-		PyMem_Free(op);
-	}
+    while (client_numfree) {
+        op = client_free_list[--client_numfree];
+        PyMem_Free(op);
+    }
 }
 
 static client_t*
 alloc_client_t(void)
 {
     client_t *client;
-	if (client_numfree) {
-		client = client_free_list[--client_numfree];
+    if (client_numfree) {
+        client = client_free_list[--client_numfree];
         //DEBUG("use pooled client %p", client);
     }else{
         client = (client_t *)PyMem_Malloc(sizeof(client_t));
@@ -135,10 +136,10 @@ alloc_client_t(void)
 static void
 dealloc_client(client_t *client)
 {
-	if (client_numfree < CLIENT_MAXFREELIST){
-		client_free_list[client_numfree++] = client;
+    if (client_numfree < CLIENT_MAXFREELIST){
+        client_free_list[client_numfree++] = client;
     }else{
-	    PyMem_Free(client);
+        PyMem_Free(client);
     }
 }
 
@@ -308,8 +309,13 @@ process_resume_wsgi_app(ClientObject *pyclient)
         write_error_log(__FILE__, __LINE__);
         return -1;
     }
-    if(PyInt_Check(res)){
+#ifdef PY3
+    if(!PyLong_Check(res)){
+        if(PyLong_AS_LONG(res) == -1){
+#else
+    if(!PyInt_Check(res)){
         if(PyInt_AS_LONG(res) == -1){
+#endif
             // suspend process
             return 0;
         }
@@ -366,8 +372,13 @@ process_wsgi_app(client_t *cli)
         return -1;
     }
 
-    if(PyInt_Check(res)){
+#ifdef PY3
+    if(!PyLong_Check(res)){
+        if(PyLong_AS_LONG(res) == -1){
+#else
+    if(!PyInt_Check(res)){
         if(PyInt_AS_LONG(res) == -1){
+#endif
             // suspend process
             return 0;
         }
@@ -579,7 +590,7 @@ check_http_expect(client_t *client)
     if(client->http->http_minor == 1){
         c = PyDict_GetItemString(client->environ, "HTTP_EXPECT");
         if(c){
-            val = PyString_AS_STRING(c);
+            val = PyBytes_AS_STRING(c);
             if(!strncasecmp(val, "100-continue", 12)){
                 ret = write(client->fd, "HTTP/1.1 100 Continue\r\n\r\n", 25);
                 if(ret < 0){
@@ -649,7 +660,7 @@ prepare_call_wsgi(client_t *client)
         if(client->http->http_minor == 1){
             //HTTP 1.1
             if(c){
-                val = PyString_AS_STRING(c);
+                val = PyBytes_AS_STRING(c);
                 if(!strcasecmp(val, "close")){
                     client->keep_alive = 0;
                 }else{
@@ -661,7 +672,7 @@ prepare_call_wsgi(client_t *client)
         }else{
             //HTTP 1.0
             if(c){
-                val = PyString_AS_STRING(c);
+                val = PyBytes_AS_STRING(c);
                 if(!strcasecmp(val, "keep-alive")){
                     client->keep_alive = 1;
                 }else{
@@ -866,9 +877,9 @@ setup_server_env(void)
     InputObject_list_fill();
     
     hub_switch_value = Py_BuildValue("(i)", -1);
-    client_key = PyString_FromString("meinheld.client");
-    wsgi_input_key = PyString_FromString("wsgi.input");
-    empty_string = PyString_FromString("");
+    client_key = PyBytes_FromString("meinheld.client");
+    wsgi_input_key = PyBytes_FromString("wsgi.input");
+    empty_string = PyBytes_FromString("");
 }
 
 static void
@@ -1065,7 +1076,7 @@ meinheld_listen(PyObject *self, PyObject *args)
             return NULL;
         }
         ret = inet_listen();
-    }else if(PyString_Check(o)){
+    }else if(PyBytes_Check(o)){
         // unix domain
         if(!PyArg_Parse(o, "s#", &path, &len)){
             return NULL;
@@ -1642,7 +1653,7 @@ meinheld_get_ident(PyObject *self, PyObject *args)
 }
 
 
-static PyMethodDef WsMethods[] = {
+static PyMethodDef ServerMethods[] = {
     {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
     {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."},
     {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."},
@@ -1682,37 +1693,62 @@ static PyMethodDef WsMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+#ifdef PY3
+#define INITERROR return NULL
+
+static struct PyModuleDef server_module_def = {
+    PyModuleDef_HEAD_INIT,
+    MODULE_NAME,
+    NULL,
+    -1,
+    ServerMethods,
+};
+
+PyObject *
+PyInit_server(void)
+#else
+#define INITERROR return
+
 PyMODINIT_FUNC
 initserver(void)
+#endif
 {
     PyObject *m;
-    m = Py_InitModule("meinheld.server", WsMethods);
+#ifdef PY3
+    m = PyModule_Create(&server_module_def);
+#else
+    m = Py_InitModule3(MODULE_NAME, ServerMethods, "");
+#endif
     if(m == NULL){
-        return;
+        INITERROR;
     }
 
     if(PyType_Ready(&FileWrapperType) < 0){
-        return;
+        INITERROR;
     }
 
     if(PyType_Ready(&ClientObjectType) < 0){
-        return;
+        INITERROR;
     }
 
     if(PyType_Ready(&InputObjectType) < 0){
-        return;
+        INITERROR;
     }
 
     timeout_error = PyErr_NewException("meinheld.server.timeout",
-					  PyExc_IOError, NULL);
-	if (timeout_error == NULL)
-		return;
-	Py_INCREF(timeout_error);
-	PyModule_AddObject(m, "timeout", timeout_error);
+                      PyExc_IOError, NULL);
+    if (timeout_error == NULL){
+        INITERROR;
+    }
+    Py_INCREF(timeout_error);
+    PyModule_AddObject(m, "timeout", timeout_error);
 
     //DEBUG("client size %u", sizeof(client_t));
     //DEBUG("request size %u", sizeof(request));
     //DEBUG("header bucket %u", sizeof(write_bucket));
+#ifdef PY3
+    return m;
+#endif
 }
 
 

@@ -74,35 +74,35 @@ write_access_log(client_t *cli, int log_fd, const char *log_path)
 
         obj = PyDict_GetItemString(cli->environ, "REQUEST_METHOD");
         if(obj){
-            method = PyString_AS_STRING(obj);
+            method = PyBytes_AS_STRING(obj);
         }else{
             method = "-";
         }
 
         obj = PyDict_GetItemString(cli->environ, "PATH_INFO");
         if(obj){
-            path = PyString_AS_STRING(obj);
+            path = PyBytes_AS_STRING(obj);
         }else{
             path = "-";
         }
 
         obj = PyDict_GetItemString(cli->environ, "SERVER_PROTOCOL");
         if(obj){
-            version = PyString_AS_STRING(obj);
+            version = PyBytes_AS_STRING(obj);
         }else{
             version = "-";
         }
 
         obj = PyDict_GetItemString(cli->environ, "HTTP_USER_AGENT");
         if(obj){
-            ua = PyString_AS_STRING(obj);
+            ua = PyBytes_AS_STRING(obj);
         }else{
             ua = "-";
         }
 
         obj = PyDict_GetItemString(cli->environ, "HTTP_REFERER");
         if(obj){
-            referer = PyString_AS_STRING(obj);
+            referer = PyBytes_AS_STRING(obj);
         }else{
             referer = "-";
         }

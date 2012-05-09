@@ -9,30 +9,30 @@ void
 StringIOObject_list_fill(void)
 {
     StringIOObject *io;
-	while (io_numfree < IO_MAXFREELIST) {
+    while (io_numfree < IO_MAXFREELIST) {
         io = PyObject_NEW(StringIOObject, &StringIOObjectType);
-		io_free_list[io_numfree++] = io;
-	}
+        io_free_list[io_numfree++] = io;
+    }
 }
 
 void
 StringIOObject_list_clear(void)
 {
-	StringIOObject *op;
+    StringIOObject *op;
 
-	while (io_numfree) {
-		op = io_free_list[--io_numfree];
+    while (io_numfree) {
+        op = io_free_list[--io_numfree];
         PyObject_DEL(op);
-	}
+    }
 }
 
 static StringIOObject*
 alloc_StringIOObject(void)
 {
     StringIOObject *io;
-	if (io_numfree) {
-		io = io_free_list[--io_numfree];
-		_Py_NewReference((PyObject *)io);
+    if (io_numfree) {
+        io = io_free_list[--io_numfree];
+        _Py_NewReference((PyObject *)io);
         //DEBUG("use pooled StringIOObject %p", io);
     }else{
         io = PyObject_NEW(StringIOObject, &StringIOObjectType);
@@ -48,11 +48,11 @@ dealloc_StringIOObject(StringIOObject *io)
         free_buffer(io->buffer);
         io->buffer = NULL;
     }
-	if (io_numfree < IO_MAXFREELIST){
+    if (io_numfree < IO_MAXFREELIST){
         //DEBUG("back to StringIOObject pool %p\n", io);
-		io_free_list[io_numfree++] = io;
+        io_free_list[io_numfree++] = io;
     }else{
-	    PyObject_DEL(io);
+        PyObject_DEL(io);
     }
 }
 
@@ -139,7 +139,7 @@ StringIOObject_read(StringIOObject *self, PyObject *args)
             n = 0;
         }
     }
-    s = PyString_FromStringAndSize(self->buffer->buf + self->pos, n);
+    s = PyBytes_FromStringAndSize(self->buffer->buf + self->pos, n);
     self->pos += n;
     //printf("%s# read %d\n", self->buffer->buf, n);
     return s;
@@ -195,17 +195,17 @@ StringIOObject_readline(StringIOObject *self, PyObject *args)
         //back
         self->pos -= delta;
     }
-    return PyString_FromStringAndSize(output, len);
+    return PyBytes_FromStringAndSize(output, len);
 }
 
 static PyObject* 
 StringIOObject_readlines(StringIOObject *self, PyObject *args)
 {
-	int len;
-	char *output;
-	PyObject *result, *new_line;
+    int len;
+    char *output;
+    PyObject *result, *new_line;
     int sizehint = 0, length = 0;
-	
+    
     if (!PyArg_ParseTuple(args, "|i:readlines", &sizehint)){
         return NULL;
     }
@@ -213,32 +213,32 @@ StringIOObject_readlines(StringIOObject *self, PyObject *args)
         return NULL;
     }
 
-	result = PyList_New(0);
-	if (!result){
-		return NULL;
+    result = PyList_New(0);
+    if (!result){
+        return NULL;
     }
 
-	while (1){
-		if((len = inner_readline(self, &output)) < 0){
+    while (1){
+        if((len = inner_readline(self, &output)) < 0){
             goto err;
         }
-		if (len == 0){
-			break;
+        if (len == 0){
+            break;
         }
-		new_line = PyString_FromStringAndSize(output, len);
-		if (!new_line){
+        new_line = PyBytes_FromStringAndSize(output, len);
+        if (!new_line){
             goto err;
         }
-		if (PyList_Append(result, new_line) == -1) {
-			Py_DECREF(new_line);
-			goto err;
-		}
-		Py_DECREF(new_line);
+        if (PyList_Append(result, new_line) == -1) {
+            Py_DECREF(new_line);
+            goto err;
+        }
+        Py_DECREF(new_line);
         length += len;
         if (sizehint > 0 && length >= sizehint)
-			break;
-	}
-	return result;
+            break;
+    }
+    return result;
  err:
     Py_DECREF(result);
     return NULL;
@@ -261,7 +261,7 @@ static PyObject*
 StringIOObject_truncate(StringIOObject *self, PyObject *args)
 {
     Py_ssize_t pos = -1;
-	
+    
     if (!PyArg_ParseTuple(args, "|n:truncate", &pos)){
         return NULL;
     }
@@ -269,15 +269,15 @@ StringIOObject_truncate(StringIOObject *self, PyObject *args)
         return NULL;
     }
 
-	if (PyTuple_Size(args) == 0) {
-		pos = self->pos;
-	}
+    if (PyTuple_Size(args) == 0) {
+        pos = self->pos;
+    }
 
     if (pos < 0) {
-		errno = EINVAL;
-		PyErr_SetFromErrno(PyExc_IOError);
-		return NULL;
-	}
+        errno = EINVAL;
+        PyErr_SetFromErrno(PyExc_IOError);
+        return NULL;
+    }
     
     //truncate
     if (self->buffer->len > pos){
@@ -328,32 +328,32 @@ StringIOObject_seek(StringIOObject *self, PyObject *args)
 static PyObject *
 StringIOObject_get_closed(StringIOObject *self, void *closure)
 {
-	PyObject *result = Py_False;
+    PyObject *result = Py_False;
 
-	if (self->buffer == NULL){
-		result = Py_True;
+    if (self->buffer == NULL){
+        result = Py_True;
     }
-	Py_INCREF(result);
-	return result;
+    Py_INCREF(result);
+    return result;
 }
 
 static PyObject *
 StringIOObject_iternext(StringIOObject *self)
 {
-	PyObject *next;
+    PyObject *next;
     if(is_close(self)){
         return NULL;
     }
-	next = StringIOObject_readline(self, NULL);
-	if (!next){
-		return NULL;
+    next = StringIOObject_readline(self, NULL);
+    if (!next){
+        return NULL;
     }
-	if (!PyString_GET_SIZE(next)) {
-		Py_DECREF(next);
-		PyErr_SetNone(PyExc_StopIteration);
-		return NULL;
-	}
-	return next;
+    if (!PyBytes_GET_SIZE(next)) {
+        Py_DECREF(next);
+        PyErr_SetNone(PyExc_StopIteration);
+        return NULL;
+    }
+    return next;
 }
 
 static struct PyMethodDef StringIOObject_methods[] = {
@@ -361,26 +361,30 @@ static struct PyMethodDef StringIOObject_methods[] = {
   {"flush",     (PyCFunction)StringIOObject_flush,    METH_NOARGS, ""},
   {"getvalue",  (PyCFunction)StringIOObject_getval,   METH_VARARGS, ""},
   {"isatty",    (PyCFunction)StringIOObject_isatty,   METH_NOARGS, ""},
-  {"read",	(PyCFunction)StringIOObject_read,     METH_VARARGS, ""},
-  {"readline",	(PyCFunction)StringIOObject_readline, METH_VARARGS, ""},
-  {"readlines",	(PyCFunction)StringIOObject_readlines,METH_VARARGS, ""},
-  {"reset",	(PyCFunction)StringIOObject_reset,	  METH_NOARGS, ""},
+  {"read",    (PyCFunction)StringIOObject_read,     METH_VARARGS, ""},
+  {"readline",    (PyCFunction)StringIOObject_readline, METH_VARARGS, ""},
+  {"readlines",    (PyCFunction)StringIOObject_readlines,METH_VARARGS, ""},
+  {"reset",    (PyCFunction)StringIOObject_reset,      METH_NOARGS, ""},
   {"tell",      (PyCFunction)StringIOObject_tell,     METH_NOARGS,  ""},
   {"truncate",  (PyCFunction)StringIOObject_truncate, METH_VARARGS, ""},
   {"close",     (PyCFunction)StringIOObject_close,    METH_NOARGS, ""},
   {"seek",      (PyCFunction)StringIOObject_seek,     METH_VARARGS, ""},  
-  {NULL,	NULL}
+  {NULL,    NULL}
 };
 
 static PyGetSetDef file_getsetlist[] = {
-	{"closed", (getter)StringIOObject_get_closed, NULL, "True if the file is closed"},
-	{0},
+    {"closed", (getter)StringIOObject_get_closed, NULL, "True if the file is closed"},
+    {0},
 };
 
 
 PyTypeObject StringIOObjectType = {
-	PyObject_HEAD_INIT(&PyType_Type)
-    0,
+#ifdef PY3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
+    PyObject_HEAD_INIT(NULL)
+    0,                    /* ob_size */
+#endif
     "meinheld.stringio",             /*tp_name*/
     sizeof(StringIOObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -401,12 +405,12 @@ PyTypeObject StringIOObjectType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
     "stringio",                 /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    PyObject_SelfIter,		/*tp_iter */
-    (iternextfunc)StringIOObject_iternext,		/* tp_iternext */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    PyObject_SelfIter,        /*tp_iter */
+    (iternextfunc)StringIOObject_iternext,        /* tp_iternext */
     StringIOObject_methods,        /* tp_methods */
     0,                         /* tp_members */
     file_getsetlist,            /* tp_getset */

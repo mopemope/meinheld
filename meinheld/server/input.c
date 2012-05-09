@@ -9,30 +9,30 @@ void
 InputObject_list_fill(void)
 {
     InputObject *io;
-	while (io_numfree < IO_MAXFREELIST) {
+    while (io_numfree < IO_MAXFREELIST) {
         io = PyObject_NEW(InputObject, &InputObjectType);
-		io_free_list[io_numfree++] = io;
-	}
+        io_free_list[io_numfree++] = io;
+    }
 }
 
 void
 InputObject_list_clear(void)
 {
-	InputObject *op;
+    InputObject *op;
 
-	while (io_numfree) {
-		op = io_free_list[--io_numfree];
+    while (io_numfree) {
+        op = io_free_list[--io_numfree];
         PyObject_DEL(op);
-	}
+    }
 }
 
 static InputObject*
 alloc_InputObject(void)
 {
     InputObject *io;
-	if (io_numfree) {
-		io = io_free_list[--io_numfree];
-		_Py_NewReference((PyObject *)io);
+    if (io_numfree) {
+        io = io_free_list[--io_numfree];
+        _Py_NewReference((PyObject *)io);
         //DEBUG("use pooled StringIOObject %p", io);
     }else{
         io = PyObject_NEW(InputObject, &InputObjectType);
@@ -48,11 +48,11 @@ dealloc_InputObject(InputObject *io)
         free_buffer(io->buffer);
         io->buffer = NULL;
     }
-	if (io_numfree < IO_MAXFREELIST){
+    if (io_numfree < IO_MAXFREELIST){
         //DEBUG("back to StringIOObject pool %p\n", io);
-		io_free_list[io_numfree++] = io;
+        io_free_list[io_numfree++] = io;
     }else{
-	    PyObject_DEL(io);
+        PyObject_DEL(io);
     }
 }
 
@@ -164,17 +164,17 @@ InputObject_readline(InputObject *self, PyObject *args)
         //back
         self->pos -= delta;
     }
-    return PyString_FromStringAndSize(output, len);
+    return PyBytes_FromStringAndSize(output, len);
 }
 
 static PyObject* 
 InputObject_readlines(InputObject *self, PyObject *args)
 {
-	int len;
-	char *output;
-	PyObject *result, *new_line;
+    int len;
+    char *output;
+    PyObject *result, *new_line;
     int sizehint = 0, length = 0;
-	
+    
     if (!PyArg_ParseTuple(args, "|i:readlines", &sizehint)){
         return NULL;
     }
@@ -182,33 +182,33 @@ InputObject_readlines(InputObject *self, PyObject *args)
         return NULL;
     }
 
-	result = PyList_New(0);
-	if (!result){
-		return NULL;
+    result = PyList_New(0);
+    if (!result){
+        return NULL;
     }
 
-	while (1){
-		if((len = inner_readline(self, &output)) < 0){
+    while (1){
+        if((len = inner_readline(self, &output)) < 0){
             goto err;
         }
-		if (len == 0){
-			break;
+        if (len == 0){
+            break;
         }
-		new_line = PyString_FromStringAndSize(output, len);
-		if (!new_line){
+        new_line = PyBytes_FromStringAndSize(output, len);
+        if (!new_line){
             goto err;
         }
-		if (PyList_Append(result, new_line) == -1) {
-			Py_DECREF(new_line);
-			goto err;
-		}
-		Py_DECREF(new_line);
+        if (PyList_Append(result, new_line) == -1) {
+            Py_DECREF(new_line);
+            goto err;
+        }
+        Py_DECREF(new_line);
         length += len;
         if (sizehint > 0 && length >= sizehint){
-			break;
+            break;
         }
-	}
-	return result;
+    }
+    return result;
  err:
     Py_DECREF(result);
     return NULL;
@@ -217,37 +217,41 @@ InputObject_readlines(InputObject *self, PyObject *args)
 static PyObject *
 InputObject_iternext(InputObject *self)
 {
-	PyObject *next;
+    PyObject *next;
     if(is_close(self)){
         return NULL;
     }
-	next = InputObject_readline(self, NULL);
-	if (!next){
-		return NULL;
+    next = InputObject_readline(self, NULL);
+    if (!next){
+        return NULL;
     }
-	if (!PyString_GET_SIZE(next)) {
-		Py_DECREF(next);
-		PyErr_SetNone(PyExc_StopIteration);
-		return NULL;
-	}
-	return next;
+    if (!PyBytes_GET_SIZE(next)) {
+        Py_DECREF(next);
+        PyErr_SetNone(PyExc_StopIteration);
+        return NULL;
+    }
+    return next;
 }
 
 static struct PyMethodDef InputObject_methods[] = {
-  {"read",	(PyCFunction)InputObject_read,     METH_VARARGS, ""},
-  {"readline",	(PyCFunction)InputObject_readline, METH_VARARGS, ""},
-  {"readlines",	(PyCFunction)InputObject_readlines,METH_VARARGS, ""},
-  {NULL,	NULL}
+  {"read",    (PyCFunction)InputObject_read,     METH_VARARGS, ""},
+  {"readline",    (PyCFunction)InputObject_readline, METH_VARARGS, ""},
+  {"readlines",    (PyCFunction)InputObject_readlines,METH_VARARGS, ""},
+  {NULL,    NULL}
 };
 
 static PyGetSetDef file_getsetlist[] = {
-	{0},
+    {0},
 };
 
 
 PyTypeObject InputObjectType = {
-	PyObject_HEAD_INIT(&PyType_Type)
-    0,
+#ifdef PY3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
+    PyObject_HEAD_INIT(NULL)
+    0,                    /* ob_size */
+#endif
     "meinheld.input",             /*tp_name*/
     sizeof(InputObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -268,12 +272,12 @@ PyTypeObject InputObjectType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
     "Input",                 /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    PyObject_SelfIter,		/*tp_iter */
-    (iternextfunc)InputObject_iternext,		/* tp_iternext */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    PyObject_SelfIter,        /*tp_iter */
+    (iternextfunc)InputObject_iternext,        /* tp_iternext */
     InputObject_methods,        /* tp_methods */
     0,                         /* tp_members */
     0,                          /* tp_getset */
