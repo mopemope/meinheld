@@ -229,7 +229,7 @@ set_query(PyObject *env, char *buf, int len)
 static int
 set_path(PyObject *env, char *buf, int len)
 {
-    int c, c1;
+    int c, c1, slen;
     char *s0, *t;
     PyObject *obj;
 
@@ -258,17 +258,18 @@ set_path(PyObject *env, char *buf, int len)
         len--;
     }
     //*t = 0;
-    obj = PyString_FromStringAndSize(s0, t - s0);
-    DEBUG("path:%.*s", t-s0, PyString_AS_STRING(obj));
-    
+    slen = t - s0;
+    obj = PyString_FromStringAndSize(s0, slen);
+    DEBUG("path:%.*s", (int)len, PyString_AS_STRING(obj));
+
     if(likely(obj != NULL)){
         PyDict_SetItem(env, path_info_key, obj);
         Py_DECREF(obj);
-        return t - s0;
+        return slen;
     }else{
         return -1;
     }
-    
+
 }
 
 static PyObject*
@@ -306,9 +307,9 @@ key_upper(char *s, const char *key, size_t len)
 {
     int i = 0;
     int c;
-	for (i = 0; i < len; i++) {
-		c = key[i];
-		if(c == '-'){
+    for (i = 0; i < len; i++) {
+        c = key[i];
+        if(c == '-'){
             s[i] = '_';
         }else{
             if(islower(c)){
@@ -317,7 +318,7 @@ key_upper(char *s, const char *key, size_t len)
                 s[i] = c;
             }
         }
-	}
+    }
 }
 
 static int
@@ -384,8 +385,8 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     client_t *client = get_client(p);
     request *req = client->req;
     PyObject *env = NULL, *obj;
-    
-    DEBUG("field:%.*s", len, buf);
+
+    DEBUG("field key:%.*s", (int)len, buf);
 
     if(req->last_header_element != FIELD){
         env = req->env;
@@ -430,7 +431,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     request *req = client->req;
     PyObject *obj;
 
-    DEBUG("value:%.*s", len, buf);
+    DEBUG("field value:%.*s", (int)len, buf);
     if(likely(req->value== NULL)){
         obj = PyString_FromStringAndSize(buf, len);
     }else{

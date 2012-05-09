@@ -747,7 +747,7 @@ r_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             default:
                 RDEBUG("\n%.*s", (int)r, buf);
                 nread = execute_parse(cli, buf, r);
-                DEBUG("read request fd %d readed %d nread %d", cli->fd, r, nread);
+                /* DEBUG("read request fd %d readed %d nread %d", cli->fd, (int)r, nread); */
 
                 if(cli->bad_request_code > 0){
                     DEBUG("fd %d bad_request code %d",cli->fd,  cli->bad_request_code);
