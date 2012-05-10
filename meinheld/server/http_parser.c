@@ -37,6 +37,13 @@
 # define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+#if __GNUC__ >= 3
+# define likely(x)    __builtin_expect(!!(x), 1)
+# define unlikely(x)    __builtin_expect(!!(x), 0)
+#else
+# define likely(x) (x)
+# define unlikely(x) (x)
+#endif
 
 #if HTTP_PARSER_DEBUG
 #define SET_ERRNO(e)                                                 \
@@ -650,7 +657,7 @@ size_t http_parser_execute (http_parser *parser,
   for (p=data; p != data + len; p++) {
     ch = *p;
 
-    if (PARSING_HEADER(parser->state)) {
+    if (likely(PARSING_HEADER(parser->state))) {
       ++parser->nread;
       /* Buffer overflow attack */
       if (parser->nread > HTTP_MAX_HEADER_SIZE) {
@@ -770,7 +777,7 @@ size_t http_parser_execute (http_parser *parser,
           break;
         }
 
-        if (!IS_NUM(ch)) {
+        if (unlikely(!IS_NUM(ch))) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -788,7 +795,7 @@ size_t http_parser_execute (http_parser *parser,
 
       /* first digit of minor HTTP version */
       case s_res_first_http_minor:
-        if (!IS_NUM(ch)) {
+        if (unlikely(!IS_NUM(ch))) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -805,7 +812,7 @@ size_t http_parser_execute (http_parser *parser,
           break;
         }
 
-        if (!IS_NUM(ch)) {
+        if (unlikely(!IS_NUM(ch))) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -859,7 +866,7 @@ size_t http_parser_execute (http_parser *parser,
         parser->status_code *= 10;
         parser->status_code += ch - '0';
 
-        if (parser->status_code > 999) {
+        if (unlikely(parser->status_code > 999)) {
           SET_ERRNO(HPE_INVALID_STATUS);
           goto error;
         }
@@ -893,7 +900,7 @@ size_t http_parser_execute (http_parser *parser,
         parser->flags = 0;
         parser->content_length = ULLONG_MAX;
 
-        if (!IS_ALPHA(ch)) {
+        if (unlikely(!IS_ALPHA(ch))) {
           SET_ERRNO(HPE_INVALID_METHOD);
           goto error;
         }
@@ -930,7 +937,7 @@ size_t http_parser_execute (http_parser *parser,
       case s_req_method:
       {
         const char *matcher;
-        if (ch == '\0') {
+        if (unlikely(ch == '\0')) {
           SET_ERRNO(HPE_INVALID_METHOD);
           goto error;
         }
@@ -1003,7 +1010,7 @@ size_t http_parser_execute (http_parser *parser,
         }
 
         parser->state = parse_url_char((enum state)parser->state, ch);
-        if (parser->state == s_dead) {
+        if (unlikely(parser->state == s_dead)) {
           SET_ERRNO(HPE_INVALID_URL);
           goto error;
         }
@@ -1105,7 +1112,7 @@ size_t http_parser_execute (http_parser *parser,
 
       /* first digit of major HTTP version */
       case s_req_first_http_major:
-        if (ch < '1' || ch > '9') {
+        if (unlikely(ch < '1' || ch > '9')) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -1122,7 +1129,7 @@ size_t http_parser_execute (http_parser *parser,
           break;
         }
 
-        if (!IS_NUM(ch)) {
+        if (unlikely(!IS_NUM(ch))) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -1130,7 +1137,7 @@ size_t http_parser_execute (http_parser *parser,
         parser->http_major *= 10;
         parser->http_major += ch - '0';
 
-        if (parser->http_major > 999) {
+        if (unlikely(parser->http_major > 999)) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -1140,7 +1147,7 @@ size_t http_parser_execute (http_parser *parser,
 
       /* first digit of minor HTTP version */
       case s_req_first_http_minor:
-        if (!IS_NUM(ch)) {
+        if (unlikely(!IS_NUM(ch))) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -1164,7 +1171,7 @@ size_t http_parser_execute (http_parser *parser,
 
         /* XXX allow spaces after digit? */
 
-        if (!IS_NUM(ch)) {
+        if (unlikely(!IS_NUM(ch))) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -1172,7 +1179,7 @@ size_t http_parser_execute (http_parser *parser,
         parser->http_minor *= 10;
         parser->http_minor += ch - '0';
 
-        if (parser->http_minor > 999) {
+        if (unlikely(parser->http_minor > 999)) {
           SET_ERRNO(HPE_INVALID_VERSION);
           goto error;
         }
@@ -1183,7 +1190,7 @@ size_t http_parser_execute (http_parser *parser,
       /* end of request line */
       case s_req_line_almost_done:
       {
-        if (ch != LF) {
+        if (unlikely(ch != LF)) {
           SET_ERRNO(HPE_LF_EXPECTED);
           goto error;
         }
@@ -1208,7 +1215,7 @@ size_t http_parser_execute (http_parser *parser,
 
         c = TOKEN(ch);
 
-        if (!c) {
+        if (unlikely(!c)) {
           SET_ERRNO(HPE_INVALID_HEADER_TOKEN);
           goto error;
         }
@@ -1246,7 +1253,7 @@ size_t http_parser_execute (http_parser *parser,
       {
         c = TOKEN(ch);
 
-        if (c) {
+        if (likely(c)) {
           switch (parser->header_state) {
             case h_general:
               break;
@@ -1471,7 +1478,7 @@ size_t http_parser_execute (http_parser *parser,
 
             if (ch == ' ') break;
 
-            if (!IS_NUM(ch)) {
+            if (unlikely(!IS_NUM(ch))) {
               SET_ERRNO(HPE_INVALID_CONTENT_LENGTH);
               goto error;
             }
