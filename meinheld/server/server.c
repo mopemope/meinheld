@@ -630,9 +630,18 @@ static int
 set_input_file(client_t *client)
 {
     PyObject *input;
+    int fd;
+
     FILE *tmp = (FILE *)client->body;
     fflush(tmp);
     rewind(tmp);
+    fd = fileno(tmp);
+    input = PyFile_FromFd(fd, "<tmpfile>", "r", -1, NULL, NULL, NULL, 1);
+    if(input == NULL){
+        fclose(tmp);
+        client->body = NULL;
+        return -1;
+    }
     PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
     Py_DECREF(input);
     client->body = NULL;

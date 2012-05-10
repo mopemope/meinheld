@@ -1,6 +1,8 @@
 #include "log.h"
 #include <sys/file.h>
 
+#define LOG_BUF_SIZE 1024 * 16
+
 int
 open_log_file(const char *path)
 {
@@ -88,7 +90,7 @@ write_log(const char *new_path, int fd, const char *data, size_t len)
 int
 write_access_log(client_t *cli, int log_fd, const char *log_path)
 {
-    char buf[1024*16];
+    char buf[LOG_BUF_SIZE];
     if(log_fd > 0){
 
         PyObject *obj;
@@ -132,7 +134,7 @@ write_access_log(client_t *cli, int log_fd, const char *log_path)
         //update
         cache_time_update();
 
-        sprintf(buf, "%s - - [%s] \"%s %s %s\" %d %d \"%s\" \"%s\"\n",
+        snprintf(buf, LOG_BUF_SIZE, "%s - - [%s] \"%s %s %s\" %d %d \"%s\" \"%s\"\n",
                cli->remote_addr,
                http_log_time,
                method,
