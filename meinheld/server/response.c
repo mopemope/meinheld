@@ -22,6 +22,39 @@
 
 ResponseObject *start_response = NULL;
 
+static PyObject*
+wsgi_to_bytes(PyObject *value)
+{
+    PyObject *result = NULL;
+
+#if PY_MAJOR_VERSION >= 3
+    if (!PyUnicode_Check(value)) {
+        PyErr_Format(PyExc_TypeError, "expected unicode object, value "
+                     "of type %.200s found", value->ob_type->tp_name);
+        return NULL;
+    }
+
+    result = PyUnicode_AsLatin1String(value);
+
+    if (!result) {
+        PyErr_SetString(PyExc_ValueError, "unicode object contains non "
+                        "latin-1 characters");
+        return NULL;
+    }
+#else
+    if (!PyBytes_Check(value)) {
+        PyErr_Format(PyExc_TypeError, "expected byte string object, "
+                     "value of type %.200s found", value->ob_type->tp_name);
+        return NULL;
+    }
+
+    Py_INCREF(value);
+    result = value;
+#endif
+
+    return result;
+}
+
 static int
 blocking_write(client_t *client, char *data, size_t len)
 {
@@ -256,46 +289,17 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
 }
 
 static int
-write_headers(client_t *client, char *data, size_t datalen)
+add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *client)
 {
-    if(client->header_done){
-        return 1;
-    }
-    write_bucket *bucket; 
-    uint32_t i = 0, hlen = 0;
-    PyObject *headers = NULL;
+    int i;
+    PyObject *tuple = NULL;
     PyObject *object = NULL;
-    char *name = NULL;
-    Py_ssize_t namelen;
-    char *value = NULL;
-    Py_ssize_t valuelen;
+    PyObject *bytes = NULL;
+    char *name = NULL, *value = NULL;
+    Py_ssize_t namelen, valuelen;
 
-    if(client->headers){
-        headers = PySequence_Fast(client->headers, "header must be list");
-        hlen = PySequence_Fast_GET_SIZE(headers);
-        Py_DECREF(headers);
-    }
-    bucket = new_write_bucket(client->fd, (hlen * 4) + 40 );
-    
-    object = client->http_status;
-    if(object){
-        PyBytes_AsStringAndSize(object, &value, &valuelen);
-    
-        //write status code
-        set2bucket(bucket, value, valuelen);
-
-        add_header(bucket, "Server", 6,  SERVER, sizeof(SERVER) -1);
-        cache_time_update();
-        add_header(bucket, "Date", 4, (char *)http_time, 29);
-    }
-
-    //write header
-    if(client->headers){
+    if(headers){
         for (i = 0; i < hlen; i++) {
-            PyObject *tuple = NULL;
-
-            PyObject *object1 = NULL;
-            PyObject *object2 = NULL;
 
             tuple = PySequence_Fast_GET_ITEM(headers, i);
 
@@ -313,51 +317,29 @@ write_headers(client_t *client, char *data, size_t datalen)
                              (int)PyTuple_Size(tuple));
                 goto error;
             }
+
+            object = PyTuple_GET_ITEM(tuple, 0);
+            if(!object){
+                goto error;
+            }
+            bytes = wsgi_to_bytes(object);
+            if(PyBytes_AsStringAndSize(bytes, &name, &namelen) == -1){
+                goto error;
+            }
+            Py_XDECREF(bytes);
+            bytes = NULL;
             
-            object1 = PyTuple_GET_ITEM(tuple, 0);
-            object2 = PyTuple_GET_ITEM(tuple, 1);
-
-#ifdef PY3
-            if (PyUnicode_Check(object1)) {
-                PyObject *latin1;
-
-                latin1 = PyUnicode_AsLatin1String(object1);
-                if(latin1 == NULL){
-                    goto error;
-                }
-                Py_DECREF(object1);
-                object1 = latin1; 
-            }
-#endif
-            if (PyBytes_Check(object1)) {
-                PyBytes_AsStringAndSize(object1, &name, &namelen);
-            }else {
-                PyErr_Format(PyExc_TypeError, "expected byte string object "
-                             "for header name, value of type %.200s "
-                             "found", object1->ob_type->tp_name);
+            //value
+            object = PyTuple_GET_ITEM(tuple, 1);
+            if(!object){
                 goto error;
             }
-
-#ifdef PY3
-            if (PyUnicode_Check(object2)) {
-                PyObject *latin1;
-
-                latin1 = PyUnicode_AsLatin1String(object2);
-                if(latin1 == NULL){
-                    goto error;
-                }
-                Py_DECREF(object2);
-                object2 = latin1; 
-            }
-#endif
-            if (PyBytes_Check(object2)) {
-                PyBytes_AsStringAndSize(object2, &value, &valuelen);
-            }else {
-                PyErr_Format(PyExc_TypeError, "expected byte string object "
-                             "for header value, value of type %.200s "
-                             "found", object2->ob_type->tp_name);
+            bytes = wsgi_to_bytes(object);
+            if(PyBytes_AsStringAndSize(bytes, &value, &valuelen) == -1){
                 goto error;
             }
+            Py_XDECREF(bytes);
+            bytes = NULL;
 
             if (strchr(name, ':') != 0) {
                 PyErr_Format(PyExc_ValueError, "header name may not contains ':'"
@@ -376,8 +358,8 @@ write_headers(client_t *client, char *data, size_t datalen)
             if (!strcasecmp(name, "Server") || !strcasecmp(name, "Date")) {
                 continue;
             }
-            
-            if (!strcasecmp(name, "Content-Length")) {
+
+            if (client->content_length_set != 1 && !strcasecmp(name, "Content-Length")) {
                 char *v = value;
                 long l = 0;
 
@@ -396,7 +378,63 @@ write_headers(client_t *client, char *data, size_t datalen)
         }
 
     }
+    return 1;
+error:
+    if (PyErr_Occurred()){
+        write_error_log(__FILE__, __LINE__);
+    }
+    Py_XDECREF(bytes);
+    return -1;
+}
+static int
+add_status_line(write_bucket *bucket, client_t *client)
+{
+    PyObject *object;
+    char *value = NULL;
+    Py_ssize_t valuelen;
+
+    object = client->http_status;
+    //TODO ERROR CHECK
+    if(object){
+        PyBytes_AsStringAndSize(object, &value, &valuelen);
+
+        //write status code
+        set2bucket(bucket, value, valuelen);
+
+        add_header(bucket, "Server", 6,  SERVER, sizeof(SERVER) -1);
+        cache_time_update();
+        add_header(bucket, "Date", 4, (char *)http_time, 29);
+    }
+    return 1;
+}
+
+static int
+write_headers(client_t *client, char *data, size_t datalen)
+{
+    if(client->header_done){
+        return 1;
+    }
+    write_bucket *bucket; 
+    uint32_t hlen = 0;
+    PyObject *headers = NULL;
+
+    if(client->headers){
+        headers = PySequence_Fast(client->headers, "header must be list");
+        hlen = PySequence_Fast_GET_SIZE(headers);
+        Py_DECREF(headers);
+    }
+    bucket = new_write_bucket(client->fd, (hlen * 4) + 40 );
+
+    if(add_status_line(bucket, client) == -1){
+        goto error;
+    }
+    //write header
+    if(add_all_headers(bucket, headers, hlen, client) == -1){
+        //Error
+        goto error;
+    }
     //header done
+    
     // check content_length_set
     if(data && !client->content_length_set && client->http_parser->http_minor == 1){
         //Transfer-Encoding chunked
@@ -412,7 +450,8 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
 
     set2bucket(bucket, CRLF, 2);
-
+    
+    //write body
     if(data){
         if(client->chunked_response){
             char lendata[32];
