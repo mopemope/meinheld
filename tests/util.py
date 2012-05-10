@@ -1,8 +1,6 @@
-import socket
-import urllib
 import threading
 import time
-
+import requests
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 8000
@@ -23,36 +21,21 @@ DEFAULT_HEADER = [
             ("Cache-Control", "max-age=0"),
         ]
 
-def app_factory():
+class Handler(object):
 
-    class Handler(object):
+    def __call__(self, environ, start_response):
+        status = '200 OK'
+        res = "Hello world!"
+        response_headers = [('Content-type','text/plain')]
+        start_response(status, response_headers)
+        self.environ = environ.copy()
+        print(environ)
+        return [res]
 
-        def __call__(self, environ, start_response):
-            status = '200 OK'
-            res = "Hello world!"
-            response_headers = [('Content-type','text/plain')]
-            start_response(status, response_headers)
-            self.environ = environ.copy()
-            print(environ)
-            return [res]
+def app_factory(app=Handler):
 
-    return Handler()
+    return app()
 
-def send_data(addr=DEFAULT_ADDR, method=DEFAULT_METHOD, path=DEFAULT_PATH,
-        version=DEFAULT_VERSION, headers=DEFAULT_HEADER, post_data=None):
-
-    sock = socket.create_connection(addr)
-    sock.send("%s %s %s\r\n" % (method, urllib.quote(path), version))
-    sock.send("Host: %s\r\n" % addr[0])
-    for h in  headers:
-        sock.send("%s: %s\r\n" % h)
-    sock.send("\r\n")
-    if post_data:
-        sock.send(post_data)
-        sock.send("\r\n")
-
-    data = sock.recv(1024 * 2)
-    return data
 
 def start_server(app):
 
@@ -66,21 +49,19 @@ def start_server(app):
 class ClientRunner(threading.Thread):
 
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, func):
         threading.Thread.__init__(self)
-        self.args = args
-        self.kwargs = kwargs
+        self.func = func 
 
     def run(self):
         from meinheld import server
         time.sleep(1)
-        args = self.args
-        kwargs = self.kwargs
-        self.receive_data = send_data(*args, **kwargs)
+        r = self.func()
+        self.receive_data = r
         server.shutdown()
 
-def run_client(app_factory=app_factory, *args, **kwargs):
-    r = ClientRunner(*args, **kwargs)
+def run_client(client=None, app_factory=app_factory):
+    r = ClientRunner(client)
     r.start()
     env = start_server(app_factory())
     r.join()

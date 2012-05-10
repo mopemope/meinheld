@@ -139,6 +139,39 @@ new_environ(client_t *client)
     return environ;
 }
 
+static int
+hex2int(int i)
+{
+    i = toupper(i);
+    i = i - '0';
+    if(i > 9){
+        i = i - 'A' + '9' + 1;
+    }
+    return i;
+}
+
+static int
+urldecode(char *buf, int len)
+{
+    int c, c1;
+    char *s0, *t;
+    t = s0 = buf;
+    while(len >0){
+        c = *buf++;
+        if(c == '%' && len > 2){
+            c = *buf++;
+            c1 = c;
+            c = *buf++;
+            c = hex2int(c1) * 16 + hex2int(c);
+            len -= 2;
+        }
+        *t++ = c;
+        len--;
+    }
+    *t = 0;
+    return t - s0;
+}
+
 static PyObject*
 concat_string(PyObject *o, const char *buf, size_t len)
 {
@@ -178,16 +211,6 @@ replace_env_key(PyObject* dict, PyObject* old_key, PyObject* new_key)
     return ret;
 }
 
-static int
-hex2int(int i)
-{
-    i = toupper(i);
-    i = i - '0';
-    if(i > 9){
-        i = i - 'A' + '9' + 1;
-    }
-    return i;
-}
 
 static int
 set_query(PyObject *env, char *buf, int len)
@@ -267,14 +290,16 @@ set_path(PyObject *env, char *buf, int len)
     }
     //*t = 0;
     slen = t - s0;
+    slen = urldecode(s0, slen);
+
     obj = PyBytes_FromStringAndSize(s0, slen);
-    DEBUG("path:%.*s", (int)len, PyBytes_AS_STRING(obj));
+    DEBUG("path:%.*s", (int)slen, PyBytes_AS_STRING(obj));
 
     if(likely(obj != NULL)){
 #ifdef PY3
         //TODO CHECK ERROR 
         char *c2 = PyBytes_AS_STRING(obj);
-        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+        PyObject *v = PyUnicode_DecodeUTF8(c2, strlen(c2), NULL);
         PyDict_SetItem(env, path_info_key, v);
         Py_DECREF(v);
 #else
@@ -696,16 +721,6 @@ headers_complete_cb(http_parser *p)
     //free_request(req);
     client->req = NULL;
     client->body_length = content_length;
-    
-    /* obj = InputObject_New(client); */
-    /* if(unlikely(obj == NULL)){ */
-        /* return -1; */
-    /* } */
-    /* ret = PyDict_SetItem(env, wsgi_input_key, obj); */
-    /* Py_DECREF(obj); */
-    /* if(unlikely(ret == -1)){ */
-        /* return -1; */
-    /* } */
 
     //keep client data
     obj = ClientObject_New(client);
