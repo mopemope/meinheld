@@ -88,7 +88,7 @@ write_log(const char *new_path, int fd, const char *data, size_t len)
 int
 write_access_log(client_t *cli, int log_fd, const char *log_path)
 {
-    char buf[1024*4];
+    char buf[1024*16];
     if(log_fd > 0){
 
         PyObject *obj;

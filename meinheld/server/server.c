@@ -596,6 +596,7 @@ check_http_expect(client_t *client)
     int ret;
 
     if(client->http_parser->http_minor == 1){
+        ///TODO CHECK
         c = PyDict_GetItemString(client->environ, "HTTP_EXPECT");
         if(c){
             val = PyBytes_AS_STRING(c);
@@ -624,44 +625,67 @@ check_http_expect(client_t *client)
     }
     return 0;
 }
-
-static void
-prepare_call_wsgi(client_t *client)
+#ifdef PY3
+static int
+set_input_file(client_t *client)
 {
-    PyObject *input = NULL, *c = NULL;
-    char *val;
+    PyObject *input;
+    FILE *tmp = (FILE *)client->body;
+    fflush(tmp);
+    rewind(tmp);
+    PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
+    Py_DECREF(input);
+    client->body = NULL;
+    return 1;
+}
 
-    set_current_request(client);
-
-    //check Expect
-    if (check_http_expect(client) < 0) {
-        return;
-    }
-    /*
-    if(client->body_type == BODY_TYPE_TMPFILE){
-        FILE *tmp = (FILE *)client->body;
-        fflush(tmp);
-        rewind(tmp);
-        input = PyFile_FromFile(tmp, "<tmpfile>", "r", fclose);
-        PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
-        Py_DECREF(input);
+#else
+static int
+set_input_file(client_t *client)
+{
+    PyObject *input;
+    FILE *tmp = (FILE *)client->body;
+    fflush(tmp);
+    rewind(tmp);
+    input = PyFile_FromFile(tmp, "<tmpfile>", "r", fclose);
+    if(input == NULL){
+        fclose(tmp);
         client->body = NULL;
-    }else{
-        if(client->body_type == BODY_TYPE_BUFFER){
-            input = StringIOObject_New((buffer *)client->body);
-            PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
-        }else{
-            if(client->body){
-                input = StringIOObject_New((buffer *)client->body);
-            }else{
-                input = StringIOObject_New(new_buffer(0, 0));
-            }
-            PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
-        }
-        client->body = NULL;;
-        Py_DECREF(input);
-    }*/
+        return -1;
+    }
+    PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
+    Py_DECREF(input);
+    client->body = NULL;
+}
+#endif
 
+static int
+set_input_object(client_t *client)
+{
+    PyObject *input = NULL;
+    if(client->body_type == BODY_TYPE_BUFFER){
+        input = InputObject_New((buffer *)client->body);
+    }else{
+        if(client->body){
+            input = InputObject_New((buffer *)client->body);
+        }else{
+            input = InputObject_New(new_buffer(0, 0));
+        }
+    }
+    if(input == NULL){
+        return -1;
+    }
+    PyDict_SetItem((PyObject *)client->environ, wsgi_input_key, input);
+    client->body = NULL;;
+    Py_DECREF(input);
+    return 1;
+}
+
+static void 
+setting_keepalive(client_t *client)
+{
+    PyObject *c;
+    char *val;
     if(is_keep_alive){
         //support keep-alive
         c = PyDict_GetItemString(client->environ, "HTTP_CONNECTION");
@@ -691,6 +715,29 @@ prepare_call_wsgi(client_t *client)
             }
         }
     }
+}
+
+static void
+prepare_call_wsgi(client_t *client)
+{
+    set_current_request(client);
+
+    //check Expect
+    if (check_http_expect(client) < 0) {
+        return;
+    }
+
+    if(client->body_type == BODY_TYPE_TMPFILE){
+        if(set_input_file(client) == -1){
+            return;
+        }
+    }else{
+        if(set_input_object(client) == -1){
+            return;
+        }
+    }
+
+    setting_keepalive(client);
 }
 
 static void
