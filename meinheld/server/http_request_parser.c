@@ -697,15 +697,15 @@ headers_complete_cb(http_parser *p)
     client->req = NULL;
     client->body_length = content_length;
     
-    obj = InputObject_New(client);
-    if(unlikely(obj == NULL)){
-        return -1;
-    }
-    ret = PyDict_SetItem(env, wsgi_input_key, obj);
-    Py_DECREF(obj);
-    if(unlikely(ret == -1)){
-        return -1;
-    }
+    /* obj = InputObject_New(client); */
+    /* if(unlikely(obj == NULL)){ */
+        /* return -1; */
+    /* } */
+    /* ret = PyDict_SetItem(env, wsgi_input_key, obj); */
+    /* Py_DECREF(obj); */
+    /* if(unlikely(ret == -1)){ */
+        /* return -1; */
+    /* } */
 
     //keep client data
     obj = ClientObject_New(client);

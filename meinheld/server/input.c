@@ -57,7 +57,7 @@ dealloc_InputObject(InputObject *io)
 }
 
 int
-CheckStringIOObject(PyObject *obj)
+Check_InputObject(PyObject *obj)
 {
     if (obj->ob_type != &InputObjectType){
         return 0;
@@ -66,17 +66,14 @@ CheckStringIOObject(PyObject *obj)
 }
 
 PyObject*
-InputObject_New(client_t *client)
+InputObject_New(buffer *buf)
 {
     InputObject *io;
-    buffer *buf;
-    buf = new_buffer(4096, 1024 * 1024 * 1024);
-    if(buf == NULL){
+    io = alloc_InputObject();
+    if(io == NULL){
         return NULL;
     }
-    io = alloc_InputObject();
     io->buffer = buf;
-    io->client = client;
     io->pos = 0;
     return (PyObject *)io;
 }
@@ -94,6 +91,10 @@ InputObject_dealloc(InputObject *self)
 static int
 is_close(InputObject *self)
 {
+    if(self->buffer == NULL){
+        PyErr_SetString(PyExc_IOError, "closed");
+        return 1;
+    }
     return 0;
 }
 
@@ -110,7 +111,19 @@ InputObject_read(InputObject *self, PyObject *args)
     if(is_close(self)){
         return NULL;
     }
-    Py_RETURN_NONE;
+    l = self->buffer->len - self->pos;
+    if (n < 0 || n > l) {
+        n = l;
+        if (n < 0) {
+            n = 0;
+        }
+    }
+    s = PyBytes_FromStringAndSize(self->buffer->buf + self->pos, n);
+    if(!s){
+        return NULL;
+    }
+    self->pos += n;
+    return s;
 }
 
 static int

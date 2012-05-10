@@ -264,6 +264,7 @@ get_len(PyObject *v)
     return (int)res;
 }
 
+/*
 static void
 set_content_length(client_t *client, write_bucket *bucket, char *data, size_t datalen )
 {
@@ -287,6 +288,7 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
         }
     }
 }
+*/
 
 static int
 add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *client)
@@ -433,7 +435,6 @@ write_headers(client_t *client, char *data, size_t datalen)
         //Error
         goto error;
     }
-    //header done
     
     // check content_length_set
     if(data && !client->content_length_set && client->http_parser->http_minor == 1){
@@ -450,6 +451,7 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
 
     set2bucket(bucket, CRLF, 2);
+    //header done
     
     //write body
     if(data){
