@@ -27,7 +27,7 @@ wsgi_to_bytes(PyObject *value)
 {
     PyObject *result = NULL;
 
-#if PY_MAJOR_VERSION >= 3
+#ifdef PY3
     if (!PyUnicode_Check(value)) {
         PyErr_Format(PyExc_TypeError, "expected unicode object, value "
                      "of type %.200s found", value->ob_type->tp_name);
@@ -848,11 +848,12 @@ ResponseObject_dealloc(ResponseObject* self)
 static PyObject *
 ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 {
-    PyObject *status = NULL, *headers = NULL, *exc_info = NULL ;
-    char *status_line = NULL;
+    PyObject *status = NULL, *headers = NULL, *exc_info = NULL, *bytes = NULL;
     char *status_code = NULL;
-
+    char *status_line = NULL;
+    int bytelen = 0;
     ResponseObject *self = NULL;
+
     self = (ResponseObject *)obj;
 #ifdef PY3
     if (!PyArg_ParseTuple(args, "UO|O:start_response", &status, &headers, &exc_info)){
@@ -886,14 +887,18 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         PyErr_Restore(type, value, traceback);
         return NULL;
     }
-
-    char buf[NATIVE_GET_STRING_SIZE(status)];
-    status_line = buf;
-    /* strncpy(status_line, (char*)NATIVE_ASSTRING(status), NATIVE_GET_STRING_SIZE(status)); */
-    strcpy(status_line, (char*)NATIVE_ASSTRING(status));
     
+    bytes = wsgi_to_bytes(status);
+    bytelen = PyBytes_GET_SIZE(bytes);
+    char buf[bytelen];
+    status_line = buf;
+    strcpy(status_line, PyBytes_AS_STRING(bytes));
+    
+    DEBUG("%s :%d", (char*)status_line, bytelen);
+
     if (!*status_line) {
         PyErr_SetString(PyExc_ValueError, "status message was not supplied");
+        Py_XDECREF(bytes);
         return NULL;
     }
 
@@ -904,12 +909,14 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 
     if (*status_code || errno == ERANGE) {
         PyErr_SetString(PyExc_TypeError, "status value is not an integer");
+        Py_XDECREF(bytes);
         return NULL;
     }
 
 
     if (int_code < 100 || int_code > 999) {
         PyErr_SetString(PyExc_ValueError, "status code is invalid");
+        Py_XDECREF(bytes);
         return NULL;
     }
 
@@ -922,11 +929,11 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     Py_XDECREF(self->cli->http_status);
 
     if(self->cli->http_parser->http_minor == 1){
-        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.1 %s\r\n", PyBytes_AS_STRING(status));
+        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.1 %s\r\n", PyBytes_AS_STRING(bytes));
     }else{
-        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(status));
+        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(bytes));
     }
-
+    Py_XDECREF(bytes);
     Py_RETURN_NONE;
 }
 
