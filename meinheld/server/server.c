@@ -51,7 +51,7 @@ static int err_log_fd = -1; //error log
 static int is_keep_alive = 0; //keep alive support
 static int keep_alive_timeout = 5;
 
-int max_content_length = 1024 * 1024 * 16; //max_content_length
+uint64_t max_content_length = 1024 * 1024 * 16; //max_content_length
 int client_body_buffer_size = 1024 * 500;  //client_body_buffer_size
 
 static char *unix_sock_name = NULL;
@@ -217,8 +217,8 @@ close_conn(client_t *cli, picoev_loop* loop)
         return ;
     }
 
-    if(cli->http != NULL){
-        PyMem_Free(cli->http);
+    if(cli->http_parser != NULL){
+        PyMem_Free(cli->http_parser);
     }
 
     free_request_queue(cli->request_queue);
@@ -310,16 +310,20 @@ process_resume_wsgi_app(ClientObject *pyclient)
         return -1;
     }
 #ifdef PY3
-    if(!PyLong_Check(res)){
+    if(PyLong_Check(res)){
         if(PyLong_AS_LONG(res) == -1){
-#else
-    if(!PyInt_Check(res)){
-        if(PyInt_AS_LONG(res) == -1){
-#endif
             // suspend process
             return 0;
         }
     }
+#else
+    if(PyInt_Check(res)){
+        if(PyInt_AS_LONG(res) == -1){
+            // suspend process
+            return 0;
+        }
+    }
+#endif
 
     client->response = res;
     //next send response
@@ -373,16 +377,20 @@ process_wsgi_app(client_t *cli)
     }
 
 #ifdef PY3
-    if(!PyLong_Check(res)){
+    if(PyLong_Check(res)){
         if(PyLong_AS_LONG(res) == -1){
-#else
-    if(!PyInt_Check(res)){
-        if(PyInt_AS_LONG(res) == -1){
-#endif
             // suspend process
             return 0;
         }
     }
+#else
+    if(PyInt_Check(res)){
+        if(PyInt_AS_LONG(res) == -1){
+            // suspend process
+            return 0;
+        }
+    }
+#endif
 
     //next send response 
     cli->response = res;
@@ -587,7 +595,7 @@ check_http_expect(client_t *client)
     char *val = NULL;
     int ret;
 
-    if(client->http->http_minor == 1){
+    if(client->http_parser->http_minor == 1){
         c = PyDict_GetItemString(client->environ, "HTTP_EXPECT");
         if(c){
             val = PyBytes_AS_STRING(c);
@@ -657,7 +665,7 @@ prepare_call_wsgi(client_t *client)
     if(is_keep_alive){
         //support keep-alive
         c = PyDict_GetItemString(client->environ, "HTTP_CONNECTION");
-        if(client->http->http_minor == 1){
+        if(client->http_parser->http_minor == 1){
             //HTTP 1.1
             if(c){
                 val = PyBytes_AS_STRING(c);
@@ -877,9 +885,9 @@ setup_server_env(void)
     InputObject_list_fill();
     
     hub_switch_value = Py_BuildValue("(i)", -1);
-    client_key = PyBytes_FromString("meinheld.client");
-    wsgi_input_key = PyBytes_FromString("wsgi.input");
-    empty_string = PyBytes_FromString("");
+    client_key = NATIVE_FROMSTRING("meinheld.client");
+    wsgi_input_key = NATIVE_FROMSTRING("wsgi.input");
+    empty_string = NATIVE_FROMSTRING("");
 }
 
 static void
@@ -1143,12 +1151,24 @@ meinheld_access_log(PyObject *self, PyObject *args)
 static PyObject *
 meinheld_error_log(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, "s:error_log", &error_log_path))
+    PyObject *f = NULL;
+
+    if (!PyArg_ParseTuple(args, "s:error_log", &error_log_path)){
         return NULL;
+    }
     if(err_log_fd > 0){
         close(err_log_fd);
     }
-    PyObject *f = PyFile_FromString(error_log_path, "a");
+#ifdef PY3
+    int fd = open(error_log_path, O_CREAT|O_APPEND|O_WRONLY, 0744);
+    if(fd < 0){
+        PyErr_Format(PyExc_TypeError, "not open file. %s", error_log_path);
+        return NULL;
+    }
+    f = PyFile_FromFd(fd, NULL, NULL, -1, NULL, NULL, NULL, 1);
+#else
+    f = PyFile_FromString(error_log_path, "a");
+#endif
     if(!f){
         PyErr_Format(PyExc_TypeError, "not open file. %s", error_log_path);
         return NULL;

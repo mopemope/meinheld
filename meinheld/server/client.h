@@ -20,11 +20,11 @@ typedef struct _client {
     char upgrade;               // new protocol
     uint8_t complete;
 
-    http_parser *http;          // http req parser
+    http_parser *http_parser;          // http req parser
     PyObject *environ;          // wsgi environ
     int status_code;            // response status code
 
-    PyObject *http_status;      // response status line(PyString)
+    PyObject *http_status;      // response status line(PyBytes)
     PyObject *headers;          // http response headers
     uint8_t header_done;            // header write status
     PyObject *response;         // wsgi response object

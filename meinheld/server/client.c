@@ -37,10 +37,10 @@ alloc_ClientObject(void)
     if (client_numfree) {
         client = client_free_list[--client_numfree];
         _Py_NewReference((PyObject *)client);
-        DEBUG("use pooled ClientObject %p", client);
+        /* DEBUG("use pooled ClientObject %p", client); */
     }else{
         client = PyObject_NEW(ClientObject, &ClientObjectType);
-        DEBUG("alloc ClientObject %p", client);
+        /* DEBUG("alloc ClientObject %p", client); */
     }
     return client;
 }
@@ -50,7 +50,7 @@ dealloc_ClientObject(ClientObject *client)
 {
     Py_CLEAR(client->greenlet);
     if (client_numfree < CLIENT_MAXFREELIST){
-        DEBUG("back to ClientObject pool %p", client);
+        /* DEBUG("back to ClientObject pool %p", client); */
         client_free_list[client_numfree++] = client;
     }else{
         PyObject_DEL(client);
@@ -174,8 +174,12 @@ static PyMemberDef ClientObject_members[] = {
 
 
 PyTypeObject ClientObjectType = {
-    PyObject_HEAD_INIT(&PyType_Type)
-    0,
+#ifdef PY3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
+    PyObject_HEAD_INIT(NULL)
+    0,                    /* ob_size */
+#endif
     "meinheld.client",             /*tp_name*/
     sizeof(ClientObject), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

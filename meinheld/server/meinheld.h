@@ -63,10 +63,33 @@
     PyErr_SetString(PyExc_NotImplementedError, "greenlet not support"); \
     return NULL;\
 
-#endif
-
 #if (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 2) || PY_MAJOR_VERSION > 3
-#define PY3
+static __inline__ char*
+as_str(PyObject* obj)
+{
+    char *c = NULL;
+    PyObject *latin1;
+
+    latin1 = PyUnicode_AsLatin1String(obj);
+    if(latin1 == NULL){
+        return NULL;
+    }
+    c = PyBytes_AsString(latin1);
+    Py_DECREF(latin1);
+    return c;
+}
+# define PY3
+# define NATIVE_GET_STRING_SIZE  PyUnicode_GET_SIZE
+# define NATIVE_ASSTRING  as_str
+# define NATIVE_FROMSTRING  PyUnicode_FromString
+# define NATIVE_FROMSTRINGANDSIZE  PyUnicode_FromStringAndSize
+# define NATIVE_FROMFORMAT  PyUnicode_FromFormat
+#else
+# define NATIVE_GET_STRING_SIZE  PyBytes_GET_SIZE
+# define NATIVE_ASSTRING  PyBytes_AsString
+# define NATIVE_FROMSTRING  PyBytes_FromString
+# define NATIVE_FROMSTRINGANDSIZE  PyBytes_FromStringAndSize
+# define NATIVE_FROMFORMAT  PyBytes_FromFormat
 #endif
 
 #if PY_MAJOR_VERSION < 3
@@ -78,29 +101,5 @@
 #endif
 #endif
 
-#ifdef PY3
-static char*
-from_unicode(PyObject* obj)
-{
-    char *c;
-    PyObject *latin1;
-
-    latin1 = PyUnicode_AsLatin1String(obj);
-    if(latin1 == NULL){
-        return NULL;
-    }
-    c = PyBytes_AsString(latin1);
-    Py_DECREF(latin1);
-    return c;
-}
-
-#define AS_STRING(x)  from_unicode(x);
-//latin1
-#define FROM_STRING(x)  PyUnicode_FromString(x);
-
-#else
-
-#define AS_STRING(x)  PyBytes_AsString(x);
-#define FROM_STRING(x)  PyBytes_FromString(x);
-
 #endif
+

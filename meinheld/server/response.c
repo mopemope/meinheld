@@ -1,6 +1,7 @@
 #include "response.h"
 #include "log.h"
 #include "util.h"
+#include "meinheld.h"
 
 #define CRLF "\r\n"
 #define DELIM ": "
@@ -315,7 +316,19 @@ write_headers(client_t *client, char *data, size_t datalen)
             
             object1 = PyTuple_GET_ITEM(tuple, 0);
             object2 = PyTuple_GET_ITEM(tuple, 1);
-            
+
+#ifdef PY3
+            if (PyUnicode_Check(object1)) {
+                PyObject *latin1;
+
+                latin1 = PyUnicode_AsLatin1String(object1);
+                if(latin1 == NULL){
+                    goto error;
+                }
+                Py_DECREF(object1);
+                object1 = latin1; 
+            }
+#endif
             if (PyBytes_Check(object1)) {
                 PyBytes_AsStringAndSize(object1, &name, &namelen);
             }else {
@@ -325,6 +338,18 @@ write_headers(client_t *client, char *data, size_t datalen)
                 goto error;
             }
 
+#ifdef PY3
+            if (PyUnicode_Check(object2)) {
+                PyObject *latin1;
+
+                latin1 = PyUnicode_AsLatin1String(object2);
+                if(latin1 == NULL){
+                    goto error;
+                }
+                Py_DECREF(object2);
+                object2 = latin1; 
+            }
+#endif
             if (PyBytes_Check(object2)) {
                 PyBytes_AsStringAndSize(object2, &value, &valuelen);
             }else {
@@ -373,7 +398,7 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
     //header done
     // check content_length_set
-    if(data && !client->content_length_set && client->http->http_minor == 1){
+    if(data && !client->content_length_set && client->http_parser->http_minor == 1){
         //Transfer-Encoding chunked
         add_header(bucket, "Transfer-Encoding", 17, "chunked", 7);
         client->chunked_response = 1;
@@ -594,7 +619,7 @@ processs_write(client_t *client)
                     }
                 }
             }else{
-                PyErr_SetString(PyExc_TypeError, "response item must be a string");
+                PyErr_SetString(PyExc_TypeError, "response item must be a byte string");
                 Py_DECREF(item);
                 if (PyErr_Occurred()){
                     write_error_log(__FILE__, __LINE__);
@@ -788,16 +813,15 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 
     ResponseObject *self = NULL;
     self = (ResponseObject *)obj;
+#ifdef PY3
+    if (!PyArg_ParseTuple(args, "UO|O:start_response", &status, &headers, &exc_info)){
+        return NULL;
+    }
+#else
     if (!PyArg_ParseTuple(args, "SO|O:start_response", &status, &headers, &exc_info)){
         return NULL;
     }
-
-    if (!PyBytes_Check(status)) {
-        PyErr_Format(PyExc_TypeError, "expected byte string object for "
-                     "status, value of type %.200s found",
-                     status->ob_type->tp_name);
-        return NULL;
-    }
+#endif
 
     if (!PyList_Check(headers)) {
         PyErr_SetString(PyExc_TypeError, "response headers must be a list");
@@ -822,9 +846,15 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         return NULL;
     }
 
-    char buf[PyBytes_GET_SIZE(status)];
+    char buf[NATIVE_GET_STRING_SIZE(status)];
     status_line = buf;
-    strcpy(status_line, PyBytes_AS_STRING(status));
+    /* strncpy(status_line, (char*)NATIVE_ASSTRING(status), NATIVE_GET_STRING_SIZE(status)); */
+    strcpy(status_line, (char*)NATIVE_ASSTRING(status));
+    
+    if (!*status_line) {
+        PyErr_SetString(PyExc_ValueError, "status message was not supplied");
+        return NULL;
+    }
 
     status_code = strsep((char **)&status_line, " ");
 
@@ -836,10 +866,6 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         return NULL;
     }
 
-    if (!*status_line) {
-        PyErr_SetString(PyExc_ValueError, "status message was not supplied");
-        return NULL;
-    }
 
     if (int_code < 100 || int_code > 999) {
         PyErr_SetString(PyExc_ValueError, "status code is invalid");
@@ -854,7 +880,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 
     Py_XDECREF(self->cli->http_status);
 
-    if(self->cli->http->http_minor == 1){
+    if(self->cli->http_parser->http_minor == 1){
         self->cli->http_status =  PyBytes_FromFormat("HTTP/1.1 %s\r\n", PyBytes_AS_STRING(status));
     }else{
         self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(status));

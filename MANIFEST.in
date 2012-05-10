@@ -4,4 +4,5 @@ include CHANGES.rst
 include meinheld/server/picoev_epoll.c
 include meinheld/server/picoev_kqueue.c
 include meinheld/server/picoev_select.c
-recursive-include meinheld/server/ *.h
+include meinheld/server/*.h
+

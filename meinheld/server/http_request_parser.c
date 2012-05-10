@@ -129,11 +129,11 @@ new_environ(client_t *client)
     PyDict_SetItem(environ, server_port_key, server_port_val);
     PyDict_SetItem(environ, file_wrapper_key, file_wrapper_val);
 
-    object = PyBytes_FromString(client->remote_addr);
+    object = NATIVE_FROMSTRING(client->remote_addr);
     PyDict_SetItem(environ, remote_addr_key, object);
     Py_DECREF(object);
 
-    object = PyBytes_FromFormat("%d", client->remote_port);
+    object = NATIVE_FROMFORMAT("%d", client->remote_port);
     PyDict_SetItem(environ, remote_port_key, object);
     Py_DECREF(object);
     return environ;
@@ -214,7 +214,15 @@ set_query(PyObject *env, char *buf, int len)
             return -1;
         }
         
+#ifdef PY3
+        //TODO CHECK ERROR 
+        char *c2 = PyBytes_AS_STRING(obj);
+        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+        ret = PyDict_SetItem(env, query_string_key, v);
+        Py_DECREF(v);
+#else
         ret = PyDict_SetItem(env, query_string_key, obj);
+#endif
         Py_DECREF(obj);
         
         if(unlikely(ret == -1)){
@@ -263,7 +271,15 @@ set_path(PyObject *env, char *buf, int len)
     DEBUG("path:%.*s", (int)len, PyBytes_AS_STRING(obj));
 
     if(likely(obj != NULL)){
+#ifdef PY3
+        //TODO CHECK ERROR 
+        char *c2 = PyBytes_AS_STRING(obj);
+        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+        PyDict_SetItem(env, path_info_key, v);
+        Py_DECREF(v);
+#else
         PyDict_SetItem(env, path_info_key, obj);
+#endif
         Py_DECREF(obj);
         return slen;
     }else{
@@ -394,7 +410,18 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
             client->bad_request_code = 400;
             return -1;
         }
+#ifdef PY3
+        //TODO CHECK ERROR 
+        char *c1 = PyBytes_AS_STRING(req->field);
+        PyObject *f = PyUnicode_DecodeLatin1(c1, strlen(c1), NULL);
+        char *c2 = PyBytes_AS_STRING(req->value);
+        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+        PyDict_SetItem(env, f, v);
+        Py_DECREF(f);
+        Py_DECREF(v);
+#else
         PyDict_SetItem(env, req->field, req->value);
+#endif
         Py_DECREF(req->field);
         Py_DECREF(req->value);
         req->field = NULL;
@@ -487,10 +514,9 @@ body_cb(http_parser *p, const char *buf, size_t len)
     DEBUG("body_cb");
     client_t *client = get_client(p);
 
-    DEBUG("content_length:%lu", (unsigned long)p->content_length);
-
     if(max_content_length < client->body_readed + len){
 
+        DEBUG("set request code %d", 413);
         client->bad_request_code = 413;
         return -1;
     }
@@ -527,13 +553,17 @@ headers_complete_cb(http_parser *p)
 {
     PyObject *obj;
     int ret;
+    uint64_t content_length = 0;
 
     client_t *client = get_client(p);
     request *req = client->req;
     PyObject *env = client->environ;
-
-    if(max_content_length < p->content_length){
-
+    
+    if(p->content_length != ULLONG_MAX){
+        content_length = p->content_length;
+    }
+    if(max_content_length < content_length){
+        DEBUG("set request code %d", 413);
         client->bad_request_code = 413;
         return -1;
     }
@@ -566,7 +596,19 @@ headers_complete_cb(http_parser *p)
 
     //Last header
     if(likely(req->field && req->value)){
-        ret = PyDict_SetItem(env, req->field, req->value);
+
+#ifdef PY3
+        //TODO CHECK ERROR 
+        char *c1 = PyBytes_AS_STRING(req->field);
+        PyObject *f = PyUnicode_DecodeLatin1(c1, strlen(c1), NULL);
+        char *c2 = PyBytes_AS_STRING(req->value);
+        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+        PyDict_SetItem(env, f, v);
+        Py_DECREF(f);
+        Py_DECREF(v);
+#else
+        PyDict_SetItem(env, req->field, req->value);
+#endif
         Py_DECREF(req->field);
         Py_DECREF(req->value);
         req->field = NULL;
@@ -653,7 +695,7 @@ headers_complete_cb(http_parser *p)
     }
     //free_request(req);
     client->req = NULL;
-    client->body_length = p->content_length;
+    client->body_length = content_length;
     
     obj = InputObject_New(client);
     if(unlikely(obj == NULL)){
@@ -711,20 +753,22 @@ int
 init_parser(client_t *cli, const char *name, const short port)
 {
 
-    cli->http = (http_parser*)PyMem_Malloc(sizeof(http_parser));
-    memset(cli->http, 0, sizeof(http_parser));
-
-    http_parser_init(cli->http, HTTP_REQUEST);
-    cli->http->data = cli;
+    cli->http_parser = (http_parser*)PyMem_Malloc(sizeof(http_parser));
+    if(cli->http_parser == NULL){
+        return -1;
+    }
+    memset(cli->http_parser, 0, sizeof(http_parser));
+    http_parser_init(cli->http_parser, HTTP_REQUEST);
+    cli->http_parser->data = cli;
     return 0;
 }
 
 size_t
 execute_parse(client_t *cli, const char *data, size_t len)
 {
-    size_t ret = http_parser_execute(cli->http, &settings, data, len);
+    size_t ret = http_parser_execute(cli->http_parser, &settings, data, len);
     //check new protocol
-    cli->upgrade = cli->http->upgrade;
+    cli->upgrade = cli->http_parser->upgrade;
 
     return ret;
 }
@@ -741,76 +785,76 @@ setup_static_env(char *name, int port)
 {
     prefix_len = strlen("HTTP_");
 
-    empty_string = PyBytes_FromString("");
+    empty_string = NATIVE_FROMSTRING("");
 
     version_val = Py_BuildValue("(ii)", 1, 0);
-    version_key = PyBytes_FromString("wsgi.version");
+    version_key = NATIVE_FROMSTRING("wsgi.version");
 
-    scheme_val = PyBytes_FromString("http");
-    scheme_key = PyBytes_FromString("wsgi.url_scheme");
+    scheme_val = NATIVE_FROMSTRING("http");
+    scheme_key = NATIVE_FROMSTRING("wsgi.url_scheme");
 
     errors_val = PySys_GetObject("stderr");
-    errors_key = PyBytes_FromString("wsgi.errors");
+    errors_key = NATIVE_FROMSTRING("wsgi.errors");
 
     multithread_val = PyBool_FromLong(0);
-    multithread_key = PyBytes_FromString("wsgi.multithread");
+    multithread_key = NATIVE_FROMSTRING("wsgi.multithread");
 
     multiprocess_val = PyBool_FromLong(1);
-    multiprocess_key = PyBytes_FromString("wsgi.multiprocess");
+    multiprocess_key = NATIVE_FROMSTRING("wsgi.multiprocess");
 
     run_once_val = PyBool_FromLong(0);
-    run_once_key = PyBytes_FromString("wsgi.run_once");
+    run_once_key = NATIVE_FROMSTRING("wsgi.run_once");
 
     file_wrapper_val = PyCFunction_New(&method, NULL);
-    file_wrapper_key = PyBytes_FromString("wsgi.file_wrapper");
+    file_wrapper_key = NATIVE_FROMSTRING("wsgi.file_wrapper");
 
-    wsgi_input_key = PyBytes_FromString("wsgi.input");
+    wsgi_input_key = NATIVE_FROMSTRING("wsgi.input");
     
-    script_key = PyBytes_FromString("SCRIPT_NAME");
+    script_key = NATIVE_FROMSTRING("SCRIPT_NAME");
 
-    server_name_val = PyBytes_FromString(name);
-    server_name_key = PyBytes_FromString("SERVER_NAME");
+    server_name_val = NATIVE_FROMSTRING(name);
+    server_name_key = NATIVE_FROMSTRING("SERVER_NAME");
 
-    server_port_val = PyBytes_FromFormat("%d", port);
-    server_port_key = PyBytes_FromString("SERVER_PORT");
+    server_port_val = NATIVE_FROMFORMAT("%d", port);
+    server_port_key = NATIVE_FROMSTRING("SERVER_PORT");
 
-    remote_addr_key = PyBytes_FromString("REMOTE_ADDR");
-    remote_port_key = PyBytes_FromString("REMOTE_PORT");
+    remote_addr_key = NATIVE_FROMSTRING("REMOTE_ADDR");
+    remote_port_key = NATIVE_FROMSTRING("REMOTE_PORT");
 
-    server_protocol_key = PyBytes_FromString("SERVER_PROTOCOL");
-    path_info_key = PyBytes_FromString("PATH_INFO");
-    query_string_key = PyBytes_FromString("QUERY_STRING");
-    request_method_key = PyBytes_FromString("REQUEST_METHOD");
-    client_key = PyBytes_FromString("meinheld.client");
+    server_protocol_key = NATIVE_FROMSTRING("SERVER_PROTOCOL");
+    path_info_key = NATIVE_FROMSTRING("PATH_INFO");
+    query_string_key = NATIVE_FROMSTRING("QUERY_STRING");
+    request_method_key = NATIVE_FROMSTRING("REQUEST_METHOD");
+    client_key = NATIVE_FROMSTRING("meinheld.client");
 
-    content_type_key = PyBytes_FromString("CONTENT_TYPE");
-    content_length_key = PyBytes_FromString("CONTENT_LENGTH");
+    content_type_key = NATIVE_FROMSTRING("CONTENT_TYPE");
+    content_length_key = NATIVE_FROMSTRING("CONTENT_LENGTH");
 
-    h_content_type_key = PyBytes_FromString("HTTP_CONTENT_TYPE");
-    h_content_length_key = PyBytes_FromString("HTTP_CONTENT_LENGTH");
+    h_content_type_key = NATIVE_FROMSTRING("HTTP_CONTENT_TYPE");
+    h_content_length_key = NATIVE_FROMSTRING("HTTP_CONTENT_LENGTH");
 
-    server_protocol_val10 = PyBytes_FromString("HTTP/1.0");
-    server_protocol_val11 = PyBytes_FromString("HTTP/1.1");
+    server_protocol_val10 = NATIVE_FROMSTRING("HTTP/1.0");
+    server_protocol_val11 = NATIVE_FROMSTRING("HTTP/1.1");
 
-    http_method_delete = PyBytes_FromStringAndSize("DELETE", 6);
-    http_method_get = PyBytes_FromStringAndSize("GET", 3);
-    http_method_head = PyBytes_FromStringAndSize("HEAD", 4);
-    http_method_post = PyBytes_FromStringAndSize("POST", 4);
-    http_method_put = PyBytes_FromStringAndSize("PUT", 3);
-    http_method_connect = PyBytes_FromStringAndSize("CONNECT", 7);
-    http_method_options = PyBytes_FromStringAndSize("OPTIONS", 7);
-    http_method_trace = PyBytes_FromStringAndSize("TRACE", 5);
-    http_method_copy = PyBytes_FromStringAndSize("COPY", 4);
-    http_method_lock = PyBytes_FromStringAndSize("LOCK", 4);
-    http_method_mkcol = PyBytes_FromStringAndSize("MKCOL", 5);
-    http_method_move = PyBytes_FromStringAndSize("MOVE", 4);
-    http_method_propfind= PyBytes_FromStringAndSize("PROPFIND", 8);
-    http_method_proppatch = PyBytes_FromStringAndSize("PROPPATCH", 9);
-    http_method_unlock = PyBytes_FromStringAndSize("UNLOCK", 6);
-    http_method_report = PyBytes_FromStringAndSize("REPORT", 6);
-    http_method_mkactivity = PyBytes_FromStringAndSize("MKACTIVITY", 10);
-    http_method_checkout = PyBytes_FromStringAndSize("CHECKOUT", 8);
-    http_method_merge = PyBytes_FromStringAndSize("MERGE", 5);
+    http_method_delete = NATIVE_FROMSTRING("DELETE");
+    http_method_get = NATIVE_FROMSTRING("GET");
+    http_method_head = NATIVE_FROMSTRING("HEAD");
+    http_method_post = NATIVE_FROMSTRING("POST");
+    http_method_put = NATIVE_FROMSTRING("PUT");
+    http_method_connect = NATIVE_FROMSTRING("CONNECT");
+    http_method_options = NATIVE_FROMSTRING("OPTIONS");
+    http_method_trace = NATIVE_FROMSTRING("TRACE");
+    http_method_copy = NATIVE_FROMSTRING("COPY");
+    http_method_lock = NATIVE_FROMSTRING("LOCK");
+    http_method_mkcol = NATIVE_FROMSTRING("MKCOL");
+    http_method_move = NATIVE_FROMSTRING("MOVE");
+    http_method_propfind= NATIVE_FROMSTRING("PROPFIND");
+    http_method_proppatch = NATIVE_FROMSTRING("PROPPATCH");
+    http_method_unlock = NATIVE_FROMSTRING("UNLOCK");
+    http_method_report = NATIVE_FROMSTRING("REPORT");
+    http_method_mkactivity = NATIVE_FROMSTRING("MKACTIVITY");
+    http_method_checkout = NATIVE_FROMSTRING("CHECKOUT");
+    http_method_merge = NATIVE_FROMSTRING("MERGE");
 
     //PycString_IMPORT;
 }

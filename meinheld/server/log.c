@@ -7,30 +7,52 @@ open_log_file(const char *path)
     return open(path, O_CREAT|O_APPEND|O_WRONLY, 0744);
 }
 
-void
+int
 write_error_log(char *file_name, int line)
 {
-    char buf[64];
+    char buf[256];
+    int fd, ret;
 
     PyObject *f = PySys_GetObject("stderr");
 
-    FILE *fp = PyFile_AsFile(f);
-    int fd = fileno(fp);
-    flock(fd, LOCK_EX);
+    fd = PyObject_AsFileDescriptor(f);
+    if(fd < 0){
+        return -1;
+    }
+    ret = flock(fd, LOCK_EX);
+    if(ret < 0){
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
 
     cache_time_update();
-    fputs((char *)err_log_time, fp);
-    fputs(" [error] ", fp);
+    ret = write(fd, (char *)err_log_time, strlen((char*)err_log_time));
+    if(ret < 0){
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    ret = write(fd, " [error] ", 9);
+    if(ret < 0){
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
 
-    sprintf(buf, "pid %d, File \"%s\", line %d \n", getpid(), file_name, line);
-    fputs(buf, fp);
+    snprintf(buf, 256, "pid %d, File \"%s\", line %d \n", getpid(), file_name, line);
+    ret = write(fd, buf, strlen(buf));
+    if(ret < 0){
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
 
     PyErr_Print();
     PyErr_Clear();
-    fflush(fp);
 
-    flock(fd, LOCK_UN);
-
+    ret = flock(fd, LOCK_UN);
+    if(ret < 0){
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    return 1;
 }
 
 static int
