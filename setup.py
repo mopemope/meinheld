@@ -62,7 +62,7 @@ setup(name='meinheld',
     platforms='Linux, Darwin',
     packages= ['meinheld'],
     install_requires=[
-        'greenlet>=0.3.4',
+        'greenlet==0.3.4',
     ],
 
     entry_points="""
