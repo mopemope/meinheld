@@ -30,6 +30,12 @@ typedef struct {
 
 } FileWrapperObject;
 
+typedef enum {
+    STATUS_OK,
+    STATUS_SUSPEND,
+    STATUS_ERROR 
+} response_status;
+
 extern PyTypeObject ResponseObjectType;
 extern PyTypeObject FileWrapperType;
 extern ResponseObject *start_response;
@@ -40,9 +46,9 @@ PyObject* file_wrapper(PyObject *self, PyObject *args);
 
 int CheckFileWrapper(PyObject *obj);
 
-int response_start(client_t *client);
+response_status response_start(client_t *client);
 
-int process_body(client_t *client);
+response_status process_body(client_t *client);
 
 void close_response(client_t *client);
 

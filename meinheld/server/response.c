@@ -151,17 +151,26 @@ new_write_bucket(int fd, int cnt){
 
     write_bucket *bucket;
     bucket = PyMem_Malloc(sizeof(write_bucket));
+    if(bucket == NULL){
+        return NULL;
+    }
     memset(bucket, 0, sizeof(write_bucket));
 
     bucket->fd = fd;
     bucket->iov = (iovec_t *)PyMem_Malloc(sizeof(iovec_t) * cnt);
+    if(bucket->iov == NULL){
+        PyMem_Free(bucket);
+        return NULL;
+    }
     bucket->iov_size = cnt;
+    DEBUG("allocate %p", bucket);
     return bucket;
 }
 
 static void
 free_write_bucket(write_bucket *bucket)
 {
+    DEBUG("free %p", bucket);
     PyMem_Free(bucket->iov);
     PyMem_Free(bucket);
 }
@@ -205,7 +214,7 @@ add_header(write_bucket *bucket, char *key, size_t keylen, char *val, size_t val
 }
 
 
-static int
+static response_status 
 writev_bucket(write_bucket *data)
 {
     size_t w;
@@ -216,17 +225,17 @@ writev_bucket(write_bucket *data)
     if(w == -1){
         //error
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            // try again later
-            return 0;
+            DEBUG("try again later");
+            return STATUS_SUSPEND;
         }else{
             //ERROR
             PyErr_SetFromErrno(PyExc_IOError);
             write_error_log(__FILE__, __LINE__);
-            return -1;
+            return STATUS_ERROR;
         }
     }if(w == 0){
         data->sended = 1;
-        return 1;
+        return STATUS_OK;
     }else{
         if(data->total > w){
             for(; i < data->iov_cnt;i++){
@@ -249,7 +258,7 @@ writev_bucket(write_bucket *data)
         data->sended = 1;
     }
     data->sended = 1;
-    return 1;
+    return STATUS_OK;
 }
 
 static int
@@ -295,8 +304,8 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
 {
     int i;
     PyObject *tuple = NULL;
-    PyObject *object = NULL;
-    PyObject *bytes = NULL;
+    PyObject *obj1 = NULL, *obj2 = NULL;
+    PyObject *bytes1 = NULL, *bytes2 = NULL;
     char *name = NULL, *value = NULL;
     Py_ssize_t namelen, valuelen;
 
@@ -320,28 +329,24 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
                 goto error;
             }
 
-            object = PyTuple_GET_ITEM(tuple, 0);
-            if(!object){
+            obj1 = PyTuple_GET_ITEM(tuple, 0);
+            obj2 = PyTuple_GET_ITEM(tuple, 1);
+            if(!obj1){
                 goto error;
             }
-            bytes = wsgi_to_bytes(object);
-            if(PyBytes_AsStringAndSize(bytes, &name, &namelen) == -1){
+            if(!obj2){
                 goto error;
             }
-            Py_XDECREF(bytes);
-            bytes = NULL;
+            bytes1 = wsgi_to_bytes(obj1);
+            if(PyBytes_AsStringAndSize(bytes1, &name, &namelen) == -1){
+                goto error;
+            }
             
             //value
-            object = PyTuple_GET_ITEM(tuple, 1);
-            if(!object){
+            bytes2 = wsgi_to_bytes(obj2);
+            if(PyBytes_AsStringAndSize(bytes2, &value, &valuelen) == -1){
                 goto error;
             }
-            bytes = wsgi_to_bytes(object);
-            if(PyBytes_AsStringAndSize(bytes, &value, &valuelen) == -1){
-                goto error;
-            }
-            Py_XDECREF(bytes);
-            bytes = NULL;
 
             if (strchr(name, ':') != 0) {
                 PyErr_Format(PyExc_ValueError, "header name may not contains ':'"
@@ -376,7 +381,10 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
                 client->content_length_set = 1;
                 client->content_length = l;
             }
+            DEBUG("response header %s : %s",name, value);
             add_header(bucket, name, namelen, value, valuelen);
+            Py_CLEAR(bytes1);
+            Py_CLEAR(bytes2);
         }
 
     }
@@ -385,7 +393,8 @@ error:
     if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
     }
-    Py_XDECREF(bytes);
+    Py_XDECREF(bytes1);
+    Py_XDECREF(bytes2);
     return -1;
 }
 static int
@@ -410,15 +419,17 @@ add_status_line(write_bucket *bucket, client_t *client)
     return 1;
 }
 
-static int
+static response_status
 write_headers(client_t *client, char *data, size_t datalen)
 {
-    if(client->header_done){
-        return 1;
-    }
     write_bucket *bucket; 
     uint32_t hlen = 0;
     PyObject *headers = NULL;
+    
+    DEBUG("header write? %d", client->header_done);
+    if(client->header_done){
+        return STATUS_OK;
+    }
 
     if(client->headers){
         headers = PySequence_Fast(client->headers, "header must be list");
@@ -427,6 +438,9 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
     bucket = new_write_bucket(client->fd, (hlen * 4) + 40 );
 
+    if(bucket == NULL){
+        goto error;
+    }
     if(add_status_line(bucket, client) == -1){
         goto error;
     }
@@ -449,10 +463,8 @@ write_headers(client_t *client, char *data, size_t datalen)
     }else{
         add_header(bucket, "Connection", 10, "close", 5);
     }
-
     set2bucket(bucket, CRLF, 2);
-    //header done
-    
+
     //write body
     if(data){
         if(client->chunked_response){
@@ -466,10 +478,10 @@ write_headers(client_t *client, char *data, size_t datalen)
         }
     }
     client->bucket = bucket;
-    int ret = writev_bucket(bucket);
-    if(ret != 0){
+    response_status ret = writev_bucket(bucket);
+    if(ret != STATUS_SUSPEND){
         client->header_done = 1;
-        if(ret > 0 && data){
+        if(ret == STATUS_OK && data){
             client->write_bytes += datalen;
         }
         // clear
@@ -485,7 +497,7 @@ error:
         free_write_bucket(bucket);
         client->bucket = NULL;
     }
-    return -1;
+    return STATUS_ERROR;
 }
 
 static int
@@ -569,8 +581,8 @@ close_response(client_t *client)
 }
 
 
-static int
-processs_sendfile(client_t *client)
+static response_status
+process_sendfile(client_t *client)
 {
     PyObject *filelike = NULL;
     FileWrapperObject *filewrap = NULL;
@@ -582,26 +594,26 @@ processs_sendfile(client_t *client)
     in_fd = PyObject_AsFileDescriptor(filelike);
     if (in_fd == -1) {
         PyErr_Clear();
-        return 0;
+        return STATUS_OK;
     }
 
     while(client->content_length > client->write_bytes){
         ret = write_sendfile(client->fd, in_fd, client->write_bytes, client->content_length);
-        DEBUG("processs_sendfile send %d", ret);
+        DEBUG("process_sendfile send %d", ret);
         switch (ret) {
-            case 0: 
+            case 0:
                 break;
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     //next
-                    DEBUG("processs_sendfile EAGAIN %d", ret);
-                    return 0;
+                    DEBUG("process_sendfile EAGAIN %d", ret);
+                    return STATUS_SUSPEND;
                 } else { /* fatal error */
                     client->keep_alive = 0;
                     client->bad_request_code = 500;
                     client->status_code = 500;
                     //close
-                    return -1;
+                    return STATUS_ERROR;
                 }
             default:
                 client->write_bytes += ret;
@@ -610,18 +622,18 @@ processs_sendfile(client_t *client)
     }
     close_response(client);
     //all send
-    return 1;
+    return STATUS_OK;
 }
 
-static int
-processs_write(client_t *client)
+static response_status
+process_write(client_t *client)
 {
     PyObject *iterator = NULL;
     PyObject *item;
     char *buf;
     Py_ssize_t buflen;
     write_bucket *bucket;
-    int ret;
+    response_status ret;
 
     iterator = client->response_iter;
     if(iterator != NULL){
@@ -631,7 +643,11 @@ processs_write(client_t *client)
                 //write
                 if(client->chunked_response){
                     bucket = new_write_bucket(client->fd, 4);
-
+                    if(bucket == NULL){
+                        write_error_log(__FILE__, __LINE__);
+                        Py_DECREF(item);
+                        return STATUS_ERROR;
+                    }
                     char lendata[32];
                     int i = 0;
                     i = snprintf(lendata, 32, "%zx", buflen);
@@ -639,6 +655,11 @@ processs_write(client_t *client)
                     set_chunked_data(bucket, lendata, i, buf, buflen);
                 }else{
                     bucket = new_write_bucket(client->fd, 1);
+                    if(bucket == NULL){
+                        write_error_log(__FILE__, __LINE__);
+                        Py_DECREF(item);
+                        return STATUS_ERROR;
+                    }
                     set2bucket(bucket, buf, buflen);
                 }
                 ret = writev_bucket(bucket);
@@ -664,28 +685,33 @@ processs_write(client_t *client)
                 Py_DECREF(item);
                 if (PyErr_Occurred()){
                     write_error_log(__FILE__, __LINE__);
-                    return -1;
+                    return STATUS_ERROR;
                 }
             }
             Py_DECREF(item);
         }
 
         if(client->chunked_response){
+            //last packet
             bucket = new_write_bucket(client->fd, 3);
+            if(bucket == NULL){
+                write_error_log(__FILE__, __LINE__);
+                return STATUS_ERROR;
+            }
             set_last_chunked_data(bucket);
             writev_bucket(bucket);
             free_write_bucket(bucket);
         }
         close_response(client);
     }
-    return 1;
+    return STATUS_OK;
 }
 
 
-int
+response_status
 process_body(client_t *client)
 {
-    int ret;
+    response_status ret;
     write_bucket *bucket;
     if(client->bucket){
         bucket = (write_bucket *)client->bucket;
@@ -698,21 +724,21 @@ process_body(client_t *client)
             free_write_bucket(bucket);
             client->bucket = NULL;
         }else{
-            return 0;
+            //
+            return STATUS_SUSPEND;
         }
-
     }
 
     if (CheckFileWrapper(client->response)) {
-        ret = processs_sendfile(client);
+        ret = process_sendfile(client);
     }else{
-        ret = processs_write(client);
+        ret = process_write(client);
     }
 
     return ret;
 }
 
-static int
+static response_status
 start_response_file(client_t *client)
 {
     PyObject *filelike;
@@ -727,14 +753,14 @@ start_response_file(client_t *client)
     if (in_fd == -1) {
         PyErr_Clear();
         DEBUG("can't get fd");
-        return -1;
+        return STATUS_ERROR;
     }
     ret = write_headers(client, NULL, 0);
     if(!client->content_length_set){
         if (fstat(in_fd, &info) == -1){
             PyErr_SetFromErrno(PyExc_IOError);
             write_error_log(__FILE__, __LINE__); 
-            return -1;
+            return STATUS_ERROR;
         }
 
         size = info.st_size;
@@ -745,7 +771,7 @@ start_response_file(client_t *client)
 
 }
 
-static int
+static response_status
 start_response_write(client_t *client)
 {
     PyObject *iterator;
@@ -756,7 +782,7 @@ start_response_write(client_t *client)
     iterator = PyObject_GetIter(client->response);
     if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
-        return -1;
+        return STATUS_ERROR;
     }
     client->response_iter = iterator;
 
@@ -779,24 +805,24 @@ start_response_write(client_t *client)
             Py_XDECREF(item);
             if (PyErr_Occurred()){
                 write_error_log(__FILE__, __LINE__);
-                return -1;
+                return STATUS_ERROR;
             }
         }
 
     }
-    return -1;
+    return STATUS_ERROR;
 }
 
-int
+response_status
 response_start(client_t *client)
 {
-    int ret ;
+    response_status ret ;
     if(client->status_code == 304){
         return write_headers(client, NULL, 0);
     }
     
     if(enable_cork(client) == -1){
-        return -1; 
+        return STATUS_ERROR; 
     }
 
     if (CheckFileWrapper(client->response)) {
@@ -804,14 +830,14 @@ response_start(client_t *client)
         ret = start_response_file(client);
         if(ret > 0){
             // sended header
-            ret = processs_sendfile(client);
+            ret = process_sendfile(client);
         }
     }else{
         ret = start_response_write(client);
         DEBUG("start_response_write status_code %d ret = %d", client->status_code, ret);
         if(ret > 0){
-            // sended heade 
-            ret = processs_write(client);
+            // sended header
+            ret = process_write(client);
         }
     }
     return ret;

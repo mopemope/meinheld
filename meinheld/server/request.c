@@ -12,29 +12,29 @@ void
 request_list_fill(void)
 {
     request *req;
-	while (request_numfree < REQUEST_MAXFREELIST) {
+    while (request_numfree < REQUEST_MAXFREELIST) {
         req = (request *)PyMem_Malloc(sizeof(request));
-		request_free_list[request_numfree++] = req;
-	}
+        request_free_list[request_numfree++] = req;
+    }
 }
 
 void
 request_list_clear(void)
 {
-	request *op;
+    request *op;
 
-	while (request_numfree) {
-		op = request_free_list[--request_numfree];
-		PyMem_Free(op);
-	}
+    while (request_numfree) {
+        op = request_free_list[--request_numfree];
+        PyMem_Free(op);
+    }
 }
 
 static request*
 alloc_request(void)
 {
     request *req;
-	if (request_numfree) {
-		req = request_free_list[--request_numfree];
+    if (request_numfree) {
+        req = request_free_list[--request_numfree];
         //DEBUG("use pooled req %p", req);
     }else{
         req = (request *)PyMem_Malloc(sizeof(request));
@@ -47,11 +47,11 @@ alloc_request(void)
 void
 dealloc_request(request *req)
 {
-	if (request_numfree < REQUEST_MAXFREELIST){
+    if (request_numfree < REQUEST_MAXFREELIST){
         //DEBUG("back to request pool %p", req);
-		request_free_list[request_numfree++] = req;
+        request_free_list[request_numfree++] = req;
     }else{
-	    PyMem_Free(req);
+        PyMem_Free(req);
     }
 }
 

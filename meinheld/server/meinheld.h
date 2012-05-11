@@ -63,7 +63,8 @@
     PyErr_SetString(PyExc_NotImplementedError, "greenlet not support"); \
     return NULL;\
 
-#if (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 2) || PY_MAJOR_VERSION > 3
+//#if (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 2) || PY_MAJOR_VERSION > 3
+#if PY_MAJOR_VERSION >= 3
 static __inline__ char*
 as_str(PyObject* obj)
 {
@@ -100,6 +101,7 @@ as_str(PyObject* obj)
 #  define Py_TYPE(ob)   (((PyObject *) (ob))->ob_type)
 #endif
 #endif
+
 
 #endif
 
