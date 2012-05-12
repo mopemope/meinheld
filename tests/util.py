@@ -21,16 +21,17 @@ DEFAULT_HEADER = [
             ("Cache-Control", "max-age=0"),
         ]
 
+RESPONSE = b"Hello world!"
+
 class Handler(object):
 
     def __call__(self, environ, start_response):
         status = '200 OK'
-        res = b"Hello world!"
         response_headers = [('Content-type','text/plain')]
         start_response(status, response_headers)
         self.environ = environ.copy()
         print(environ)
-        return [res]
+        return [RESPONSE]
 
 def app_factory(app=Handler):
 

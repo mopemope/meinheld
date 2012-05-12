@@ -567,7 +567,7 @@ close_response(client_t *client)
 
             args = Py_BuildValue("()");
             data = PyEval_CallObject(close, args);
-
+            DEBUG("call response object close");
             Py_DECREF(args);
             Py_XDECREF(data);
             Py_DECREF(close);
@@ -635,7 +635,8 @@ process_write(client_t *client)
     Py_ssize_t buflen;
     write_bucket *bucket;
     response_status ret;
-
+    
+    DEBUG("process_write start");
     iterator = client->response_iter;
     if(iterator != NULL){
         while((item =  PyIter_Next(iterator))){
@@ -693,6 +694,7 @@ process_write(client_t *client)
         }
 
         if(client->chunked_response){
+            DEBUG("write last chunk");
             //last packet
             bucket = new_write_bucket(client->fd, 3);
             if(bucket == NULL){
@@ -829,14 +831,14 @@ response_start(client_t *client)
     if (CheckFileWrapper(client->response)) {
         DEBUG("use sendfile");
         ret = start_response_file(client);
-        if(ret > 0){
+        if(ret == STATUS_OK){
             // sended header
             ret = process_sendfile(client);
         }
     }else{
         ret = start_response_write(client);
         DEBUG("start_response_write status_code %d ret = %d", client->status_code, ret);
-        if(ret > 0){
+        if(ret == STATUS_OK){
             // sended header
             ret = process_write(client);
         }
