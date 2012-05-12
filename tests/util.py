@@ -21,41 +21,8 @@ DEFAULT_HEADER = [
             ("Cache-Control", "max-age=0"),
         ]
 
-RESPONSE = b"Hello world!"
 
-class App(object):
-
-    def __call__(self, environ, start_response):
-        status = '200 OK'
-        response_headers = [('Content-type','text/plain')]
-        start_response(status, response_headers)
-        self.environ = environ.copy()
-        print(environ)
-        return [RESPONSE]
-
-class ErrApp(object):
-
-    def __call__(self, environ, start_response):
-        status = '200 OK'
-        response_headers = [('Content-type','text/plain')]
-        start_response(status, response_headers)
-        self.environ = environ.copy()
-        print(environ)
-        environ["XXXX"]
-        return [RESPONSE]
-
-class IterErrApp(object):
-
-    def __call__(self, environ, start_response):
-        status = '200 OK'
-        response_headers = [('Content-type','text/plain')]
-        start_response(status, response_headers)
-        self.environ = environ.copy()
-        print(environ)
-
-        return [1]
-
-def app_factory(app=App):
+def app_factory(app):
 
     return app()
 
@@ -83,7 +50,7 @@ class ClientRunner(threading.Thread):
         self.receive_data = r
         server.shutdown()
 
-def run_client(client=None, app=App):
+def run_client(client=None, app=None):
     r = ClientRunner(client)
     r.start()
     env = start_server(app_factory(app))

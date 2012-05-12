@@ -1,5 +1,5 @@
-from meinheld.patch import patch_werkzeug
-patch_werkzeug()
+# from meinheld.patch import patch_werkzeug
+# patch_werkzeug()
 
 from flask import Flask, render_template, request, session, jsonify
 import uuid

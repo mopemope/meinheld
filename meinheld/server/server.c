@@ -368,14 +368,14 @@ app_handler(PyObject *self, PyObject *args)
         write_error_log(__FILE__, __LINE__);
         send_error_page(client);
         close_conn(client, main_loop);
-        return NULL;
+        Py_RETURN_NONE;
     }
     //Check wsgi_app error
     if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
         send_error_page(client);
         close_conn(client, main_loop);
-        return NULL;
+        Py_RETURN_NONE;
     }
 
     client->response = res;
@@ -463,7 +463,6 @@ call_wsgi_handler(client_t *client)
     res = PyObject_CallObject(handler, args);
     Py_DECREF(args);
 #endif
-
     Py_XDECREF(res);
 }
 

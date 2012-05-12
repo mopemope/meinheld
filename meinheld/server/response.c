@@ -665,7 +665,7 @@ process_write(client_t *client)
                     set2bucket(bucket, buf, buflen);
                 }
                 ret = writev_bucket(bucket);
-                if(ret <= 0){
+                if(ret != STATUS_OK){
                     client->bucket = bucket;
                     Py_DECREF(item);
                     return ret;
@@ -979,6 +979,7 @@ FileWrapperObject_new(PyObject *self, PyObject *filelike, size_t blksize)
 
     f->filelike = filelike;
     Py_INCREF(f->filelike);
+    GDEBUG("alloc FileWrapperObject %p", f);
     return (PyObject *)f;
 }
 
@@ -998,6 +999,7 @@ FileWrapperObject_iter(PyObject *o)
 static void
 FileWrapperObject_dealloc(FileWrapperObject* self)
 {
+    GDEBUG("dealloc FileWrapperObject %p", self);
     Py_XDECREF(self->filelike);
     PyObject_DEL(self);
 }
