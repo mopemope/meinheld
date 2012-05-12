@@ -877,6 +877,7 @@ setup_static_env(char *name, int port)
 void
 clear_static_env(void)
 {
+    DEBUG("clear_static_env");
     Py_DECREF(empty_string);
 
     Py_DECREF(version_key);
@@ -884,7 +885,7 @@ clear_static_env(void)
     Py_DECREF(scheme_key);
     Py_DECREF(scheme_val);
     Py_DECREF(errors_key);
-    Py_DECREF(errors_val);
+    /* Py_DECREF(errors_val); */
     Py_DECREF(multithread_key);
     Py_DECREF(multithread_val);
     Py_DECREF(multiprocess_key);
@@ -905,7 +906,6 @@ clear_static_env(void)
 
     Py_DECREF(server_protocol_key);
     Py_DECREF(path_info_key);
-    //Py_DECREF(request_uri_key);
     Py_DECREF(query_string_key);
     Py_DECREF(request_method_key);
     Py_DECREF(client_key);

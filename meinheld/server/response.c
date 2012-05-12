@@ -147,7 +147,8 @@ send_error_page(client_t *client)
 
 
 static write_bucket *
-new_write_bucket(int fd, int cnt){
+new_write_bucket(int fd, int cnt)
+{
 
     write_bucket *bucket;
     bucket = PyMem_Malloc(sizeof(write_bucket));
@@ -163,14 +164,14 @@ new_write_bucket(int fd, int cnt){
         return NULL;
     }
     bucket->iov_size = cnt;
-    DEBUG("allocate %p", bucket);
+    GDEBUG("allocate %p", bucket);
     return bucket;
 }
 
 static void
 free_write_bucket(write_bucket *bucket)
 {
-    DEBUG("free %p", bucket);
+    GDEBUG("free %p", bucket);
     PyMem_Free(bucket->iov);
     PyMem_Free(bucket);
 }
@@ -852,7 +853,7 @@ setup_start_response(void)
 void
 clear_start_response(void)
 {
-    Py_DECREF(start_response);
+    Py_CLEAR(start_response);
 }
 
 

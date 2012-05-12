@@ -83,7 +83,7 @@ ClientObject_New(client_t* client)
     o->suspended = 0;
     o->resumed = 0;
 
-    DEBUG("ClientObject_New pyclient:%p client:%p fd:%d", o, o->client, o->client->fd);
+    GDEBUG("ClientObject_New pyclient:%p client:%p fd:%d", o, o->client, o->client->fd);
     return (PyObject *)o;
 }
 
@@ -91,7 +91,7 @@ static  void
 ClientObject_dealloc(ClientObject* self)
 {
 
-    DEBUG("ClientObject_dealloc pyclient:%p client:%p fd:%d", self, self->client, self->client->fd);
+    GDEBUG("ClientObject_dealloc pyclient:%p client:%p fd:%d", self, self->client, self->client->fd);
     //self->client = NULL;
     DEBUG("XDECREF greenlet:%p", self->greenlet);
     dealloc_ClientObject(self);

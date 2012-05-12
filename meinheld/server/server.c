@@ -85,19 +85,16 @@ static void
 read_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 static void
-g_write_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
-
-static void
 write_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 static void
-resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop);
+trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 static void
 prepare_call_wsgi(client_t *client);
 
 static void
-call_wsgi_app(client_t *client, picoev_loop* loop);
+call_wsgi_handler(client_t *client);
 
 static int
 check_status_code(client_t *client);
@@ -217,7 +214,7 @@ close_conn(client_t *cli, picoev_loop* loop)
         if(check_status_code(cli) > 0){
             //process pipeline
             prepare_call_wsgi(cli);
-            call_wsgi_app(cli, loop);
+            call_wsgi_handler(cli);
         }
         return ;
     }
@@ -278,6 +275,7 @@ check_status_code(client_t *client)
     return 1;
 }
 
+/*
 static int
 process_resume_wsgi_app(ClientObject *pyclient)
 {
@@ -335,6 +333,7 @@ process_resume_wsgi_app(ClientObject *pyclient)
     return 1;
 
 }
+*/
 
 static PyObject *
 app_handler(PyObject *self, PyObject *args)
@@ -391,7 +390,7 @@ app_handler(PyObject *self, PyObject *args)
             break;
         }else{
             picoev_del(main_loop, client->fd);
-            picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, g_write_callback, (void *)client);
+            picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, trampoline_callback, (void *)client);
             status = process_body(client);
         }
     }
@@ -427,7 +426,7 @@ get_app_handler(void)
     if(app_handler_func == NULL){
         app_handler_func = PyCFunction_NewEx(&app_handler_def, (PyObject *)NULL, NULL);
     }
-    Py_INCREF(app_handler_func);
+    //Py_INCREF(app_handler_func);
     return app_handler_func;
 }
 
@@ -461,6 +460,7 @@ call_wsgi_handler(client_t *client)
     Py_XDECREF(res);
 }
 
+/*
 static int
 process_wsgi_app(client_t *cli)
 {
@@ -528,7 +528,9 @@ process_wsgi_app(client_t *cli)
     return 1;
 
 }
+*/
 
+/*
 void
 switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj)
 {
@@ -539,7 +541,8 @@ switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj)
     // resume
     resume_wsgi_app(pyclient, loop);
     pyclient->resumed = 0;
-}
+}*/
+
 
 static void
 resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
@@ -552,7 +555,7 @@ resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     }else if ((events & PICOEV_WRITE) != 0) {
         //None
     }
-    switch_wsgi_app(loop, client->fd, (PyObject *)pyclient);
+    //switch_wsgi_app(loop, client->fd, (PyObject *)pyclient);
 }
 
 static void
@@ -560,14 +563,20 @@ timeout_erroread_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+    PyObject *res, *err_type, *err_val, *err_tb;
 
     if ((events & PICOEV_TIMEOUT) != 0) {
         DEBUG("timeout_erroread_callback pyclient:%p client:%p fd:%d", pyclient, pyclient->client, pyclient->client->fd);
+        picoev_del(loop, fd);
         pyclient->suspended = 0;
         pyclient->resumed = 1;
         PyErr_SetString(timeout_error, "timeout");
         set_so_keepalive(client->fd, 0);
-        switch_wsgi_app(loop, client->fd, (PyObject *)pyclient);
+        PyErr_Fetch(&err_type, &err_val, &err_tb);
+        PyErr_Clear();
+        res = greenlet_throw(pyclient->greenlet, err_type, err_val, err_tb);
+        Py_XDECREF(res);
+        //switch_wsgi_app(loop, client->fd, (PyObject *)pyclient);
     }
 }
 
@@ -576,41 +585,54 @@ timeout_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject *)(cb_arg);
     client_t *client = pyclient->client;
+    PyObject *res, *err_type, *err_val, *err_tb;
+
     if ((events & PICOEV_TIMEOUT) != 0) {
         DEBUG("timeout_callback pyclient:%p client:%p fd:%d", pyclient, pyclient->client, pyclient->client->fd);
         //next intval 30sec
         picoev_set_timeout(loop, client->fd, 30);
         // is_active ??
         if(write(client->fd, "", 0) < 0){
+            picoev_del(loop, fd);
             //resume
             pyclient->suspended = 0;
             pyclient->resumed = 1;
             PyErr_SetFromErrno(PyExc_IOError);
             DEBUG("closed");
             set_so_keepalive(client->fd, 0);
-            switch_wsgi_app(loop, client->fd, (PyObject *)pyclient);
+            PyErr_Fetch(&err_type, &err_val, &err_tb);
+            PyErr_Clear();
+            res = greenlet_throw(pyclient->greenlet, err_type, err_val, err_tb);
+            Py_XDECREF(res);
+            //switch_wsgi_app(loop, client->fd, (PyObject *)pyclient);
         }
     }
 }
 
 
 static void
-g_write_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
     ClientObject *pyclient = (ClientObject*)cb_arg;
     client_t *client = pyclient->client;
-    PyObject *res = NULL;
-
-    DEBUG("call write_callback");
+    PyObject *res, *err_type, *err_val, *err_tb;
+    
+    picoev_del(loop, fd);
+    DEBUG("call trampoline_callback");
     if ((events & PICOEV_TIMEOUT) != 0) {
 
-        DEBUG("** write_callback timeout **");
+        DEBUG("** trampoline_callback timeout **");
 
         //timeout
         client->keep_alive = 0;
-        close_conn(client, loop);
+        PyErr_SetString(timeout_error, "timeout");
+        PyErr_Fetch(&err_type, &err_val, &err_tb);
+        PyErr_Clear();
+        res = greenlet_throw(pyclient->greenlet, err_type, err_val, err_tb);
+        //close_conn(client, loop);
+    }else{
+        res = greenlet_switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
     }
-    res = greenlet_switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
     Py_XDECREF(res);
 }
 
@@ -641,6 +663,7 @@ write_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     }
 }
 
+/*
 static void
 resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
 {
@@ -689,7 +712,9 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             close_conn(client, loop);
     }
 }
+*/
 
+/*
 static void
 call_wsgi_app(client_t *client, picoev_loop* loop)
 {
@@ -737,6 +762,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
             close_conn(client, loop);
     }
 }
+*/
 
 static int
 check_http_expect(client_t *client)
@@ -775,6 +801,7 @@ check_http_expect(client_t *client)
     }
     return 0;
 }
+
 #ifdef PY3
 static int
 set_input_file(client_t *client)
@@ -981,7 +1008,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             default:
                 RDEBUG("\n%.*s", (int)r, buf);
                 nread = execute_parse(cli, buf, r);
-                /* DEBUG("read request fd %d readed %d nread %d", cli->fd, (int)r, nread); */
+                BDEBUG("read request fd %d readed %d nread %d", cli->fd, (int)r, nread);
 
                 if(cli->bad_request_code > 0){
                     DEBUG("fd %d bad_request code %d",cli->fd,  cli->bad_request_code);
@@ -1023,7 +1050,6 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         if(check_status_code(cli) > 0){
             //current request ok
             prepare_call_wsgi(cli);
-            //call_wsgi_app(cli, loop);
             call_wsgi_handler(cli);
         }
         return;
@@ -1231,8 +1257,7 @@ unix_listen(char *sock_name, int len)
     }
 
     saddr.sun_family = PF_UNIX;
-    //TODO size check
-    strcpy(saddr.sun_path, sock_name);
+    strncpy(saddr.sun_path, sock_name, len);
 
     old_umask = umask(0);
 
@@ -1650,7 +1675,6 @@ meinheld_set_process_name(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "s:process name", &name)){
         return NULL;
     }
-
     Py_GetArgcArgv(&argc, &argv);
 
     for(i = 0;i < argc; i++){
@@ -1798,18 +1822,6 @@ meinheld_cancel_wait(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static void
-trampoline_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
-{
-    ClientObject *pyclient = (ClientObject *)cb_arg;
-
-    if ((events & PICOEV_TIMEOUT) != 0) {
-        PyErr_SetString(PyExc_IOError, "timeout");
-        switch_wsgi_app(loop, fd, (PyObject *)pyclient);
-    } else if ((events & PICOEV_WRITE) != 0 ||  (events & PICOEV_READ) != 0) {
-        switch_wsgi_app(loop, fd, (PyObject *)pyclient);
-    }
-}
 
 static PyObject*
 meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -1853,7 +1865,7 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
     pyclient =(ClientObject *) current_client;
 
     picoev_del(main_loop, fd);
-    picoev_add(main_loop, fd, event, timeout, trampoline_switch_callback, (void *)pyclient);
+    picoev_add(main_loop, fd, event, timeout, trampoline_callback, (void *)pyclient);
     DEBUG("fd %d", fd);
 
     // switch to hub
@@ -1870,15 +1882,11 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 PyObject *
 meinheld_get_ident(PyObject *self, PyObject *args)
 {
-    if(current_client){
-        ClientObject *pyclient = (ClientObject *)current_client;
-        if(pyclient->greenlet){
-            DEBUG("get thread ident %p", pyclient->greenlet);
-            Py_INCREF(pyclient->greenlet);
-            return (PyObject *)pyclient->greenlet;
-        }
-    }
-    Py_RETURN_NONE;
+#ifdef WITH_GREENLET
+    return greenlet_getcurrent();
+#else
+    NO_GREENLET_ERR;
+#endif
 }
 
 

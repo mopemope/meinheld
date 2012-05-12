@@ -21,7 +21,7 @@ def kill_all(sig, st):
         w.terminate()
 
 def start(num=2):
-    for i in xrange(num):
+    for i in range(num):
         p = Process(name="worker-%d" % i, target=run, args=(hello_world,i))
         workers.append(p)
         p.start()

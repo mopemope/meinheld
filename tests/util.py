@@ -25,7 +25,7 @@ class Handler(object):
 
     def __call__(self, environ, start_response):
         status = '200 OK'
-        res = "Hello world!"
+        res = b"Hello world!"
         response_headers = [('Content-type','text/plain')]
         start_response(status, response_headers)
         self.environ = environ.copy()
@@ -66,5 +66,6 @@ def run_client(client=None, app_factory=app_factory):
     env = start_server(app_factory())
     r.join()
     return env, r.receive_data
+
 
 
