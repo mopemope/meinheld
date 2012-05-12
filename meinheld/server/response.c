@@ -686,6 +686,7 @@ process_write(client_t *client)
                 PyErr_SetString(PyExc_TypeError, "response item must be a byte string");
                 Py_DECREF(item);
                 if (PyErr_Occurred()){
+                    client->bad_request_code = 500;
                     write_error_log(__FILE__, __LINE__);
                     return STATUS_ERROR;
                 }
@@ -790,6 +791,7 @@ start_response_write(client_t *client)
     client->response_iter = iterator;
 
     item =  PyIter_Next(iterator);
+    DEBUG("start_response_write client %p", client);
     if(item != NULL && PyBytes_Check(item)){
 
         //write string only
@@ -923,7 +925,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     status_line = buf;
     strcpy(status_line, PyBytes_AS_STRING(bytes));
     
-    DEBUG("%s :%d", (char*)status_line, bytelen);
+    /* DEBUG("%s :%d", (char*)status_line, bytelen); */
 
     if (!*status_line) {
         PyErr_SetString(PyExc_ValueError, "status message was not supplied");

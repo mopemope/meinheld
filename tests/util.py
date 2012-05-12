@@ -23,7 +23,7 @@ DEFAULT_HEADER = [
 
 RESPONSE = b"Hello world!"
 
-class Handler(object):
+class App(object):
 
     def __call__(self, environ, start_response):
         status = '200 OK'
@@ -33,7 +33,29 @@ class Handler(object):
         print(environ)
         return [RESPONSE]
 
-def app_factory(app=Handler):
+class ErrApp(object):
+
+    def __call__(self, environ, start_response):
+        status = '200 OK'
+        response_headers = [('Content-type','text/plain')]
+        start_response(status, response_headers)
+        self.environ = environ.copy()
+        print(environ)
+        environ["XXXX"]
+        return [RESPONSE]
+
+class IterErrApp(object):
+
+    def __call__(self, environ, start_response):
+        status = '200 OK'
+        response_headers = [('Content-type','text/plain')]
+        start_response(status, response_headers)
+        self.environ = environ.copy()
+        print(environ)
+
+        return [1]
+
+def app_factory(app=App):
 
     return app()
 
@@ -61,10 +83,10 @@ class ClientRunner(threading.Thread):
         self.receive_data = r
         server.shutdown()
 
-def run_client(client=None, app_factory=app_factory):
+def run_client(client=None, app=App):
     r = ClientRunner(client)
     r.start()
-    env = start_server(app_factory())
+    env = start_server(app_factory(app))
     r.join()
     return env, r.receive_data
 

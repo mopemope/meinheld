@@ -75,7 +75,6 @@ ClientObject_New(client_t* client)
         return NULL;
     }
 
-
     o->client = client;
     o->greenlet = NULL;
     o->args = NULL;

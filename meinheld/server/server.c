@@ -138,6 +138,7 @@ alloc_client_t(void)
 static void
 dealloc_client(client_t *client)
 {
+    GDEBUG("client dealloc %p", client);
     if (client_numfree < CLIENT_MAXFREELIST){
         client_free_list[client_numfree++] = client;
     }else{
@@ -160,6 +161,7 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port)
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
     client->body_type = BODY_TYPE_NONE;
+    GDEBUG("client alloc %p", client);
     return client;
 }
 
@@ -178,7 +180,7 @@ clean_cli(client_t *client)
     DEBUG("clean_cli environ status_code %d address %p", client->status_code, client->environ);
     if(client->environ){ 
         PyDict_Clear(client->environ);
-        Py_DECREF(client->environ);
+        Py_CLEAR(client->environ);
     }
     if(client->body){
         if(client->body_type == BODY_TYPE_TMPFILE){
@@ -364,11 +366,15 @@ app_handler(PyObject *self, PyObject *args)
     if (res && res == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
         write_error_log(__FILE__, __LINE__);
+        send_error_page(client);
+        close_conn(client, main_loop);
         return NULL;
     }
     //Check wsgi_app error
     if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
+        send_error_page(client);
+        close_conn(client, main_loop);
         return NULL;
     }
 
@@ -457,6 +463,7 @@ call_wsgi_handler(client_t *client)
     res = PyObject_CallObject(handler, args);
     Py_DECREF(args);
 #endif
+
     Py_XDECREF(res);
 }
 

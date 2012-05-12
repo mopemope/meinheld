@@ -46,16 +46,19 @@ def test_chunk_response():
     assert(headers["transfer-encoding"] == "chunked")
     assert(headers["connection"] == "close")
 
-def test_keepalive():
+def test_err():
 
     def client():
-        s = requests.session()
-        s.config['keep_alive'] = True
         return requests.get("http://localhost:8000/")
     
-    env, res = util.run_client(client)
-    headers = res.headers
-    assert(util.RESPONSE == res.content)
-    assert(headers["transfer-encoding"] == "chunked")
-    assert(headers["connection"] == "close")
+    env, res = util.run_client(client, util.ErrApp)
+    assert(500 == res.status_code)
+
+def test_iter_err():
+
+    def client():
+        return requests.get("http://localhost:8000/")
+    
+    env, res = util.run_client(client, util.IterErrApp)
+    assert(500 == res.status_code)
 
