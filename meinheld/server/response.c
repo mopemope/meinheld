@@ -214,6 +214,20 @@ add_header(write_bucket *bucket, char *key, size_t keylen, char *val, size_t val
     set2bucket(bucket, CRLF, 2);
 }
 
+#ifdef DEVELOP
+static void
+writev_log(write_bucket *data)
+{
+    int i = 0;
+    char *c;
+    size_t len;
+    for(; i < data->iov_cnt; i++){
+        c = data->iov[i].iov_base;
+        len = data->iov[i].iov_len;
+        printf("%.*s", (int)len, c); 
+    }
+}
+#endif
 
 static response_status 
 writev_bucket(write_bucket *data)
@@ -221,6 +235,12 @@ writev_bucket(write_bucket *data)
     size_t w;
     int i = 0;
     Py_BEGIN_ALLOW_THREADS
+#ifdef DEVELOP
+    RDEBUG("writev_bucket");
+    printf("\x1B[34m");
+    writev_log(data);
+    printf("\x1B[0m");
+#endif
     w = writev(data->fd, data->iov, data->iov_cnt);
     Py_END_ALLOW_THREADS
     if(w == -1){
@@ -408,6 +428,7 @@ add_status_line(write_bucket *bucket, client_t *client)
     object = client->http_status;
     //TODO ERROR CHECK
     if(object){
+        DEBUG("add_status_line client %p", client);
         PyBytes_AsStringAndSize(object, &value, &valuelen);
 
         //write status code
@@ -416,6 +437,8 @@ add_status_line(write_bucket *bucket, client_t *client)
         add_header(bucket, "Server", 6,  SERVER, sizeof(SERVER) -1);
         cache_time_update();
         add_header(bucket, "Date", 4, (char *)http_time, 29);
+    }else{
+        DEBUG("missing status_line %p", client);
     }
     return 1;
 }
@@ -964,6 +987,8 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     }else{
         self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(bytes));
     }
+
+    DEBUG("set http_status %p", self->cli);
     Py_XDECREF(bytes);
     Py_RETURN_NONE;
 }

@@ -80,7 +80,7 @@ ClientObject_New(client_t* client)
     o->args = NULL;
     o->kwargs = NULL;
     o->suspended = 0;
-    o->resumed = 0;
+    /* o->resumed = 0; */
 
     GDEBUG("ClientObject_New pyclient:%p client:%p fd:%d", o, o->client, o->client->fd);
     return (PyObject *)o;

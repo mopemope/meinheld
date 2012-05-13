@@ -38,7 +38,7 @@ def message_update():
             waiters.remove(c)
             raise
 
-
+    print("suspend->resume %s" % c)
     assert cursor != cache[-1]['id'], cursor
     try:
         for index, m in enumerate(cache):
@@ -66,6 +66,7 @@ def message_new():
 
     for c in waiters:
         c.resume()
+        print("resume %s" % c)
     waiters = []
     return jsonify(msg)
     

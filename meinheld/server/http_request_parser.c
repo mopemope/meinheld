@@ -232,7 +232,7 @@ set_query(PyObject *env, char *buf, int len)
 
     if(slen > 1){
         obj = PyBytes_FromStringAndSize(s0, slen -1);
-        DEBUG("query:%.*s", len, PyBytes_AS_STRING(obj));
+        /* DEBUG("query:%.*s", len, PyBytes_AS_STRING(obj)); */
         if(unlikely(obj == NULL)){
             return -1;
         }
@@ -293,7 +293,7 @@ set_path(PyObject *env, char *buf, int len)
     slen = urldecode(s0, slen);
 
     obj = PyBytes_FromStringAndSize(s0, slen);
-    DEBUG("path:%.*s", (int)slen, PyBytes_AS_STRING(obj));
+    /* DEBUG("path:%.*s", (int)slen, PyBytes_AS_STRING(obj)); */
 
     if(likely(obj != NULL)){
 #ifdef PY3
@@ -427,7 +427,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     request *req = client->req;
     PyObject *env = NULL, *obj;
 
-    DEBUG("field key:%.*s", (int)len, buf);
+    /* DEBUG("field key:%.*s", (int)len, buf); */
 
     if(req->last_header_element != FIELD){
         env = req->env;
@@ -483,7 +483,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     request *req = client->req;
     PyObject *obj;
 
-    DEBUG("field value:%.*s", (int)len, buf);
+    /* DEBUG("field value:%.*s", (int)len, buf); */
     if(likely(req->value== NULL)){
         obj = PyBytes_FromStringAndSize(buf, len);
     }else{
