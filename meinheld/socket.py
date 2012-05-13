@@ -31,6 +31,9 @@ in this module only block the current greenlet and let the others run.
 For convenience, exceptions (like :class:`error <socket.error>` and :class:`timeout <socket.timeout>`)
 as well as the constants from :mod:`socket` module are imported into this module.
 """
+import sys
+def is_py3():
+    return sys.hexversion >=  0x3000000
 
 __implements__ = ['getaddrinfo',
                   'gethostbyname',
@@ -94,7 +97,10 @@ error = _socket.error
 timeout = _socket.timeout
 _realsocket = _socket.socket
 __socket__ = __import__('socket')
-_fileobject = __socket__._fileobject
+if is_py3():
+    pass
+else:
+    _fileobject = __socket__._fileobject
 gaierror = _socket.gaierror
 
 gethostbyname = _socket.gethostbyname
@@ -108,11 +114,18 @@ for name in __imports__[:]:
     except AttributeError:
         __imports__.remove(name)
 
-for name in __socket__.__all__:
-    value = getattr(__socket__, name)
-    if isinstance(value, (int, long, basestring)):
-        globals()[name] = value
-        __imports__.append(name)
+if is_py3():
+    for name in __socket__.__all__:
+        value = getattr(__socket__, name)
+        if isinstance(value, (int, str)):
+            globals()[name] = value
+            __imports__.append(name)
+else:
+    for name in __socket__.__all__:
+        value = getattr(__socket__, name)
+        if isinstance(value, (int, long, basestring)):
+            globals()[name] = value
+            __imports__.append(name)
 
 del name, value
 
@@ -215,7 +228,7 @@ class socket(object):
     def _formatinfo(self):
         try:
             fileno = self.fileno()
-        except Exception, ex:
+        except Exception as ex:
             fileno = str(ex)
         try:
             sockname = self.getsockname()
@@ -242,7 +255,7 @@ class socket(object):
             try:
                 client_socket, address = sock.accept()
                 break
-            except error, ex:
+            except error as ex:
                 if ex[0] != EWOULDBLOCK or self.timeout == 0.0:
                     raise
                 sys.exc_clear()
@@ -294,7 +307,7 @@ class socket(object):
             return self.connect(address) or 0
         except timeout:
             return EAGAIN
-        except error, ex:
+        except error as ex:
             if type(ex) is error:
                 return ex[0]
             else:
@@ -317,7 +330,7 @@ class socket(object):
         while True:
             try:
                 return sock.recv(*args)
-            except error, ex:
+            except error as ex:
                 if ex[0] == EBADF:
                     return ''
                 if ex[0] != EWOULDBLOCK or self.timeout == 0.0:
@@ -326,7 +339,7 @@ class socket(object):
                 sys.exc_clear()
             try:
                 wait_read(sock.fileno(), timeout=self.timeout)
-            except error, ex:
+            except error as ex:
                 if ex[0] == EBADF:
                     return ''
                 raise
@@ -336,7 +349,7 @@ class socket(object):
         while True:
             try:
                 return sock.recvfrom(*args)
-            except error, ex:
+            except error as ex:
                 if ex[0] != EWOULDBLOCK or self.timeout == 0.0:
                     raise
                 sys.exc_clear()
@@ -347,7 +360,7 @@ class socket(object):
         while True:
             try:
                 return sock.recvfrom_into(*args)
-            except error, ex:
+            except error as ex:
                 if ex[0] != EWOULDBLOCK or self.timeout == 0.0:
                     raise
                 sys.exc_clear()
@@ -358,7 +371,7 @@ class socket(object):
         while True:
             try:
                 return sock.recv_into(*args)
-            except error, ex:
+            except error as ex:
                 if ex[0] == EBADF:
                     return 0
                 if ex[0] != EWOULDBLOCK or self.timeout == 0.0:
@@ -366,7 +379,7 @@ class socket(object):
                 sys.exc_clear()
             try:
                 wait_read(sock.fileno(), timeout=self.timeout)
-            except error, ex:
+            except error as ex:
                 if ex[0] == EBADF:
                     return 0
                 raise
@@ -377,19 +390,19 @@ class socket(object):
             timeout = self.timeout
         try:
             return sock.send(data, flags)
-        except error, ex:
+        except error as ex:
             if ex[0] != EWOULDBLOCK or timeout == 0.0:
                 raise
             sys.exc_clear()
             try:
                 wait_write(sock.fileno(), timeout=timeout)
-            except error, ex:
+            except error as ex:
                 if ex[0] == EBADF:
                     return 0
                 raise
             try:
                 return sock.send(data, flags)
-            except error, ex2:
+            except error as ex2:
                 if ex2[0] == EWOULDBLOCK:
                     return 0
                 raise
@@ -419,14 +432,14 @@ class socket(object):
         sock = self._sock
         try:
             return sock.sendto(*args)
-        except error, ex:
+        except error as ex:
             if ex[0] != EWOULDBLOCK or timeout == 0.0:
                 raise
             sys.exc_clear()
             wait_write(sock.fileno(), timeout=self.timeout)
             try:
                 return sock.sendto(*args)
-            except error, ex2:
+            except error as ex2:
                 if ex2[0] == EWOULDBLOCK:
                     return 0
                 raise
@@ -463,9 +476,15 @@ class socket(object):
 
     _s = ("def %s(self, *args): return self._sock.%s(*args)\n\n"
           "%s.__doc__ = _realsocket.%s.__doc__\n")
-    for _m in set(__socket__._socketmethods) - set(locals()):
-        exec _s % (_m, _m, _m, _m)
-    del _m, _s
+
+# if is_py3():
+    # for _m in set(__socket__._socketmethods) - set(locals()):
+        # exec(_s % (_m, _m, _m, _m));
+    # del _m, _s
+# else:
+    # for _m in set(__socket__._socketmethods) - set(locals()):
+        # exec _s % (_m, _m, _m, _m)
+    # del _m, _s
 
 SocketType = socket
 
@@ -477,12 +496,15 @@ if hasattr(_socket, 'socketpair'):
 else:
     __all__.remove('socketpair')
 
-if hasattr(_socket, 'fromfd'):
-    
-    def fromfd(*args):
-        return socket(_sock=_socket.fromfd(*args))
+if is_py3():
+    pass
 else:
-    __all__.remove('fromfd')
+    if hasattr(_socket, 'fromfd'):
+        
+        def fromfd(*args):
+            return socket(_sock=_socket.fromfd(*args))
+    else:
+        __all__.remove('fromfd')
 
 
 
@@ -494,18 +516,21 @@ except AttributeError:
 
 _have_ssl = False
 
-try:
-    from meinheld.ssl import sslwrap_simple as ssl, SSLError as sslerror
-    _have_ssl = True
-except ImportError:
+if is_py3():
+    pass
+else:
     try:
-        from meinheld.sslold import ssl, sslerror
+        from meinheld.ssl import sslwrap_simple as ssl, SSLError as sslerror
         _have_ssl = True
     except ImportError:
-        pass
+        try:
+            from meinheld.sslold import ssl, sslerror
+            _have_ssl = True
+        except ImportError:
+            pass
 
-if sys.version_info[:2] <= (2, 5) and _have_ssl:
-    __implements__.extend(['ssl', 'sslerror', 'SSLType'])
+    if sys.version_info[:2] <= (2, 5) and _have_ssl:
+        __implements__.extend(['ssl', 'sslerror', 'SSLType'])
 
 
 __all__ = __implements__ + __extensions__ + __imports__
