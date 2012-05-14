@@ -63,11 +63,11 @@ def test_encode():
 def test_query():
 
     def client():
-        return requests.get("http://localhost:8000/?a=1234&bbbb=ccc")
+        return requests.get("http://localhost:8000/ABCDEF?a=1234&bbbb=ccc")
     
     env, res = util.run_client(client, App)
     assert(RESPONSE == res.content)
-    assert("/" == env["PATH_INFO"])
+    assert("/ABCDEF" == env["PATH_INFO"])
     assert("a=1234&bbbb=ccc" == env["QUERY_STRING"])
 
 def test_chunk_response():

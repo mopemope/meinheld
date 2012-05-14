@@ -10,7 +10,7 @@ except ImportError: #pragma NO COVER
 
 from meinheld import server, patch
 from meinheld.common import Continuation, CLIENT_KEY, CONTINUATION_KEY
-patch.patch_socket()
+# patch.patch_socket()
 
 import socket
 

@@ -27,33 +27,38 @@ def app_factory(app):
     return app()
 
 
-def start_server(app):
+def start_server(app, middleware=None):
 
     from meinheld import server
 
     server.listen(("0.0.0.0", 8000))
-    server.run(app)
+    if middleware:
+        server.run(middleware(app))
+    else:
+        server.run(app)
     return app.environ
 
 
 class ClientRunner(threading.Thread):
 
 
-    def __init__(self, func):
+    def __init__(self, func, shutdown=True):
         threading.Thread.__init__(self)
-        self.func = func 
+        self.func = func
+        self.shutdown = shutdown
 
     def run(self):
         from meinheld import server
         time.sleep(1)
         r = self.func()
         self.receive_data = r
-        server.shutdown()
+        if self.shutdown:
+            server.shutdown()
 
-def run_client(client=None, app=None):
+def run_client(client=None, app=None, middleware=None):
     r = ClientRunner(client)
     r.start()
-    env = start_server(app_factory(app))
+    env = start_server(app_factory(app), middleware)
     r.join()
     return env, r.receive_data
 

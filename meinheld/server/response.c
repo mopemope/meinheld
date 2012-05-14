@@ -988,7 +988,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(bytes));
     }
 
-    DEBUG("set http_status %p", self->cli);
+    /* DEBUG("set http_status %p", self->cli); */
     Py_XDECREF(bytes);
     Py_RETURN_NONE;
 }

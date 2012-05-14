@@ -14,6 +14,4 @@ extern PyObject* hub_switch_value;
 extern PyObject* current_client;
 extern PyObject* timeout_error;
 
-void switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj);
-
 #endif
