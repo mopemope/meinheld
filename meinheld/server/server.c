@@ -400,7 +400,7 @@ app_handler(PyObject *self, PyObject *args)
             break;
         }else{
             picoev_del(main_loop, client->fd);
-            picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, trampoline_callback, (void *)client);
+            picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, trampoline_callback, (void *)pyclient);
             status = process_body(client);
         }
     }
@@ -419,7 +419,7 @@ app_handler(PyObject *self, PyObject *args)
             // set callback
             //clear event
             picoev_del(main_loop, client->fd);
-            picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, write_callback, (void *)client);
+            picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, write_callback, (void *)pyclient);
         default:
             // send OK
             close_conn(client, main_loop);
@@ -662,12 +662,11 @@ trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static void
 write_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
-    client_t *client = ( client_t *)(cb_arg);
+    ClientObject *pyclient = (ClientObject*)cb_arg;
+    client_t *client = pyclient->client;
     int ret;
     DEBUG("call write_callback");
-    if(client->environ){
-        current_client = PyDict_GetItem(client->environ, client_key);
-    }
+    current_client = pyclient;
     if ((events & PICOEV_TIMEOUT) != 0) {
 
         DEBUG("** write_callback timeout **");
@@ -1782,6 +1781,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
 PyObject *
 meinheld_resume_client(PyObject *self, PyObject *args)
 {
+#ifdef WITH_GREENLET
     PyObject *temp, *switch_args, *switch_kwargs;
     ClientObject *pyclient;
     client_t *client;
@@ -1830,11 +1830,15 @@ meinheld_resume_client(PyObject *self, PyObject *args)
         return NULL;
     }
     Py_RETURN_NONE;
+#else
+    NO_GREENLET_ERR;
+#endif
 }
 
 PyObject *
 meinheld_cancel_wait(PyObject *self, PyObject *args)
 {
+#ifdef WITH_GREENLET
     int fd;
     if (!PyArg_ParseTuple(args, "i:cancel_event", &fd)){
         return NULL;
@@ -1846,6 +1850,9 @@ meinheld_cancel_wait(PyObject *self, PyObject *args)
     }
     picoev_del(main_loop, fd);
     Py_RETURN_NONE;
+#else
+    NO_GREENLET_ERR;
+#endif
 }
 
 
@@ -1922,8 +1929,8 @@ meinheld_get_ident(PyObject *self, PyObject *args)
 
 static PyMethodDef ServerMethods[] = {
     {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
-    {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."},
-    {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."},
+    /* {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."}, */
+    /* {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."}, */
 
     {"set_keepalive", meinheld_set_keepalive, METH_VARARGS, "set keep-alive support. value set timeout sec. default 0. (disable keep-alive)"},
     {"get_keepalive", meinheld_get_keepalive, METH_VARARGS, "return keep-alive support."},
