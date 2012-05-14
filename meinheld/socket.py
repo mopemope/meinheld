@@ -246,6 +246,7 @@ def internal_connect_ex(s, address):
             raise # gaierror is not silented by connect_ex
 
 def internal_recv(s, *args):
+    # print("internal_recv")
     sock = s._sock # keeping the reference so that fd is not closed during waiting
     while True:
         try:
@@ -265,6 +266,7 @@ def internal_recv(s, *args):
             raise
 
 def internal_recvfrom(s, *args):
+    # print("internal_recvfrom")
     sock = s._sock
     while True:
         try:
@@ -276,6 +278,7 @@ def internal_recvfrom(s, *args):
         wait_read(sock.fileno(), timeout=s.timeout)
 
 def internal_recvfrom_into(s, *args):
+    # print("internal_recvfrom_into")
     sock = s._sock
     while True:
         try:
@@ -287,6 +290,7 @@ def internal_recvfrom_into(s, *args):
         wait_read(sock.fileno(), timeout=s.timeout)
 
 def internal_recv_into(s, *args):
+    # print("internal_recv_into")
     sock = s._sock
     while True:
         try:
@@ -405,7 +409,7 @@ def internal_shutdown(s, how):
 if is_py3():
     class socket(object):
 
-        # __slots__ = ["__weakref__", "_io_refs", "_closed", "_sock", "timeout"]
+        #__slots__ = ["__weakref__", "_io_refs", "_closed", "_sock", "timeout"]
         
         def __init__(self, family=AF_INET, type=SOCK_STREAM, proto=0, fileno=None):
             self._sock = _socket.socket(family, type, proto, fileno)
@@ -431,9 +435,34 @@ if is_py3():
             sock.settimeout(self.gettimeout())
             return sock
         
+        def _decref_socketios(self):
+            if self._io_refs > 0:
+                self._io_refs -= 1
+            if self._closed:
+                self.close()
+        
+        def _real_close(self, _ss=_socket.socket):
+            # This function should not reference any globals. See issue #808164.
+            _ss.close(self._sock)
+
+        def close(self):
+            # This function should not reference any globals. See issue #808164.
+            self._closed = True
+            if self._io_refs <= 0:
+                self._real_close()
+
+        def detach(self):
+            """detach() -> file descriptor
+
+            Close the socket object without closing the underlying file descriptor.
+            The object cannot be used after this call, but the file descriptor
+            can be reused for other purposes.  The file descriptor is returned.
+            """
+            self._closed = True
+            return self._sock.detach()
+        
         makefile = __socket__.socket.makefile
         accept = internal_accept
-        close = internal_close
         connect = internal_connect
         connect_ex = internal_connect_ex
         recv = internal_recv
