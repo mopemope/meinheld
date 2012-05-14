@@ -1887,12 +1887,16 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
             return NULL;
         }
     }
-
+    if(current_client == NULL){
+        PyErr_SetString(PyExc_ValueError, "server not running ");
+        return NULL;
+    }
+    
     pyclient =(ClientObject *) current_client;
 
     picoev_del(main_loop, fd);
     picoev_add(main_loop, fd, event, timeout, trampoline_callback, (void *)pyclient);
-    DEBUG("fd %d", fd);
+    DEBUG("set trampoline fd:%d event:%d", fd, event);
 
     // switch to hub
     current = pyclient->greenlet;
