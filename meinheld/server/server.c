@@ -1769,7 +1769,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         }
         return greenlet_switch(parent, hub_switch_value, NULL);
     }else{
-        PyErr_SetString(PyExc_Exception, "already suspended");
+        PyErr_SetString(PyExc_IOError, "already suspended");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -1826,7 +1826,7 @@ meinheld_resume_client(PyObject *self, PyObject *args)
         picoev_del(main_loop, client->fd);
         picoev_add(main_loop, client->fd, PICOEV_WRITE, 0, trampoline_callback, (void *)pyclient);
     }else{
-        PyErr_SetString(PyExc_Exception, "already resumed");
+        PyErr_SetString(PyExc_IOError, "already resumed");
         return NULL;
     }
     Py_RETURN_NONE;
