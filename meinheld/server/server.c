@@ -1029,7 +1029,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
-                RDEBUG("\n%.*s", (int)r, buf);
+                RDEBUG("fd:%d \n%.*s", cli->fd, (int)r, buf);
                 nread = execute_parse(cli, buf, r);
                 BDEBUG("read request fd %d readed %d nread %d", cli->fd, (int)r, nread);
 

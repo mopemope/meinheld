@@ -236,7 +236,7 @@ writev_bucket(write_bucket *data)
     int i = 0;
     Py_BEGIN_ALLOW_THREADS
 #ifdef DEVELOP
-    RDEBUG("writev_bucket");
+    RDEBUG("writev_bucket fd:%d", data->fd);
     printf("\x1B[34m");
     writev_log(data);
     printf("\x1B[0m");

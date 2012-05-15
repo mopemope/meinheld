@@ -1,3 +1,4 @@
+import time
 from util import *
 import requests
 from meinheld.middleware import ContinuationMiddleware, CONTINUATION_KEY
@@ -107,15 +108,18 @@ def test_resume():
     """
     Resume Test
     """
-    def client():
-        return requests.get("http://localhost:8000/")
+    def client1():
+        return requests.get("http://localhost:8000/1")
+    def client2():
+        return requests.get("http://localhost:8000/2")
     
     application = ResumeApp()
     s = ServerRunner(application, ContinuationMiddleware)
     s.start()
-    r1 = ClientRunner(application, client)
+    r1 = ClientRunner(application, client1)
     r1.start()
-    r2 = ClientRunner(application, client)
+    time.sleep(1)
+    r2 = ClientRunner(application, client2)
     r2.start()
 
     env1, res1 = r1.get_result()
