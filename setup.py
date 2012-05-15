@@ -60,7 +60,7 @@ setup(name='meinheld',
     url='http://meinheld.org',
     license='BSD',
     platforms='Linux, Darwin',
-    packages= ['meinheld'],
+    packages= ['meinheld', 'meinheld.server', ],
     install_requires=[
         'greenlet==0.3.4',
     ],
