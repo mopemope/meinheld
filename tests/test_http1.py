@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import util
+from util import *
 import requests
 
 RESPONSE = b"Hello world!"
@@ -43,7 +43,7 @@ def test_simple():
     def client():
         return requests.get("http://localhost:8000/")
     
-    env, res = util.run_client(client, App)
+    env, res = run_client(client, App)
     # print(res.content)
     assert(RESPONSE == res.content)
     assert("/" == env["PATH_INFO"])
@@ -54,7 +54,7 @@ def test_encode():
     def client():
         return requests.get("http://localhost:8000/あいう")
     
-    env, res = util.run_client(client, App)
+    env, res = run_client(client, App)
     assert(RESPONSE == res.content)
     assert("/あいう" == env["PATH_INFO"])
     assert(None == env.get("QUERY_STRING"))
@@ -65,7 +65,7 @@ def test_query():
     def client():
         return requests.get("http://localhost:8000/ABCDEF?a=1234&bbbb=ccc")
     
-    env, res = util.run_client(client, App)
+    env, res = run_client(client, App)
     assert(RESPONSE == res.content)
     assert("/ABCDEF" == env["PATH_INFO"])
     assert("a=1234&bbbb=ccc" == env["QUERY_STRING"])
@@ -75,7 +75,7 @@ def test_chunk_response():
     def client():
         return requests.get("http://localhost:8000/")
     
-    env, res = util.run_client(client, App)
+    env, res = run_client(client, App)
     headers = res.headers
     assert(RESPONSE == res.content)
     assert(headers["transfer-encoding"] == "chunked")
@@ -86,7 +86,7 @@ def test_err():
     def client():
         return requests.get("http://localhost:8000/")
     
-    env, res = util.run_client(client, ErrApp)
+    env, res = run_client(client, ErrApp)
     assert(500 == res.status_code)
 
 def test_iter_err():
@@ -94,6 +94,6 @@ def test_iter_err():
     def client():
         return requests.get("http://localhost:8000/")
     
-    env, res = util.run_client(client, IterErrApp)
+    env, res = run_client(client, IterErrApp)
     assert(500 == res.status_code)
 

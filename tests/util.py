@@ -2,65 +2,82 @@ import threading
 import time
 import requests
 
-DEFAULT_HOST = "localhost"
-DEFAULT_PORT = 8000
-DEFAULT_METHOD = "GET"
-DEFAULT_PATH = "/PATH?ket=value"
-DEFAULT_VERSION = "HTTP/1.0"
 
-DEFAULT_ADDR = (DEFAULT_HOST, DEFAULT_PORT)
-
-DEFAULT_HEADER = [
-            ("User-Agent", "Mozilla/5.0 (X11; U; Linux i686; ja; rv:1.9.2.7) Gecko/20100715 Ubuntu/10.04 (lucid) Firefox/3.6.7"),
-            ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
-            ("Accept-Language", "ja,en-us;q=0.7,en;q=0.3"),
-            ("Accept-Encoding", "gzip,deflate"),
-            ("Accept-Charset", "Shift_JIS,utf-8;q=0.7,*;q=0.7"),
-            ("Keep-Alive","115"),
-            ("Connection", "keep-alive"),
-            ("Cache-Control", "max-age=0"),
-        ]
-
-
-def app_factory(app):
-
-    return app()
-
+running = False
 
 def start_server(app, middleware=None):
-
+    global running 
+    if running:
+        return
     from meinheld import server
 
     server.listen(("0.0.0.0", 8000))
+    running = True
     if middleware:
         server.run(middleware(app))
     else:
         server.run(app)
+
     return app.environ
 
+
+class ServerRunner(threading.Thread):
+
+
+    def __init__(self, app, middleware=None):
+        threading.Thread.__init__(self)
+        self.app = app
+        self.middleware = middleware
+        self.running = False
+
+    def run(self):
+        if self.running:
+            return
+        from meinheld import server
+
+        server.listen(("0.0.0.0", 8000))
+        self.running = True
+        if self.middleware:
+            server.run(self.middleware(self.app))
+        else:
+            server.run(self.app)
+
+    def shutdown(self):
+        from meinheld import server
+        server.shutdown()
+        self.running = False
+        # self.environ = self.app.environ
+        self.join()
 
 class ClientRunner(threading.Thread):
 
 
-    def __init__(self, func, shutdown=True):
+    def __init__(self, app, func):
         threading.Thread.__init__(self)
         self.func = func
-        self.shutdown = shutdown
+        self.app = app
 
     def run(self):
-        from meinheld import server
         time.sleep(1)
         r = self.func()
         self.receive_data = r
-        if self.shutdown:
-            server.shutdown()
+        self.environ = self.app.environ
+
+    def get_result(self):
+        self.join()
+        return (self.environ, self.receive_data)
+
 
 def run_client(client=None, app=None, middleware=None):
-    r = ClientRunner(client)
+    application = app()
+    s = ServerRunner(application, middleware)
+    s.start()
+    r = ClientRunner(application, client)
     r.start()
-    env = start_server(app_factory(app), middleware)
     r.join()
-    return env, r.receive_data
+
+    s.shutdown()
+    return r.environ, r.receive_data
 
 
 
