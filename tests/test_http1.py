@@ -38,6 +38,24 @@ class IterErrApp(object):
 
         return [1]
 
+def test_check_key():
+
+    def client():
+        return requests.get("http://localhost:8000/foo/bar")
+    
+    env, res = run_client(client, App)
+    assert(res.content == RESPONSE)
+    assert(env.get("REQUEST_METHOD") == "GET")
+    assert(env.get("SCRIPT_NAME") == "")
+    assert(env.get("PATH_INFO") == "/foo/bar")
+    assert(env.get("QUERY_STRING") == None)
+    assert(env.get("CONTENT_TYPE") == None)
+    assert(env.get("CONTENT_LENGTH") == None)
+    assert(env.get("SERVER_NAME") == "0.0.0.0")
+    assert(env.get("SERVER_PORT") == "8000")
+    assert(env.get("SERVER_PROTOCOL") == "HTTP/1.1")
+    assert(env.get("HTTP_USER_AGENT") != None)
+
 def test_simple():
 
     def client():
@@ -45,9 +63,9 @@ def test_simple():
     
     env, res = run_client(client, App)
     # print(res.content)
-    assert(RESPONSE == res.content)
-    assert("/" == env["PATH_INFO"])
-    assert(None == env.get("QUERY_STRING"))
+    assert(res.content == RESPONSE)
+    assert(env.get("PATH_INFO") == "/")
+    assert(env.get("QUERY_STRING") == None)
 
 def test_encode():
 
@@ -55,9 +73,9 @@ def test_encode():
         return requests.get("http://localhost:8000/あいう")
     
     env, res = run_client(client, App)
-    assert(RESPONSE == res.content)
-    assert("/あいう" == env["PATH_INFO"])
-    assert(None == env.get("QUERY_STRING"))
+    assert(res.content == RESPONSE)
+    assert(env.get("PATH_INFO") == "/あいう")
+    assert(env.get("QUERY_STRING") == None)
 
 
 def test_query():
@@ -67,8 +85,8 @@ def test_query():
     
     env, res = run_client(client, App)
     assert(RESPONSE == res.content)
-    assert("/ABCDEF" == env["PATH_INFO"])
-    assert("a=1234&bbbb=ccc" == env["QUERY_STRING"])
+    assert(env.get("PATH_INFO") == "/ABCDEF")
+    assert(env.get("QUERY_STRING") == "a=1234&bbbb=ccc")
 
 def test_chunk_response():
 
@@ -77,7 +95,7 @@ def test_chunk_response():
     
     env, res = run_client(client, App)
     headers = res.headers
-    assert(RESPONSE == res.content)
+    assert(res.content == RESPONSE)
     assert(headers["transfer-encoding"] == "chunked")
     assert(headers["connection"] == "close")
 
@@ -87,7 +105,7 @@ def test_err():
         return requests.get("http://localhost:8000/")
     
     env, res = run_client(client, ErrApp)
-    assert(500 == res.status_code)
+    assert(res.status_code == 500)
 
 def test_iter_err():
 
@@ -95,5 +113,5 @@ def test_iter_err():
         return requests.get("http://localhost:8000/")
     
     env, res = run_client(client, IterErrApp)
-    assert(500 == res.status_code)
+    assert(res.status_code == 500)
 

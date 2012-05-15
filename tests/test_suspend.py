@@ -89,9 +89,9 @@ def test_middleware():
     
     env, res = run_client(client, App, ContinuationMiddleware)
     assert(RESPONSE == res.content)
-    assert("/" == env["PATH_INFO"])
-    assert(None == env.get("QUERY_STRING"))
-    assert(env[CONTINUATION_KEY])
+    assert(env.get("PATH_INFO") == "/")
+    assert(env.get("QUERY_STRING") == None)
+    assert(env.get(CONTINUATION_KEY))
 
 def test_suspend():
     """
@@ -102,7 +102,7 @@ def test_suspend():
     
     env, res = run_client(client, SuspendApp, ContinuationMiddleware)
     assert(res.status_code == 500)
-    assert(env[CONTINUATION_KEY])
+    assert(env.get(CONTINUATION_KEY))
 
 def test_resume():
     """
@@ -129,7 +129,8 @@ def test_resume():
     assert(res2.status_code == 200)
     assert(res1.content == b"RESUMED")
     assert(res2.content == RESPONSE)
-    assert(env1[CONTINUATION_KEY])
+    assert(env1.get(CONTINUATION_KEY))
+    assert(env2.get(CONTINUATION_KEY))
 
 def test_double_suspend():
     """
@@ -151,6 +152,8 @@ def test_double_suspend():
     s.shutdown()
     assert(res1.status_code == 500)
     assert(res2.status_code == 500)
+    assert(env1.get(CONTINUATION_KEY))
+    assert(env2.get(CONTINUATION_KEY))
 
 def test_illigal_resume():
     """
@@ -160,4 +163,4 @@ def test_illigal_resume():
     
     env, res = run_client(client, IllicalResumeApp, ContinuationMiddleware)
     assert(res.status_code == 500)
-    assert(env[CONTINUATION_KEY])
+    assert(env.get(CONTINUATION_KEY))
