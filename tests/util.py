@@ -58,7 +58,7 @@ class ClientRunner(threading.Thread):
         self.app = app
 
     def run(self):
-        time.sleep(1)
+        time.sleep(0.3)
         r = self.func()
         self.receive_data = r
         self.environ = self.app.environ

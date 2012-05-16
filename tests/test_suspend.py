@@ -28,7 +28,7 @@ class SuspendApp(object):
         return [RESPONSE]
 
 class ResumeApp(object):
-    witer = True
+    waiter = True
     suspend = True
     def __call__(self, environ, start_response):
         status = '200 OK'
@@ -40,7 +40,7 @@ class ResumeApp(object):
             c = environ[CONTINUATION_KEY]
             self.waiter = c
             self.suspend = False
-            c.suspend(15)
+            c.suspend(5)
             return [b"RESUMED"]
         else:
             self.waiter.resume()
@@ -48,7 +48,7 @@ class ResumeApp(object):
         return [RESPONSE]
 
 class DoubleSuspendApp(object):
-    witer = True
+    waiter = True
     suspend = True
     def __call__(self, environ, start_response):
         status = '200 OK'
@@ -69,8 +69,6 @@ class DoubleSuspendApp(object):
         return [RESPONSE]
 
 class IllicalResumeApp(object):
-    witer = True
-    suspend = True
     def __call__(self, environ, start_response):
         status = '200 OK'
         response_headers = [('Content-type','text/plain')]
@@ -81,6 +79,26 @@ class IllicalResumeApp(object):
         c.resume()
 
         return [RESPONSE]
+
+class ManyResumeApp(object):
+    waiters = []
+    environ = dict() 
+    def __call__(self, environ, start_response):
+        status = '200 OK'
+        response_headers = [('Content-type','text/plain')]
+        start_response(status, response_headers)
+        self.environ = environ.copy()
+        print(environ)
+        path = environ.get("PATH_INFO")
+        if path == "/wakeup":
+            for waiter in self.waiters:
+                waiter.resume()
+        else:
+            c = environ[CONTINUATION_KEY]
+            self.waiters.append(c)
+            c.suspend(5)
+
+        return [path.encode()]
 
 def test_middleware():
 
@@ -164,3 +182,33 @@ def test_illigal_resume():
     env, res = run_client(client, IllicalResumeApp, ContinuationMiddleware)
     assert(res.status_code == 500)
     assert(env.get(CONTINUATION_KEY))
+
+def test_many_resume():
+    
+    def mk_client(i):
+        def client():
+            return requests.get("http://localhost:8000/%s" % i)
+        return client
+
+    application = ManyResumeApp()
+    s = ServerRunner(application, ContinuationMiddleware)
+    s.start()
+    runners = []
+    for i in range(10):
+        r = ClientRunner(application, mk_client(i))
+        r.start()
+        runners.append(r)
+    time.sleep(1)
+    r = ClientRunner(application, mk_client("wakeup"))
+    r.start()
+    runners.append(r)
+    time.sleep(1)
+    results = []
+    for r in runners:
+        env, res = r.get_result()
+        print(res.headers)
+        results.append(res.content)
+    results = sorted(results)
+    s.shutdown()
+    assert(results == [b'/0', b'/1', b'/2', b'/3', b'/4', b'/5', b'/6', b'/7', b'/8', b'/9', b'/wakeup'])
+

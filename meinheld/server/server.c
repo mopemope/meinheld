@@ -230,7 +230,7 @@ close_conn(client_t *cli, picoev_loop* loop)
     free_request_queue(cli->request_queue);
     if(!cli->keep_alive){
         close(cli->fd);
-        DEBUG("close client:%p fd:%d status_code %d", cli, cli->fd, cli->status_code);
+        RDEBUG("close client:%p fd:%d", cli, cli->fd);
     }else{
         disable_cork(cli);
         new_client = new_client_t(cli->fd, cli->remote_addr, cli->remote_port);

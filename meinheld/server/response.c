@@ -151,6 +151,8 @@ new_write_bucket(int fd, int cnt)
 {
 
     write_bucket *bucket;
+    iovec_t *iov;
+
     bucket = PyMem_Malloc(sizeof(write_bucket));
     if(bucket == NULL){
         return NULL;
@@ -158,11 +160,13 @@ new_write_bucket(int fd, int cnt)
     memset(bucket, 0, sizeof(write_bucket));
 
     bucket->fd = fd;
-    bucket->iov = (iovec_t *)PyMem_Malloc(sizeof(iovec_t) * cnt);
-    if(bucket->iov == NULL){
+    iov = (iovec_t *)PyMem_Malloc(sizeof(iovec_t) * cnt);
+    if(iov == NULL){
         PyMem_Free(bucket);
         return NULL;
     }
+    memset(iov, 0, sizeof(iovec_t));
+    bucket->iov = iov;
     bucket->iov_size = cnt;
     GDEBUG("allocate %p", bucket);
     return bucket;
@@ -242,11 +246,12 @@ writev_bucket(write_bucket *data)
     printf("\x1B[0m");
 #endif
     w = writev(data->fd, data->iov, data->iov_cnt);
+    BDEBUG("writev fd:%d ret:%d total_size:%d", data->fd, w, data->total);
     Py_END_ALLOW_THREADS
     if(w == -1){
         //error
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            DEBUG("try again later");
+            RDEBUG("try again later");
             return STATUS_SUSPEND;
         }else{
             //ERROR
@@ -271,7 +276,7 @@ writev_bucket(write_bucket *data)
                 }
             }
             data->total = data->total -w;
-            DEBUG("writev_bucket write %d progeress %d/%d", (int)w, data->total, data->total_size);
+            RDEBUG("writev_bucket write %d progeress %d/%d", (int)w, data->total, data->total_size);
             //resume
             // again later
             return writev_bucket(data);
@@ -408,7 +413,10 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
             Py_CLEAR(bytes2);
         }
 
+    }else{
+        RDEBUG("WARN header is lost...");
     }
+
     return 1;
 error:
     if (PyErr_Occurred()){
