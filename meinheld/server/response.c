@@ -240,7 +240,7 @@ writev_bucket(write_bucket *data)
     int i = 0;
     Py_BEGIN_ALLOW_THREADS
 #ifdef DEVELOP
-    RDEBUG("\nwritev_bucket fd:%d", data->fd);
+    BDEBUG("\nwritev_bucket fd:%d", data->fd);
     printf("\x1B[34m");
     writev_log(data);
     printf("\x1B[0m");
@@ -251,7 +251,7 @@ writev_bucket(write_bucket *data)
     if(w == -1){
         //error
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            RDEBUG("try again later");
+            BDEBUG("try again later");
             return STATUS_SUSPEND;
         }else{
             //ERROR
@@ -276,7 +276,7 @@ writev_bucket(write_bucket *data)
                 }
             }
             data->total = data->total -w;
-            RDEBUG("writev_bucket write %d progeress %d/%d", (int)w, data->total, data->total_size);
+            BDEBUG("writev_bucket write %d progeress %d/%d", (int)w, data->total, data->total_size);
             //resume
             // again later
             return writev_bucket(data);

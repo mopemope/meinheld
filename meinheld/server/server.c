@@ -230,7 +230,7 @@ close_conn(client_t *cli, picoev_loop* loop)
     free_request_queue(cli->request_queue);
     if(!cli->keep_alive){
         close(cli->fd);
-        RDEBUG("close client:%p fd:%d", cli, cli->fd);
+        BDEBUG("close client:%p fd:%d", cli, cli->fd);
     }else{
         disable_cork(cli);
         new_client = new_client_t(cli->fd, cli->remote_addr, cli->remote_port);
@@ -647,7 +647,7 @@ trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     client_t *client = pyclient->client;
     
     picoev_del(loop, fd);
-    RDEBUG("call trampoline_callback pyclient %p", pyclient);
+    DEBUG("call trampoline_callback pyclient %p", pyclient);
     if ((events & PICOEV_TIMEOUT) != 0) {
 
         RDEBUG("** trampoline_callback timeout **");
@@ -1029,7 +1029,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 }
                 break;
             default:
-                RDEBUG("fd:%d \n%.*s", cli->fd, (int)r, buf);
+                BDEBUG("fd:%d \n%.*s", cli->fd, (int)r, buf);
                 nread = execute_parse(cli, buf, r);
                 BDEBUG("read request fd %d readed %d nread %d", cli->fd, (int)r, nread);
 
@@ -1758,8 +1758,8 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         parent = greenlet_getparent(pyclient->greenlet);
 
         set_so_keepalive(client->fd, 1);
-        RDEBUG("meinheld_suspend_client pyclient:%p client:%p fd:%d", pyclient, client, client->fd);
-        RDEBUG("meinheld_suspend_client active ? %d", picoev_is_active(main_loop, client->fd));
+        BDEBUG("meinheld_suspend_client pyclient:%p client:%p fd:%d", pyclient, client, client->fd);
+        BDEBUG("meinheld_suspend_client active ? %d", picoev_is_active(main_loop, client->fd));
         //clear event
         picoev_del(main_loop, client->fd);
         if(timeout > 0){
