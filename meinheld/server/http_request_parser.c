@@ -427,7 +427,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     request *req = client->req;
     PyObject *env = NULL, *obj;
 
-    /* DEBUG("field key:%.*s", (int)len, buf); */
+    DEBUG("field key:%.*s", (int)len, buf);
 
     if(req->last_header_element != FIELD){
         env = req->env;
@@ -466,7 +466,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
         client->bad_request_code = 500;
         return -1;
     }
-    if(unlikely(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
+    if(unlikely(PyBytes_GET_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
         client->bad_request_code = 400;
         return -1;
     }
@@ -483,7 +483,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     request *req = client->req;
     PyObject *obj;
 
-    /* DEBUG("field value:%.*s", (int)len, buf); */
+    DEBUG("field value:%.*s", (int)len, buf);
     if(likely(req->value== NULL)){
         obj = PyBytes_FromStringAndSize(buf, len);
     }else{
@@ -494,7 +494,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
         client->bad_request_code = 500;
         return -1; 
     }
-    if(unlikely(Py_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
+    if(unlikely(PyBytes_GET_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
         client->bad_request_code = 400;
         return -1;
     }

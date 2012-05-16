@@ -121,7 +121,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
     self->greenlet = temp;
     Py_RETURN_NONE;
 #else
-    NO_GREENLET_ERR;
+    NO_GREENLET_ERROR;
 #endif
 }
 
@@ -134,7 +134,7 @@ ClientObject_get_greenlet(ClientObject *self, PyObject *args)
     }
     Py_RETURN_NONE;
 #else
-    NO_GREENLET_ERR;
+    NO_GREENLET_ERROR;
 #endif
 }
 

@@ -326,7 +326,7 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
 */
 
 static int
-add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *client)
+add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, PyObject *templist, client_t *client)
 {
     int i;
     PyObject *tuple = NULL;
@@ -335,10 +335,10 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
     char *name = NULL, *value = NULL;
     Py_ssize_t namelen, valuelen;
 
-    if(headers){
+    if(fast_headers){
         for (i = 0; i < hlen; i++) {
 
-            tuple = PySequence_Fast_GET_ITEM(headers, i);
+            tuple = PySequence_Fast_GET_ITEM(fast_headers, i);
 
             if (!PyTuple_Check(tuple)) {
                 PyErr_Format(PyExc_TypeError, "list of tuple values "
@@ -348,7 +348,7 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
             }
 
 
-            if (PySequence_Fast_GET_SIZE(tuple) != 2) {
+            if (PyTuple_GET_SIZE(tuple) != 2) {
                 PyErr_Format(PyExc_ValueError, "tuple of length 2 "
                              "expected, length is %d",
                              (int)PyTuple_Size(tuple));
@@ -410,12 +410,13 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
             DEBUG("response header %s:%d : %s:%d",name, (int)namelen, value, (int)valuelen);
             add_header(bucket, name, namelen, value, valuelen);
 #ifdef PY3
-            PyObject *temp = Py_BuildValue("(yy)", bytes1, bytes2);
-            PyList_Append(client->headers, temp);
-            Py_DECREF(temp);
+            //keep bytes string 
+            //TODO ERROR CHECK
+            int o = PyList_Append(templist, bytes1);
+            o = PyList_Append(templist, bytes2);
 #endif
-            Py_CLEAR(bytes1);
-            Py_CLEAR(bytes2);
+            Py_XDECREF(bytes1);
+            Py_XDECREF(bytes2);
         }
 
     }else{
@@ -461,18 +462,19 @@ write_headers(client_t *client, char *data, size_t datalen)
 {
     write_bucket *bucket; 
     uint32_t hlen = 0;
-    PyObject *headers = NULL;
+    PyObject *headers = NULL, *templist = NULL;
+    response_status ret;
     
     DEBUG("header write? %d", client->header_done);
     if(client->header_done){
         return STATUS_OK;
     }
 
-    if(client->headers){
-        headers = PySequence_Fast(client->headers, "header must be list");
-        hlen = PySequence_Fast_GET_SIZE(headers);
-        Py_DECREF(headers);
-    }
+    //TODO ERROR CHECK
+    headers = PySequence_Fast(client->headers, "header must be list");
+    hlen = PySequence_Fast_GET_SIZE(headers);
+    templist = PyList_New(hlen);
+
     bucket = new_write_bucket(client->fd, (hlen * 4) + 40 );
 
     if(bucket == NULL){
@@ -482,7 +484,7 @@ write_headers(client_t *client, char *data, size_t datalen)
         goto error;
     }
     //write header
-    if(add_all_headers(bucket, headers, hlen, client) == -1){
+    if(add_all_headers(bucket, headers, hlen, templist, client) == -1){
         //Error
         goto error;
     }
@@ -515,7 +517,7 @@ write_headers(client_t *client, char *data, size_t datalen)
         }
     }
     client->bucket = bucket;
-    response_status ret = writev_bucket(bucket);
+    ret = writev_bucket(bucket);
     if(ret != STATUS_SUSPEND){
         client->header_done = 1;
         if(ret == STATUS_OK && data){
@@ -525,11 +527,16 @@ write_headers(client_t *client, char *data, size_t datalen)
         free_write_bucket(bucket);
         client->bucket = NULL;
     }
+
+    Py_DECREF(headers);
+    Py_DECREF(templist);
     return ret;
 error:
     if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
     }
+    Py_XDECREF(headers);
+    Py_XDECREF(templist);
     if(bucket){
         free_write_bucket(bucket);
         client->bucket = NULL;
@@ -827,19 +834,20 @@ start_response_write(client_t *client)
     client->response_iter = iterator;
 
     item =  PyIter_Next(iterator);
-    DEBUG("start_response_write client %p", client);
+    DEBUG("client %p", client);
     if(item != NULL && PyBytes_Check(item)){
 
         //write string only
         buf = PyBytes_AS_STRING(item);
         buflen = PyBytes_GET_SIZE(item);
 
-        DEBUG("start_response_write status_code %d buflen %d", client->status_code, (int)buflen);
+        DEBUG("status_code %d body:%.*s", client->status_code, (int)buflen, buf);
         Py_DECREF(item);
         return write_headers(client, buf, buflen);
     }else{
         if (item == NULL && !PyErr_Occurred()){
             //Stop Iteration
+            RDEBUG("WARN iter item == NULL");
             return write_headers(client, NULL, 0);
         }else{
             PyErr_SetString(PyExc_TypeError, "response item must be a string");

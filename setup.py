@@ -10,6 +10,9 @@ import os.path
 import platform
 import fnmatch
 
+
+develop = True
+
 def read(name):
     return open(os.path.join(os.path.dirname(__file__), name)).read()
 
@@ -18,6 +21,9 @@ def check_platform():
         print("Are you really running a posix compliant OS ?")
         print("Be posix compliant is mandatory")
         sys.exit(1)
+
+def check_pypy():
+    return "PyPy" in sys.version
 
 def get_picoev_file():
     poller_file = None
@@ -45,10 +51,26 @@ def get_sources(path, ignore_files):
     return src
 
 check_platform()
+pypy = check_pypy()
+
+if pypy:
+    define_macros=[
+            ("HTTP_PARSER_DEBUG", "0") ]
+    install_requires=[]
+else:
+    define_macros=[
+            ("WITH_GREENLET",None),
+            ("HTTP_PARSER_DEBUG", "0") ]
+    install_requires=['greenlet==0.3.4']
+
+if develop:
+    define_macros.append(("DEVELOP",None))
+
 sources = get_sources("meinheld", ["*picoev_*"])
 sources.append(get_picoev_file())
 
 library_dirs=['/usr/local/lib']
+#TODO set python include dirs
 include_dirs=[]
 
 setup(name='meinheld',
@@ -61,9 +83,7 @@ setup(name='meinheld',
     license='BSD',
     platforms='Linux, Darwin',
     packages= ['meinheld'],
-    install_requires=[
-        'greenlet==0.3.4',
-    ],
+    install_requires=install_requires,
 
     entry_points="""
 
@@ -77,11 +97,7 @@ setup(name='meinheld',
             library_dirs=library_dirs,
             #libraries=["profiler"],
             #extra_compile_args=["-save-temps"],
-            define_macros=[
-                ("DEVELOP",None),
-                ("WITH_GREENLET",None),
-                ("HTTP_PARSER_DEBUG", "0")
-                ],
+            define_macros=define_macros
         )],
 
     classifiers=[

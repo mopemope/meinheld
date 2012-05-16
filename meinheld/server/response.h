@@ -31,7 +31,7 @@ typedef struct {
 } FileWrapperObject;
 
 typedef enum {
-    STATUS_OK,
+    STATUS_OK = 0,
     STATUS_SUSPEND,
     STATUS_ERROR 
 } response_status;

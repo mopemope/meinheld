@@ -179,9 +179,11 @@ clean_cli(client_t *client)
     Py_CLEAR(client->headers);
     Py_CLEAR(client->response_iter);
     Py_CLEAR(client->response);
-    DEBUG("clean_cli environ status_code %d address %p", client->status_code, client->environ);
+
+    DEBUG("status_code:%d env:%p", client->status_code, client->environ);
     if(client->environ){ 
         PyDict_Clear(client->environ);
+        DEBUG("CLEAR environ");
         Py_CLEAR(client->environ);
     }
     if(client->body){
@@ -203,16 +205,19 @@ clean_cli(client_t *client)
 static void
 close_conn(client_t *cli, picoev_loop* loop)
 {
-    client_t *new_client;
+    client_t *new_client = NULL;
     if(!cli->response_closed){
         close_response(cli);
     }
-
-    picoev_del(loop, cli->fd);
+    DEBUG("start close client:%p fd:%d status_code %d", cli, cli->fd, cli->status_code);
+    
+    if(picoev_is_active(loop, cli->fd)){
+        picoev_del(loop, cli->fd);
+        DEBUG("picoev_del client:%p fd:%d", cli, cli->fd);
+    }
+    
     clean_cli(cli);
 
-    DEBUG("start close client:%p fd:%d status_code %d", cli, cli->fd, cli->status_code);
-    DEBUG("picoev_del client:%p fd:%d", cli, cli->fd);
     DEBUG("remain http pipeline size :%d", cli->request_queue->size);
     if(cli->request_queue->size > 0){
         if(check_status_code(cli) > 0){
@@ -418,7 +423,9 @@ app_handler(PyObject *self, PyObject *args)
             // continue
             // set callback
             //clear event
-            picoev_del(main_loop, client->fd);
+            if(picoev_is_active(main_loop, client->fd)){
+                picoev_del(main_loop, client->fd);
+            }
             picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, write_callback, (void *)pyclient);
         default:
             // send OK
@@ -440,6 +447,7 @@ get_app_handler(void)
     return app_handler_func;
 }
 
+#ifdef WITH_GREENLET
 static void
 resume_wsgi_handler(ClientObject *pyclient)
 {
@@ -468,6 +476,7 @@ resume_wsgi_handler(ClientObject *pyclient)
     Py_CLEAR(pyclient->kwargs);
     Py_XDECREF(res);
 }
+#endif
 
 static void
 call_wsgi_handler(client_t *client)
@@ -598,6 +607,7 @@ resume_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 }
 */
 
+#ifdef WITH_GREENLET
 static void
 timeout_error_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
@@ -657,6 +667,7 @@ trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     }
     resume_wsgi_handler(pyclient);
 }
+#endif
 
 #ifndef WITH_GREENLET
 static void
@@ -666,7 +677,7 @@ write_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     client_t *client = pyclient->client;
     int ret;
     DEBUG("call write_callback");
-    current_client = pyclient;
+    current_client = (PyObject*)pyclient;
     if ((events & PICOEV_TIMEOUT) != 0) {
 
         DEBUG("** write_callback timeout **");
@@ -1686,6 +1697,7 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+/*
 PyObject *
 meinheld_set_process_name(PyObject *self, PyObject *args)
 {
@@ -1710,7 +1722,7 @@ meinheld_set_process_name(PyObject *self, PyObject *args)
 #endif
 
     Py_RETURN_NONE;
-}
+}*/
 
 PyObject *
 meinheld_suspend_client(PyObject *self, PyObject *args)
@@ -1774,7 +1786,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     }
     Py_RETURN_NONE;
 #else
-    NO_GREENLET_ERR;
+    NO_GREENLET_ERROR;
 #endif
 }
 
@@ -1831,7 +1843,7 @@ meinheld_resume_client(PyObject *self, PyObject *args)
     }
     Py_RETURN_NONE;
 #else
-    NO_GREENLET_ERR;
+    NO_GREENLET_ERROR;
 #endif
 }
 
@@ -1851,7 +1863,7 @@ meinheld_cancel_wait(PyObject *self, PyObject *args)
     picoev_del(main_loop, fd);
     Py_RETURN_NONE;
 #else
-    NO_GREENLET_ERR;
+    NO_GREENLET_ERROR;
 #endif
 }
 
@@ -1911,7 +1923,7 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
     DEBUG("switch to hub %p", current);
     return greenlet_switch(parent, hub_switch_value, NULL);
 #else
-    NO_GREENLET_ERR;
+    NO_GREENLET_ERROR;
 #endif
 
 }
@@ -1922,7 +1934,7 @@ meinheld_get_ident(PyObject *self, PyObject *args)
 #ifdef WITH_GREENLET
     return greenlet_getcurrent();
 #else
-    NO_GREENLET_ERR;
+    NO_GREENLET_ERROR;
 #endif
 }
 
@@ -1947,7 +1959,7 @@ static PyMethodDef ServerMethods[] = {
     {"set_picoev_max_fd", meinheld_set_picoev_max_fd, METH_VARARGS, "set picoev max fd size"},
     {"get_picoev_max_fd", meinheld_get_picoev_max_fd, METH_VARARGS, "return picoev max fd size"},
 
-    {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"},
+    /* {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"}, */
     {"stop", meinheld_stop, METH_NOARGS, "stop main loop"},
     {"shutdown", meinheld_shutdown, METH_NOARGS, "stop and close listen socket "},
 
@@ -1994,6 +2006,10 @@ initserver(void)
     m = Py_InitModule3(MODULE_NAME, ServerMethods, "");
 #endif
     if(m == NULL){
+        INITERROR;
+    }
+
+    if(PyType_Ready(&ResponseObjectType) < 0){
         INITERROR;
     }
 
