@@ -240,13 +240,13 @@ writev_bucket(write_bucket *data)
     int i = 0;
     Py_BEGIN_ALLOW_THREADS
 #ifdef DEVELOP
-    RDEBUG("writev_bucket fd:%d", data->fd);
+    RDEBUG("\nwritev_bucket fd:%d", data->fd);
     printf("\x1B[34m");
     writev_log(data);
     printf("\x1B[0m");
 #endif
     w = writev(data->fd, data->iov, data->iov_cnt);
-    BDEBUG("writev fd:%d ret:%d total_size:%d", data->fd, w, data->total);
+    BDEBUG("writev fd:%d ret:%d total_size:%d", data->fd, (int)w, data->total);
     Py_END_ALLOW_THREADS
     if(w == -1){
         //error
@@ -407,8 +407,13 @@ add_all_headers(write_bucket *bucket, PyObject *headers, int hlen, client_t *cli
                 client->content_length_set = 1;
                 client->content_length = l;
             }
-            DEBUG("response header %s : %s",name, value);
+            DEBUG("response header %s:%d : %s:%d",name, (int)namelen, value, (int)valuelen);
             add_header(bucket, name, namelen, value, valuelen);
+#ifdef PY3
+            PyObject *temp = Py_BuildValue("(yy)", bytes1, bytes2);
+            PyList_Append(client->headers, temp);
+            Py_DECREF(temp);
+#endif
             Py_CLEAR(bytes1);
             Py_CLEAR(bytes2);
         }

@@ -206,7 +206,6 @@ def test_many_resume():
     results = []
     for r in runners:
         env, res = r.get_result()
-        print(res.headers)
         results.append(res.content)
     results = sorted(results)
     s.shutdown()
