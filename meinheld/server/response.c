@@ -825,6 +825,7 @@ start_response_write(client_t *client)
     PyObject *item;
     char *buf;
     Py_ssize_t buflen;
+    response_status ret;
 
     iterator = PyObject_GetIter(client->response);
     if (PyErr_Occurred()){
@@ -842,8 +843,10 @@ start_response_write(client_t *client)
         buflen = PyBytes_GET_SIZE(item);
 
         DEBUG("status_code %d body:%.*s", client->status_code, (int)buflen, buf);
+        ret = write_headers(client, buf, buflen);
+        //TODO when ret == STATUS_SUSPEND keep item
         Py_DECREF(item);
-        return write_headers(client, buf, buflen);
+        return ret;
     }else{
         if (item == NULL && !PyErr_Occurred()){
             //Stop Iteration
