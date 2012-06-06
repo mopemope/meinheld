@@ -3,6 +3,7 @@
 (bug fix release, release 2012-6-6)
 
 * Fix: Fix greenlet version 0.3.4
+* Fix: graceful reload for gunicorn
 * Improve: Enabled set existing socket to listen function. (use keyword args "socket_fd") 
 
 0.4.13
@@ -21,13 +22,13 @@
 =======
 (bug fix release, release 2011-3-21)
 
-* support Mac OS X and FreeBSD
+* Support Mac OS X and FreeBSD
 
 0.4.10
 =======
 (bug fix release, release 2011-2-7)
 
-* add werkzeug sipport patch
+* Add werkzeug support patch
 
 0.4.9
 =======
@@ -151,7 +152,7 @@
 * update http parser
 * change max header num and size
 * fix finally call response close
-* add guniconr worker entry point 
+* add gunicorn worker entry point 
 * various bug fixes
 
 0.2
