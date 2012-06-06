@@ -68,6 +68,7 @@ static PyObject *empty_string = NULL; //""
 /* gunicorn */
 static int spinner = 0;
 static int tempfile_fd = 0;
+static int gtimeout = 0;
 static int ppid = 0;
 
 #define CLIENT_MAXFREELIST 1024
@@ -1131,7 +1132,7 @@ fast_notify(void)
     fchmod(tempfile_fd, spinner);
     if(ppid != getppid()){
         //shutdown
-        kill_server(0);
+        kill_server(gtimeout);
         tempfile_fd = 0;
     }
 }
@@ -1481,11 +1482,15 @@ meinheld_set_fastwatchdog(PyObject *self, PyObject *args)
 {
     int _fd;
     int _ppid;
-    if (!PyArg_ParseTuple(args, "ii", &_fd, &_ppid))
+    int timeout;
+
+    if (!PyArg_ParseTuple(args, "iii", &_fd, &_ppid, &timeout)){
         return NULL;
-    
+    }
+
     tempfile_fd = _fd;
     ppid = _ppid;
+    gtimeout = timeout;
     Py_RETURN_NONE;
 }
 
