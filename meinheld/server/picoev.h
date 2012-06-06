@@ -76,7 +76,7 @@ extern "C" {
   typedef struct picoev_loop_st picoev_loop;
   
   typedef void picoev_handler(picoev_loop* loop, int fd, int revents,
-			      void* cb_arg);
+                  void* cb_arg);
   
   typedef struct picoev_fd_st {
     /* use accessors! */
@@ -112,7 +112,7 @@ extern "C" {
     size_t timeout_vec_size; /* # of elements in picoev_loop.timeout.vec[0] */
     size_t timeout_vec_of_vec_size; /* ... in timeout.vec_of_vec[0] */
   } picoev_globals;
-  
+
   extern picoev_globals picoev;
   
   /* creates a new event loop (defined by each backend) */
@@ -140,8 +140,8 @@ extern "C" {
     }
     return
       (void*)PICOEV_RND_UP((unsigned long)*orig_addr
-			   + (rand() % PICOEV_PAGE_SIZE),
-			   PICOEV_CACHE_LINE_SIZE);
+               + (rand() % PICOEV_PAGE_SIZE),
+               PICOEV_CACHE_LINE_SIZE);
   }
   
   /* initializes picoev */
@@ -150,8 +150,8 @@ extern "C" {
     assert(! PICOEV_IS_INITED);
     assert(max_fd > 0);
     if ((picoev.fds = (picoev_fd*)picoev_memalign(sizeof(picoev_fd) * max_fd,
-						  &picoev._fds_free_addr, 1))
-	== NULL) {
+                          &picoev._fds_free_addr, 1))
+    == NULL) {
       return -1;
     }
     picoev.max_fd = max_fd;
@@ -189,33 +189,33 @@ extern "C" {
     if (target->timeout_idx != PICOEV_TIMEOUT_IDX_UNUSED) {
       vec = PICOEV_TIMEOUT_VEC_OF(loop, target->timeout_idx);
       if ((vec[vi] &= ~((unsigned short)SHRT_MIN >> (fd % PICOEV_SHORT_BITS)))
-	  == 0) {
-	vec_of_vec = PICOEV_TIMEOUT_VEC_OF_VEC_OF(loop, target->timeout_idx);
-	vec_of_vec[vi / PICOEV_SHORT_BITS]
-	  &= ~((unsigned short)SHRT_MIN >> (vi % PICOEV_SHORT_BITS));
+      == 0) {
+    vec_of_vec = PICOEV_TIMEOUT_VEC_OF_VEC_OF(loop, target->timeout_idx);
+    vec_of_vec[vi / PICOEV_SHORT_BITS]
+      &= ~((unsigned short)SHRT_MIN >> (vi % PICOEV_SHORT_BITS));
       }
       target->timeout_idx = PICOEV_TIMEOUT_IDX_UNUSED;
     }
     if (secs != 0) {
       delta = (loop->now + secs - loop->timeout.base_time)
-	/ loop->timeout.resolution;
+    / loop->timeout.resolution;
       if (delta >= PICOEV_TIMEOUT_VEC_SIZE) {
-	delta = PICOEV_TIMEOUT_VEC_SIZE - 1;
+    delta = PICOEV_TIMEOUT_VEC_SIZE - 1;
       }
       target->timeout_idx =
-	(loop->timeout.base_idx + delta) % PICOEV_TIMEOUT_VEC_SIZE;
+    (loop->timeout.base_idx + delta) % PICOEV_TIMEOUT_VEC_SIZE;
       vec = PICOEV_TIMEOUT_VEC_OF(loop, target->timeout_idx);
       vec[vi] |= (unsigned short)SHRT_MIN >> (fd % PICOEV_SHORT_BITS);
       vec_of_vec = PICOEV_TIMEOUT_VEC_OF_VEC_OF(loop, target->timeout_idx);
       vec_of_vec[vi / PICOEV_SHORT_BITS]
-	|= (unsigned short)SHRT_MIN >> (vi % PICOEV_SHORT_BITS);
+    |= (unsigned short)SHRT_MIN >> (vi % PICOEV_SHORT_BITS);
     }
   }
   
   /* registers a file descriptor and callback argument to a event loop */
   PICOEV_INLINE
   int picoev_add(picoev_loop* loop, int fd, int events, int timeout_in_secs,
-		 picoev_handler* callback, void* cb_arg) {
+         picoev_handler* callback, void* cb_arg) {
     picoev_fd* target;
     assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
     target = picoev.fds + fd;
@@ -268,7 +268,7 @@ extern "C" {
   int picoev_set_events(picoev_loop* loop, int fd, int events) {
     assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
     if (picoev.fds[fd].events != events
-	&& picoev_update_events_internal(loop, fd, events) != 0) {
+    && picoev_update_events_internal(loop, fd, events) != 0) {
       return -1;
     }
     return 0;
@@ -277,7 +277,7 @@ extern "C" {
   /* returns callback for given descriptor */
   PICOEV_INLINE
   picoev_handler* picoev_get_callback(picoev_loop* loop __attribute__((unused)),
-				      int fd, void** cb_arg) {
+                      int fd, void** cb_arg) {
     assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
     if (cb_arg != NULL) {
       *cb_arg = picoev.fds[fd].cb_arg;
@@ -288,7 +288,7 @@ extern "C" {
   /* sets callback for given descriptor */
   PICOEV_INLINE
   void picoev_set_callback(picoev_loop* loop __attribute__((unused)), int fd,
-			   picoev_handler* callback, void** cb_arg) {
+               picoev_handler* callback, void** cb_arg) {
     assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
     if (cb_arg != NULL) {
       picoev.fds[fd].cb_arg = *cb_arg;
@@ -305,7 +305,7 @@ extern "C" {
     }
     while (++curfd < picoev.max_fd) {
       if (loop->loop_id == picoev.fds[curfd].loop_id) {
-	return curfd;
+    return curfd;
       }
     }
     return -1;
@@ -317,11 +317,11 @@ extern "C" {
     loop->loop_id = ++picoev.num_loops;
     assert(PICOEV_TOO_MANY_LOOPS);
     if ((loop->timeout.vec_of_vec
-	 = (short*)picoev_memalign((picoev.timeout_vec_of_vec_size
-				    + picoev.timeout_vec_size)
-				   * sizeof(short) * PICOEV_TIMEOUT_VEC_SIZE,
-				   &loop->timeout._free_addr, 1))
-	== NULL) {
+     = (short*)picoev_memalign((picoev.timeout_vec_of_vec_size
+                    + picoev.timeout_vec_size)
+                   * sizeof(short) * PICOEV_TIMEOUT_VEC_SIZE,
+                   &loop->timeout._free_addr, 1))
+    == NULL) {
       --picoev.num_loops;
       return -1;
     }
@@ -346,34 +346,34 @@ extern "C" {
   void picoev_handle_timeout_internal(picoev_loop* loop) {
     size_t i, j, k;
     for (;
-	 loop->timeout.base_time <= loop->now - loop->timeout.resolution; 
-	 loop->timeout.base_idx
-	   = (loop->timeout.base_idx + 1) % PICOEV_TIMEOUT_VEC_SIZE,
-	   loop->timeout.base_time += loop->timeout.resolution) {
+     loop->timeout.base_time <= loop->now - loop->timeout.resolution; 
+     loop->timeout.base_idx
+       = (loop->timeout.base_idx + 1) % PICOEV_TIMEOUT_VEC_SIZE,
+       loop->timeout.base_time += loop->timeout.resolution) {
       /* TODO use SIMD instructions */
       short* vec = PICOEV_TIMEOUT_VEC_OF(loop, loop->timeout.base_idx);
       short* vec_of_vec
-	= PICOEV_TIMEOUT_VEC_OF_VEC_OF(loop, loop->timeout.base_idx);
+    = PICOEV_TIMEOUT_VEC_OF_VEC_OF(loop, loop->timeout.base_idx);
       for (i = 0; i < picoev.timeout_vec_of_vec_size; ++i) {
-	short vv = vec_of_vec[i];
-	if (vv != 0) {
-	  for (j = i * PICOEV_SHORT_BITS; vv != 0; j++, vv <<= 1) {
-	    if (vv < 0) {
-	      short v = vec[j];
-	      assert(v != 0);
-	      for (k = j * PICOEV_SHORT_BITS; v != 0; k++, v <<= 1) {
-		if (v < 0) {
-		  picoev_fd* fd = picoev.fds + k;
-		  assert(fd->loop_id == loop->loop_id);
-		  fd->timeout_idx = PICOEV_TIMEOUT_IDX_UNUSED;
-		  (*fd->callback)(loop, k, PICOEV_TIMEOUT, fd->cb_arg);
-		}
-	      }
-	      vec[j] = 0;
-	    }
-	  }
-	  vec_of_vec[i] = 0;
-	}
+    short vv = vec_of_vec[i];
+    if (vv != 0) {
+      for (j = i * PICOEV_SHORT_BITS; vv != 0; j++, vv <<= 1) {
+        if (vv < 0) {
+          short v = vec[j];
+          assert(v != 0);
+          for (k = j * PICOEV_SHORT_BITS; v != 0; k++, v <<= 1) {
+        if (v < 0) {
+          picoev_fd* fd = picoev.fds + k;
+          assert(fd->loop_id == loop->loop_id);
+          fd->timeout_idx = PICOEV_TIMEOUT_IDX_UNUSED;
+          (*fd->callback)(loop, k, PICOEV_TIMEOUT, fd->cb_arg);
+        }
+          }
+          vec[j] = 0;
+        }
+      }
+      vec_of_vec[i] = 0;
+    }
       }
     }
   }
