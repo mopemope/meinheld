@@ -1,5 +1,5 @@
 #include "client.h"
-#include "greenlet.h"
+#include "greensupport.h"
 
 #define CLIENT_MAXFREELIST 1024
 
@@ -126,7 +126,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O:set_greenlet", &temp)){
         return NULL;
     }
-    if(!PyGreenlet_Check(temp)){
+    if(!greenlet_check(temp)){
         PyErr_SetString(PyExc_TypeError, "must be greenlet object");
         return NULL;
     }
@@ -137,7 +137,7 @@ ClientObject_set_greenlet(ClientObject *self, PyObject *args)
     }
 
     Py_INCREF(temp);
-    self->greenlet = (PyGreenlet *)temp;
+    self->greenlet = temp;
 
     Py_RETURN_NONE;
 }
@@ -227,8 +227,3 @@ PyTypeObject ClientObjectType = {
     0,                           /* tp_new */
 };
 
-inline void 
-setup_client(void)
-{
-    PyGreenlet_Import();
-}

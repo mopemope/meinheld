@@ -2,7 +2,6 @@
 #define CLIENT_H
 
 #include "server.h"
-#include "greenlet.h"
 
 typedef struct _client {
     int fd;
@@ -41,7 +40,7 @@ typedef struct _client {
 typedef struct {
     PyObject_HEAD
     client_t *client;
-    PyGreenlet *greenlet;
+    PyObject *greenlet;
     PyObject *args;         //greenlet.switch value
     PyObject *kwargs;       //greenlet.switch value
     uint8_t suspended;
@@ -52,9 +51,6 @@ extern PyTypeObject ClientObjectType;
 
 inline PyObject* 
 ClientObject_New(client_t* client);
-
-inline void 
-setup_client(void);
 
 inline int 
 CheckClientObject(PyObject *obj);

@@ -30,6 +30,7 @@
 #include "request.h"
 #include "http_parser.h"
 
+#include "greensupport.h"
 
 #define SERVER "meinheld/0.4.14"
 
@@ -46,5 +47,13 @@ extern PyObject* timeout_error;
 
 inline void
 switch_wsgi_app(picoev_loop* loop, int fd, PyObject *obj);
+
+#if __GNUC__ >= 3
+# define likely(x)    __builtin_expect(!!(x), 1)
+# define unlikely(x)    __builtin_expect(!!(x), 0)
+#else
+# define likely(x) (x)
+# define unlikely(x) (x)
+#endif
 
 #endif

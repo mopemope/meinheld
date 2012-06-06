@@ -25,9 +25,12 @@
 
 static char *server_name = "127.0.0.1";
 static short server_port = 8000;
-static int listen_sock;  // listen socket
+static int listen_sock = -1;  // listen socket
 
-static int loop_done; // main loop flag
+
+static volatile sig_atomic_t loop_done;
+static volatile sig_atomic_t call_shutdown = 0;
+static volatile sig_atomic_t catch_signal = 0;
 
 picoev_loop* main_loop; //main loop
 
@@ -312,9 +315,9 @@ process_resume_wsgi_app(ClientObject *pyclient)
         PyErr_Fetch(&err_type, &err_val, &err_tb);
         PyErr_Clear();
         //set error
-        res = PyGreenlet_Throw(pyclient->greenlet, err_type, err_val, err_tb);
+        res = greenlet_throw(pyclient->greenlet, err_type, err_val, err_tb);
     }else{
-        res = PyGreenlet_Switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
+        res = greenlet_switch(pyclient->greenlet, pyclient->args, pyclient->kwargs);
     }
     start_response->cli = old_client;
     
@@ -349,7 +352,7 @@ static inline int
 process_wsgi_app(client_t *cli)
 {
     PyObject *args = NULL, *start = NULL, *res = NULL;
-    PyGreenlet *greenlet;
+    PyObject *greenlet;
     ClientObject *pyclient;
     start = create_start_response(cli);
 
@@ -367,12 +370,12 @@ process_wsgi_app(client_t *cli)
 #endif
 
     //new greenlet
-    greenlet = PyGreenlet_New(wsgi_app, NULL);
+    greenlet = greenlet_new(wsgi_app, NULL);
     // set_greenlet
     pyclient->greenlet = greenlet;
     Py_INCREF(pyclient->greenlet);
 
-    res = PyGreenlet_Switch(greenlet, args, NULL);
+    res = greenlet_switch(greenlet, args, NULL);
     //res = PyObject_CallObject(wsgi_app, args);
     Py_DECREF(args);
     Py_DECREF(greenlet);
@@ -903,7 +906,6 @@ setup_server_env(void)
     cache_time_init();
     setup_static_env(server_name, server_port);
     setup_start_response();
-    setup_client();
     
     ClientObject_list_fill();
     client_t_list_fill();
@@ -911,8 +913,6 @@ setup_server_env(void)
     header_list_fill();
     buffer_list_fill();
     StringIOObject_list_fill();
-
-    PyGreenlet_Import();
     
     hub_switch_value = Py_BuildValue("(i)", -1);
     client_key = PyString_FromString("meinheld.client");
@@ -1091,7 +1091,7 @@ meinheld_listen(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *o = NULL;
     int ret;
-    int sock_fd;
+    int sock_fd = -1;
 
     static char *kwlist[] = {"address", "socket_fd", 0};
 
@@ -1118,9 +1118,8 @@ meinheld_listen(PyObject *self, PyObject *args, PyObject *kwds)
 #ifdef DEBUG
         printf("use already listened sock fd:%d\n", sock_fd);
 #endif
-        Py_RETURN_NONE;
-    }
-    if(PyTuple_Check(o)){
+        ret = 1;
+    }else if(PyTuple_Check(o)){
         //inet 
         if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port))
             return NULL;
@@ -1145,16 +1144,19 @@ static void
 sigint_cb(int signum)
 {
 #ifdef DEBUG
-    printf("call SIGINT");
+    printf("call SIGINT\n");
 #endif
     loop_done = 0;
+    if(!catch_signal){
+        catch_signal = 1;
+    }
 }
 
 static void 
 sigpipe_cb(int signum)
 {
 #ifdef DEBUG
-    printf("call SIGPIPE");
+    printf("call SIGPIPE\n");
 #endif
 }
 
@@ -1215,9 +1217,16 @@ meinheld_stop(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+meinheld_shutdown(PyObject *self, PyObject *args)
+{
+    loop_done = 0;
+    call_shutdown = 1;
+    Py_RETURN_NONE;
+}
+
+static PyObject *
 meinheld_run_loop(PyObject *self, PyObject *args)
 {
-    int i = 0;
     //PyObject *app;
     PyObject *watchdog_result;
     if (!PyArg_ParseTuple(args, "O:run", &wsgi_app))
@@ -1245,11 +1254,10 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     picoev_add(main_loop, listen_sock, PICOEV_READ, ACCEPT_TIMEOUT_SECS, accept_callback, NULL);
     
     /* loop */
-    while (loop_done) {
+    while (likely(loop_done)) {
         //Py_BEGIN_ALLOW_THREADS
         picoev_loop_once(main_loop, 10);
         //Py_END_ALLOW_THREADS
-        i++;
         // watchdog slow.... skip check
         
         //if(watchdog && i > 1){
@@ -1260,7 +1268,6 @@ meinheld_run_loop(PyObject *self, PyObject *args)
                 PyErr_Clear();
             }
             Py_XDECREF(watchdog_result);
-            i = 0;
         }else if(tempfile_fd){
             fast_notify();
         }
@@ -1269,15 +1276,28 @@ meinheld_run_loop(PyObject *self, PyObject *args)
     Py_DECREF(wsgi_app);
     Py_XDECREF(watchdog);
     
+    picoev_del(main_loop, listen_sock);
     picoev_destroy_loop(main_loop);
     picoev_deinit();
     
     clear_server_env();
 
-    if(unix_sock_name){
-        unlink(unix_sock_name);
+    if(call_shutdown){
+        close(listen_sock);
+        listen_sock = 0;
+        if(unix_sock_name){
+           unlink(unix_sock_name);
+           unix_sock_name = NULL;
+        }
+        call_shutdown = 0;
     }
-    printf("Bye.\n");
+    if(catch_signal){
+        //override
+        PyErr_Clear();
+        PyErr_SetNone(PyExc_KeyboardInterrupt);
+        catch_signal = 0;
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
@@ -1463,7 +1483,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     PyObject *temp;
     ClientObject *pyclient;
     client_t *client;
-    PyGreenlet *parent;
+    PyObject *parent;
     int timeout = 0;
 
     if (!PyArg_ParseTuple(args, "O|i:_suspend_client", &temp, &timeout)){
@@ -1496,7 +1516,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
     
     if(client && !(pyclient->suspended)){
         pyclient->suspended = 1;
-        parent = PyGreenlet_GET_PARENT(pyclient->greenlet);
+        parent = greenlet_getparent(pyclient->greenlet);
 
         set_so_keepalive(client->fd, 1);
 #ifdef DEBUG
@@ -1510,7 +1530,7 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         }else{
             picoev_add(main_loop, client->fd, PICOEV_TIMEOUT, 300, timeout_callback, (void *)pyclient);
         }
-        return PyGreenlet_Switch(parent, hub_switch_value, NULL);
+        return greenlet_switch(parent, hub_switch_value, NULL);
     }else{
         PyErr_SetString(PyExc_Exception, "already suspended");
         return NULL;
@@ -1605,7 +1625,7 @@ trampoline_switch_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static inline PyObject*
 meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    PyGreenlet *current, *parent;
+    PyObject *current, *parent;
     ClientObject *pyclient;
     int fd, event, timeout = 0;
     PyObject *read = Py_None, *write = Py_None;
@@ -1647,8 +1667,8 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
    
     // switch to hub
     current = pyclient->greenlet;
-    parent = PyGreenlet_GET_PARENT(current);
-    return PyGreenlet_Switch(parent, hub_switch_value, NULL);
+    parent = greenlet_getparent(current);
+    return greenlet_switch(parent, hub_switch_value, NULL);
 
 }
 
@@ -1691,6 +1711,8 @@ static PyMethodDef WsMethods[] = {
 
     {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"},
     {"stop", meinheld_stop, METH_VARARGS, "stop main loop"},
+    {"shutdown", meinheld_shutdown, METH_NOARGS, "stop and close listen socket "},
+
     // support gunicorn 
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
