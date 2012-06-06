@@ -112,7 +112,6 @@ kill_server(int timeout)
     //stop accepting
     picoev_del(main_loop, listen_sock);
     total_events--;
-    printf("total_events : %d\n", total_events);
 
     if(timeout > 0){
         //set timeout

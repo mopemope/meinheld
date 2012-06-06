@@ -9,7 +9,7 @@ class MeinheldWorker(Worker):
 
         if self.ppid != os.getppid():
             self.log.info("Parent changed, shutting down: %s" % self)
-            server.stop()
+            server.stop(self.timeout)
 
     def run(self):
         fd = self.socket.fileno()
@@ -23,7 +23,6 @@ class MeinheldWorker(Worker):
         server.run(self.wsgi)
 
     def handle_quit(self, sig, frame):
-        print(self.timeout)
         server.stop(int(self.timeout))
 
     def handle_exit(self, sig, frame):
