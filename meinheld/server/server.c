@@ -1330,21 +1330,30 @@ fast_notify(void)
 }
 
 static PyObject *
-meinheld_listen(PyObject *self, PyObject *args)
+meinheld_listen(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *o;
     char *path;
     int ret, len;
+    int sock_fd = -1;
 
-    if (!PyArg_ParseTuple(args, "O:listen", &o))
+    static char *kwlist[] = {"address", "socket_fd", 0};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|Oi:listen",
+                                     kwlist, &o, &sock_fd)){
         return NULL;
+    }
 
     if(listen_sock > 0){
         PyErr_SetString(PyExc_Exception, "already set listen socket");
         return NULL;
     }
 
-    if(PyTuple_Check(o)){
+    if(o == NULL && sock_fd > 0){
+        listen_sock = sock_fd;
+        DEBUG("use already listened sock fd:%d", sock_fd);
+        ret = 1;
+    }else if(PyTuple_Check(o)){
         //inet
         if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port)){
             return NULL;
@@ -1940,7 +1949,7 @@ meinheld_get_ident(PyObject *self, PyObject *args)
 
 
 static PyMethodDef ServerMethods[] = {
-    {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
+    {"listen", (PyCFunction)meinheld_listen, METH_VARARGS|METH_KEYWORDS, "set host and port num"},
     /* {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."}, */
     /* {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."}, */
 
