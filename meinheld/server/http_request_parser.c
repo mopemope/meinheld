@@ -137,9 +137,9 @@ key_upper(char *s, const char *key, size_t len)
 {
     int i = 0;
     register int c;
-	for (i = 0; i < len; i++) {
-		c = key[i];
-		if(c == '-'){
+    for (i = 0; i < len; i++) {
+        c = key[i];
+        if(c == '-'){
             s[i] = '_';
         }else{
             if(islower(c)){
@@ -148,7 +148,7 @@ key_upper(char *s, const char *key, size_t len)
                 s[i] = c;
             }
         }
-	}
+    }
 }
 
 static inline int

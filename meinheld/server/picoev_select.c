@@ -68,8 +68,8 @@ extern int picoev_w32_deinit(void);
 int picoev_w32_init(int max_fd) {
   int r = picoev_init(max_fd);
   if ((picoev_w32.fds = (int*)picoev_memalign(sizeof(int) * max_fd,
-						&picoev_w32._fds_free_addr, 1))
-	== NULL) {
+                        &picoev_w32._fds_free_addr, 1))
+    == NULL) {
     picoev_deinit();
     return -1;
   }
@@ -132,16 +132,16 @@ int picoev_poll_once_internal(picoev_loop* loop, int max_wait)
     picoev_fd* fd = picoev.fds + i;
     if (fd->loop_id == loop->loop_id) {
       if ((fd->events & PICOEV_READ) != 0) {
-	PICOEV_FD_SET(i, &readfds);
-	if (maxfd < i) {
-	  maxfd = i;
-	}
+    PICOEV_FD_SET(i, &readfds);
+    if (maxfd < i) {
+      maxfd = i;
+    }
       }
       if ((fd->events & PICOEV_WRITE) != 0) {
-	PICOEV_FD_SET(i, &writefds);
-	if (maxfd < i) {
-	  maxfd = i;
-	}
+    PICOEV_FD_SET(i, &writefds);
+    if (maxfd < i) {
+      maxfd = i;
+    }
       }
     }
   }
@@ -160,11 +160,11 @@ int picoev_poll_once_internal(picoev_loop* loop, int max_wait)
     for (i = 0; i < picoev.max_fd; ++i) {
       picoev_fd* target = picoev.fds + i;
       if (target->loop_id == loop->loop_id) {
-	int revents = (PICOEV_FD_ISSET(i, &readfds) ? PICOEV_READ : 0)
-	  | (PICOEV_FD_ISSET(i, &writefds) ? PICOEV_WRITE : 0);
-	if (revents != 0) {
-	  (*target->callback)(loop, i, revents, target->cb_arg);
-	}
+    int revents = (PICOEV_FD_ISSET(i, &readfds) ? PICOEV_READ : 0)
+      | (PICOEV_FD_ISSET(i, &writefds) ? PICOEV_WRITE : 0);
+    if (revents != 0) {
+      (*target->callback)(loop, i, revents, target->cb_arg);
+    }
       }
     }
   }

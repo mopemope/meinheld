@@ -227,13 +227,13 @@ writev_bucket(write_bucket *data)
 static inline int 
 get_len(PyObject *v)
 {
-	Py_ssize_t res;
-	res = PyObject_Size(v);
-	if (res < 0 && PyErr_Occurred()){
-		PyErr_Clear();
+    Py_ssize_t res;
+    res = PyObject_Size(v);
+    if (res < 0 && PyErr_Occurred()){
+        PyErr_Clear();
         return 0;
     }
-	return (int)res;
+    return (int)res;
 }
 
 static inline void
@@ -983,7 +983,7 @@ static PyMethodDef FileWrapperObject_method[] = {
 };
 
 PyTypeObject ResponseObjectType = {
-	PyObject_HEAD_INIT(NULL)
+    PyObject_HEAD_INIT(NULL)
     0,
     "meinheld.start_response",             /*tp_name*/
     sizeof(ResponseObject), /*tp_basicsize*/
@@ -1005,12 +1005,12 @@ PyTypeObject ResponseObjectType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
     "wsgi start_response ",           /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    0,                       /* tp_iter */
+    0,                       /* tp_iternext */
     0,             /* tp_methods */
     0,             /* tp_members */
     0,                         /* tp_getset */
@@ -1025,7 +1025,7 @@ PyTypeObject ResponseObjectType = {
 };
 
 PyTypeObject FileWrapperType = {
-	PyObject_HEAD_INIT(&PyType_Type)
+    PyObject_HEAD_INIT(&PyType_Type)
     0,
     "meinheld.file_wrapper",             /*tp_name*/
     sizeof(FileWrapperObject), /*tp_basicsize*/
@@ -1047,12 +1047,12 @@ PyTypeObject FileWrapperType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
     "wsgi file_wrapper",           /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    FileWrapperObject_iter,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    FileWrapperObject_iter,                       /* tp_iter */
+    0,                       /* tp_iternext */
     FileWrapperObject_method,             /* tp_methods */
     0,             /* tp_members */
     0,                         /* tp_getset */

@@ -10,30 +10,30 @@ inline void
 ClientObject_list_fill(void)
 {
     ClientObject *client;
-	while (client_numfree < CLIENT_MAXFREELIST) {
+    while (client_numfree < CLIENT_MAXFREELIST) {
         client = PyObject_NEW(ClientObject, &ClientObjectType);
-		client_free_list[client_numfree++] = client;
-	}
+        client_free_list[client_numfree++] = client;
+    }
 }
 
 inline void
 ClientObject_list_clear(void)
 {
-	ClientObject *op;
+    ClientObject *op;
 
-	while (client_numfree) {
-		op = client_free_list[--client_numfree];
+    while (client_numfree) {
+        op = client_free_list[--client_numfree];
         PyObject_DEL(op);
-	}
+    }
 }
 
 static inline ClientObject*
 alloc_ClientObject(void)
 {
     ClientObject *client;
-	if (client_numfree) {
-		client = client_free_list[--client_numfree];
-		_Py_NewReference((PyObject *)client);
+    if (client_numfree) {
+        client = client_free_list[--client_numfree];
+        _Py_NewReference((PyObject *)client);
 #ifdef DEBUG
         printf("use pooled ClientObject %p\n", client);
 #endif
@@ -50,13 +50,13 @@ static inline void
 dealloc_ClientObject(ClientObject *client)
 {
     Py_CLEAR(client->greenlet);
-	if (client_numfree < CLIENT_MAXFREELIST){
+    if (client_numfree < CLIENT_MAXFREELIST){
 #ifdef DEBUG
         printf("back to ClientObject pool %p\n", client);
 #endif
-		client_free_list[client_numfree++] = client;
+        client_free_list[client_numfree++] = client;
     }else{
-	    PyObject_DEL(client);
+        PyObject_DEL(client);
     }
 }
 
@@ -186,7 +186,7 @@ static PyMemberDef ClientObject_members[] = {
 
 
 PyTypeObject ClientObjectType = {
-	PyObject_HEAD_INIT(&PyType_Type)
+    PyObject_HEAD_INIT(&PyType_Type)
     0,
     "meinheld.client",             /*tp_name*/
     sizeof(ClientObject), /*tp_basicsize*/
@@ -208,12 +208,12 @@ PyTypeObject ClientObjectType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,        /*tp_flags*/
     "client ",                 /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		                   /* tp_iternext */
+    0,                       /* tp_traverse */
+    0,                       /* tp_clear */
+    0,                       /* tp_richcompare */
+    0,                       /* tp_weaklistoffset */
+    0,                       /* tp_iter */
+    0,                           /* tp_iternext */
     ClientObject_method,        /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */

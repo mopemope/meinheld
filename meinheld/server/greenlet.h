@@ -4,32 +4,40 @@
 
 #ifndef Py_GREENLETOBJECT_H
 #define Py_GREENLETOBJECT_H
+
+#include <Python.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <Python.h>
-
-#define GREENLET_VERSION "0.3.1"
+#define GREENLET_VERSION "0.3.4"
 
 typedef struct _greenlet {
 	PyObject_HEAD
 	char* stack_start;
 	char* stack_stop;
 	char* stack_copy;
-	long stack_saved;
+	intptr_t stack_saved;
 	struct _greenlet* stack_prev;
 	struct _greenlet* parent;
 	PyObject* run_info;
 	struct _frame* top_frame;
 	int recursion_depth;
 	PyObject* weakreflist;
+	PyObject* exc_type;
+	PyObject* exc_value;
+	PyObject* exc_traceback;
 } PyGreenlet;
 
 #define PyGreenlet_Check(op)      PyObject_TypeCheck(op, &PyGreenlet_Type)
 #define PyGreenlet_STARTED(op)    (((PyGreenlet*)(op))->stack_stop != NULL)
 #define PyGreenlet_ACTIVE(op)     (((PyGreenlet*)(op))->stack_start != NULL)
 #define PyGreenlet_GET_PARENT(op) (((PyGreenlet*)(op))->parent)
+
+#if (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 7) || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 1) || PY_MAJOR_VERSION > 3
+#define GREENLET_USE_PYCAPSULE
+#endif
 
 /* C API functions */
 
@@ -108,6 +116,12 @@ static void **_PyGreenlet_API = NULL;
 	 _PyGreenlet_API[PyGreenlet_SetParent_NUM])
 
 /* Macro that imports greenlet and initializes C API */
+#ifdef GREENLET_USE_PYCAPSULE
+#define PyGreenlet_Import() \
+{ \
+	_PyGreenlet_API = (void**)PyCapsule_Import("greenlet._C_API", 0); \
+}
+#else
 #define PyGreenlet_Import() \
 { \
 	PyObject *module = PyImport_ImportModule("greenlet"); \
@@ -122,6 +136,7 @@ static void **_PyGreenlet_API = NULL;
 		Py_DECREF(module); \
 	} \
 }
+#endif
 
 #endif /* GREENLET_MODULE */
 

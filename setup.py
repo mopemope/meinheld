@@ -33,7 +33,7 @@ include_dirs=[]
 define_macros=[]
 
 setup(name='meinheld',
-    version="0.4.13",
+    version="0.4.14",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
@@ -43,7 +43,7 @@ setup(name='meinheld',
     platforms='Linux, Darwin',
     packages= ['meinheld'],
     install_requires=[
-        'greenlet>=0.3.1',
+        'greenlet==0.3.4',
     ],
     
     entry_points="""
@@ -63,7 +63,7 @@ setup(name='meinheld',
                 include_dirs=include_dirs,
                 library_dirs=library_dirs,
                 #libraries=["profiler"],
-                #extra_compile_args=["-DDEBUG"],
+                 # extra_compile_args=["-DDEBUG"],
             )],
 
     classifiers=[

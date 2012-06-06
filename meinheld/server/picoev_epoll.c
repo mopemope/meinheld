@@ -98,9 +98,9 @@ int picoev_update_events_internal(picoev_loop* _loop, int fd, int events)
     | ((events & PICOEV_WRITE) != 0 ? EPOLLOUT : 0);
   ev.data.fd = fd;
   
-#define SET(op, check_error) do {		    \
+#define SET(op, check_error) do {            \
     epoll_ret = epoll_ctl(loop->epfd, op, fd, &ev); \
-    assert(! check_error || epoll_ret == 0);	    \
+    assert(! check_error || epoll_ret == 0);        \
   } while (0)
   
 #if PICOEV_EPOLL_DEFER_DELETES
@@ -141,8 +141,8 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
   
   Py_BEGIN_ALLOW_THREADS
   nevents = epoll_wait(loop->epfd, loop->events,
-		       sizeof(loop->events) / sizeof(loop->events[0]),
-		       max_wait * 1000);
+               sizeof(loop->events) / sizeof(loop->events[0]),
+               max_wait * 1000);
   Py_END_ALLOW_THREADS
 
   if (nevents == -1) {
@@ -152,12 +152,12 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
     struct epoll_event* event = loop->events + i;
     picoev_fd* target = picoev.fds + event->data.fd;
     if (loop->loop.loop_id == target->loop_id
-	&& (target->events & PICOEV_READWRITE) != 0) {
+    && (target->events & PICOEV_READWRITE) != 0) {
       int revents = ((event->events & EPOLLIN) != 0 ? PICOEV_READ : 0)
-	| ((event->events & EPOLLOUT) != 0 ? PICOEV_WRITE : 0);
+    | ((event->events & EPOLLOUT) != 0 ? PICOEV_WRITE : 0);
       if (revents != 0) {
-	(*target->callback)(&loop->loop, event->data.fd, revents,
-			    target->cb_arg);
+    (*target->callback)(&loop->loop, event->data.fd, revents,
+                target->cb_arg);
       }
     } else {
 #if PICOEV_EPOLL_DEFER_DELETES

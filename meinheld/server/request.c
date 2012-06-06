@@ -16,29 +16,29 @@ inline void
 request_list_fill(void)
 {
     request *req;
-	while (request_numfree < REQUEST_MAXFREELIST) {
+    while (request_numfree < REQUEST_MAXFREELIST) {
         req = (request *)PyMem_Malloc(sizeof(request));
-		request_free_list[request_numfree++] = req;
-	}
+        request_free_list[request_numfree++] = req;
+    }
 }
 
 inline void
 request_list_clear(void)
 {
-	request *op;
+    request *op;
 
-	while (request_numfree) {
-		op = request_free_list[--request_numfree];
-		PyMem_Free(op);
-	}
+    while (request_numfree) {
+        op = request_free_list[--request_numfree];
+        PyMem_Free(op);
+    }
 }
 
 static inline request*
 alloc_request(void)
 {
     request *req;
-	if (request_numfree) {
-		req = request_free_list[--request_numfree];
+    if (request_numfree) {
+        req = request_free_list[--request_numfree];
 #ifdef DEBUG
         printf("use pooled req %p\n", req);
 #endif
@@ -55,13 +55,13 @@ alloc_request(void)
 inline void
 dealloc_request(request *req)
 {
-	if (request_numfree < REQUEST_MAXFREELIST){
+    if (request_numfree < REQUEST_MAXFREELIST){
 #ifdef DEBUG
         printf("back to request pool %p\n", req);
 #endif
-		request_free_list[request_numfree++] = req;
+        request_free_list[request_numfree++] = req;
     }else{
-	    PyMem_Free(req);
+        PyMem_Free(req);
     }
 }
 
@@ -133,29 +133,29 @@ inline void
 header_list_fill(void)
 {
     header *h;
-	while (header_numfree < HEADER_MAXFREELIST) {
+    while (header_numfree < HEADER_MAXFREELIST) {
         h = (header *)PyMem_Malloc(sizeof(header));
-		header_free_list[header_numfree++] = h;
-	}
+        header_free_list[header_numfree++] = h;
+    }
 }
 
 inline void
 header_list_clear(void)
 {
-	header *op;
+    header *op;
 
-	while (header_numfree) {
-		op = header_free_list[--header_numfree];
-		PyMem_Free(op);
-	}
+    while (header_numfree) {
+        op = header_free_list[--header_numfree];
+        PyMem_Free(op);
+    }
 }
 
 static inline header*
 alloc_header(void)
 {
     header *h;
-	if (header_numfree) {
-		h = header_free_list[--header_numfree];
+    if (header_numfree) {
+        h = header_free_list[--header_numfree];
 #ifdef DEBUG
         printf("use pooled header %p\n", h);
 #endif
@@ -172,13 +172,13 @@ alloc_header(void)
 inline void
 dealloc_header(header *h)
 {
-	if (header_numfree < HEADER_MAXFREELIST){
+    if (header_numfree < HEADER_MAXFREELIST){
 #ifdef DEBUG
         printf("back to header pool %p\n", h);
 #endif
-		header_free_list[header_numfree++] = h;
+        header_free_list[header_numfree++] = h;
     }else{
-	    PyMem_Free(h);
+        PyMem_Free(h);
     }
 }
 

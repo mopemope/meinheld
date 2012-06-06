@@ -103,29 +103,29 @@ static inline void
 client_t_list_fill(void)
 {
     client_t *client;
-	while (client_numfree < CLIENT_MAXFREELIST) {
+    while (client_numfree < CLIENT_MAXFREELIST) {
         client = (client_t *)PyMem_Malloc(sizeof(client_t));
-		client_free_list[client_numfree++] = client;
-	}
+        client_free_list[client_numfree++] = client;
+    }
 }
 
 static inline void
 client_t_list_clear(void)
 {
-	client_t *op;
+    client_t *op;
 
-	while (client_numfree) {
-		op = client_free_list[--client_numfree];
-		PyMem_Free(op);
-	}
+    while (client_numfree) {
+        op = client_free_list[--client_numfree];
+        PyMem_Free(op);
+    }
 }
 
 static inline client_t*
 alloc_client_t(void)
 {
     client_t *client;
-	if (client_numfree) {
-		client = client_free_list[--client_numfree];
+    if (client_numfree) {
+        client = client_free_list[--client_numfree];
 #ifdef DEBUG
         printf("use pooled client %p\n", client);
 #endif
@@ -142,10 +142,10 @@ alloc_client_t(void)
 static inline void
 dealloc_client(client_t *client)
 {
-	if (client_numfree < CLIENT_MAXFREELIST){
-		client_free_list[client_numfree++] = client;
+    if (client_numfree < CLIENT_MAXFREELIST){
+        client_free_list[client_numfree++] = client;
     }else{
-	    PyMem_Free(client);
+        PyMem_Free(client);
     }
 }
 
@@ -1087,19 +1087,39 @@ fast_notify(void)
 }
 
 static PyObject *
-meinheld_listen(PyObject *self, PyObject *args)
+meinheld_listen(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *o;
+    PyObject *o = NULL;
     int ret;
+    int sock_fd;
 
-    if (!PyArg_ParseTuple(args, "O:listen", &o))
+    static char *kwlist[] = {"address", "socket_fd", 0};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|Oi:listen",
+                                     kwlist, &o, &sock_fd)){
         return NULL;
+    }
 
     if(listen_sock > 0){
         PyErr_SetString(PyExc_Exception, "already set listen socket");
         return NULL;
     }
-    
+
+    if(o == NULL && sock_fd > 0){
+        listen_sock = sock_fd;
+        /* Py_BEGIN_ALLOW_THREADS */
+        /* ret = listen(listen_sock, backlog); */
+        /* Py_END_ALLOW_THREADS */
+        /* if(ret < 0){ */
+            /* //error  */
+            /* listen_sock = -1; */
+            /* return NULL; */
+        /* } */
+#ifdef DEBUG
+        printf("use already listened sock fd:%d\n", sock_fd);
+#endif
+        Py_RETURN_NONE;
+    }
     if(PyTuple_Check(o)){
         //inet 
         if(!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port))
@@ -1117,7 +1137,7 @@ meinheld_listen(PyObject *self, PyObject *args)
         listen_sock = -1;
         return NULL;
     }
-
+    
     Py_RETURN_NONE;
 }
 
@@ -1590,10 +1610,10 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
     int fd, event, timeout = 0;
     PyObject *read = Py_None, *write = Py_None;
 
-	static char *keywords[] = {"fileno", "read", "write", "timeout", NULL};
-	
+    static char *keywords[] = {"fileno", "read", "write", "timeout", NULL};
+    
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|OOi:trampoline", keywords, &fd, &read, &write, &timeout)){
-		return NULL;
+        return NULL;
     }
     
     if(fd < 0){
@@ -1650,7 +1670,7 @@ meinheld_get_ident(PyObject *self, PyObject *args)
 
 
 static PyMethodDef WsMethods[] = {
-    {"listen", meinheld_listen, METH_VARARGS, "set host and port num"},
+    {"listen", (PyCFunction)meinheld_listen, METH_VARARGS | METH_KEYWORDS, "set host and port num or fd"},
     {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."},
     {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."},
 
@@ -1709,11 +1729,11 @@ initserver(void)
     }
 
     timeout_error = PyErr_NewException("meinheld.server.timeout",
-					  PyExc_IOError, NULL);
-	if (timeout_error == NULL)
-		return;
-	Py_INCREF(timeout_error);
-	PyModule_AddObject(m, "timeout", timeout_error);
+                      PyExc_IOError, NULL);
+    if (timeout_error == NULL)
+        return;
+    Py_INCREF(timeout_error);
+    PyModule_AddObject(m, "timeout", timeout_error);
 
 #ifdef DEBUG
     printf("client size %d \n", sizeof(client_t));

@@ -11,29 +11,29 @@ inline void
 buffer_list_fill(void)
 {
     buffer *buf;
-	while (numfree < MAXFREELIST) {
+    while (numfree < MAXFREELIST) {
         buf = (buffer *)PyMem_Malloc(sizeof(buffer));
-		buffer_free_list[numfree++] = buf;
-	}
+        buffer_free_list[numfree++] = buf;
+    }
 }
 
 inline void
 buffer_list_clear(void)
 {
-	buffer *op;
+    buffer *op;
 
-	while (numfree) {
-		op = buffer_free_list[--numfree];
-		PyMem_Free(op);
-	}
+    while (numfree) {
+        op = buffer_free_list[--numfree];
+        PyMem_Free(op);
+    }
 }
 
 static inline buffer*
 alloc_buffer(void)
 {
     buffer *buf;
-	if (numfree) {
-		buf = buffer_free_list[--numfree];
+    if (numfree) {
+        buf = buffer_free_list[--numfree];
 #ifdef DEBUG
         printf("use pooled buf %p\n", buf);
 #endif
@@ -50,13 +50,13 @@ alloc_buffer(void)
 static inline void
 dealloc_buffer(buffer *buf)
 {
-	if (numfree < MAXFREELIST){
+    if (numfree < MAXFREELIST){
 #ifdef DEBUG
         printf("back to buffer pool %p\n", buf);
 #endif
-		buffer_free_list[numfree++] = buf;
+        buffer_free_list[numfree++] = buf;
     }else{
-	    PyMem_Free(buf);
+        PyMem_Free(buf);
     }
 }
 
