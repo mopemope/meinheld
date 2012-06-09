@@ -20,7 +20,7 @@ class MeinheldWorker(Worker):
         #server.set_watchdog(self.watchdog)
 
         server.set_listen_socket(fd)
-        server.run(self.wsgi)
+        server.run(self.wsgi, silent=True)
 
     def handle_quit(self, sig, frame):
         server.stop(int(self.timeout))

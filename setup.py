@@ -71,7 +71,7 @@ library_dirs=['/usr/local/lib']
 include_dirs=[]
 
 setup(name='meinheld',
-    version="0.4.14",
+    version="0.4.15",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',

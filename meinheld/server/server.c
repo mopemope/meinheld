@@ -1276,12 +1276,17 @@ meinheld_shutdown(PyObject *self, PyObject *args)
 }
 
 static PyObject *
-meinheld_run_loop(PyObject *self, PyObject *args)
+meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
 {
     //PyObject *app;
-    PyObject *watchdog_result;
-    if (!PyArg_ParseTuple(args, "O:run", &wsgi_app))
-        return NULL; 
+    PyObject *watchdog_result = NULL;
+    int silent = 0;
+
+    static char *kwlist[] = {"app", "silent", 0};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|i:run",
+                                     kwlist, &wsgi_app, &silent)){
+        return NULL;
+    }
 
     if(listen_sock <= 0){
         PyErr_Format(PyExc_TypeError, "not found listen socket");
@@ -1346,8 +1351,8 @@ meinheld_run_loop(PyObject *self, PyObject *args)
        unlink(unix_sock_name);
        unix_sock_name = NULL;
     }
-
-    if(catch_signal){
+    
+    if(!silent &&  catch_signal){
         //override
         PyErr_Clear();
         PyErr_SetNone(PyExc_KeyboardInterrupt);
@@ -1790,7 +1795,7 @@ static PyMethodDef WsMethods[] = {
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
     {"set_watchdog", meinheld_set_watchdog, METH_VARARGS, "set watchdog"},
     {"set_fastwatchdog", meinheld_set_fastwatchdog, METH_VARARGS, "set watchdog"},
-    {"run", meinheld_run_loop, METH_VARARGS, "set wsgi app, run the main loop"},
+    {"run", (PyCFunction)meinheld_run_loop, METH_VARARGS | METH_KEYWORDS, "set wsgi app, run the main loop"},
     // greenlet and continuation
     {"_suspend_client", meinheld_suspend_client, METH_VARARGS, "resume client"},
     {"_resume_client", meinheld_resume_client, METH_VARARGS, "resume client"},
