@@ -175,7 +175,7 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port)
 }
 
 static void
-clean_cli(client_t *client)
+clean_client(client_t *client)
 {
     write_access_log(client, log_fd, log_path);
     if(client->req){
@@ -210,47 +210,47 @@ clean_cli(client_t *client)
 }
 
 static void
-close_conn(client_t *cli, picoev_loop* loop)
+close_client(client_t *client)
 {
     client_t *new_client = NULL;
     int ret;
 
-    if(!cli->response_closed){
-        close_response(cli);
+    if(!client->response_closed){
+        close_response(client);
     }
-    DEBUG("start close client:%p fd:%d status_code %d", cli, cli->fd, cli->status_code);
+    DEBUG("start close client:%p fd:%d status_code %d", client, client->fd, client->status_code);
 
-    if(picoev_is_active(loop, cli->fd)){
-        if(!picoev_del(main_loop, cli->fd)){
+    if(picoev_is_active(main_loop, client->fd)){
+        if(!picoev_del(main_loop, client->fd)){
             ioactivecnt--;
         }
-        DEBUG("picoev_del client:%p fd:%d", cli, cli->fd);
+        DEBUG("picoev_del client:%p fd:%d", client, client->fd);
     }
 
-    clean_cli(cli);
+    clean_client(client);
 
-    DEBUG("remain http pipeline size :%d", cli->request_queue->size);
-    if(cli->request_queue->size > 0){
-        if(check_status_code(cli) > 0){
+    DEBUG("remain http pipeline size :%d", client->request_queue->size);
+    if(client->request_queue->size > 0){
+        if(check_status_code(client) > 0){
             //process pipeline
-            prepare_call_wsgi(cli);
-            call_wsgi_handler(cli);
+            prepare_call_wsgi(client);
+            call_wsgi_handler(client);
         }
         return ;
     }
 
-    if(cli->http_parser != NULL){
-        PyMem_Free(cli->http_parser);
+    if(client->http_parser != NULL){
+        PyMem_Free(client->http_parser);
     }
 
-    free_request_queue(cli->request_queue);
-    if(!cli->keep_alive){
-        close(cli->fd);
-        BDEBUG("close client:%p fd:%d", cli, cli->fd);
+    free_request_queue(client->request_queue);
+    if(!client->keep_alive){
+        close(client->fd);
+        BDEBUG("close client:%p fd:%d", client, client->fd);
     }else{
-        BDEBUG("keep alive client:%p fd:%d", cli, cli->fd);
-        disable_cork(cli);
-        new_client = new_client_t(cli->fd, cli->remote_addr, cli->remote_port);
+        BDEBUG("keep alive client:%p fd:%d", client, client->fd);
+        disable_cork(client);
+        new_client = new_client_t(client->fd, client->remote_addr, client->remote_port);
         new_client->keep_alive = 1;
         init_parser(new_client, server_name, server_port);
         ret = picoev_add(main_loop, new_client->fd, PICOEV_READ, keep_alive_timeout, read_callback, (void *)new_client);
@@ -259,7 +259,7 @@ close_conn(client_t *cli, picoev_loop* loop)
         }
     }
     //clear old client
-    dealloc_client(cli);
+    dealloc_client(client);
 }
 
 static void
@@ -319,7 +319,7 @@ check_status_code(client_t *client)
         //shift
         set_current_request(client);
         send_error_page(client);
-        close_conn(client, main_loop);
+        close_client(client);
         return 0;
     }
     return 1;
@@ -418,14 +418,14 @@ app_handler(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
         write_error_log(__FILE__, __LINE__);
         send_error_page(client);
-        close_conn(client, main_loop);
+        close_client(client);
         Py_RETURN_NONE;
     }
     //Check wsgi_app error
     if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
         send_error_page(client);
-        close_conn(client, main_loop);
+        close_client(client);
         Py_RETURN_NONE;
     }
 
@@ -433,7 +433,7 @@ app_handler(PyObject *self, PyObject *args)
 
     if(client->response_closed){
         //closed
-        close_conn(client, main_loop);
+        close_client(client);
         Py_RETURN_NONE;
     }
     status = response_start(client);
@@ -455,14 +455,14 @@ app_handler(PyObject *self, PyObject *args)
         }
     }
     // send OK
-    close_conn(client, main_loop);
+    close_client(client);
 #else
     switch(status){
         case STATUS_ERROR:
             // Internal Server Error
             client->bad_request_code = 500;
             send_error_page(client);
-            close_conn(client, main_loop);
+            close_client(client);
             Py_RETURN_NONE;
         case STATUS_SUSPEND:
             // continue
@@ -475,7 +475,7 @@ app_handler(PyObject *self, PyObject *args)
             }
         default:
             // send OK
-            close_conn(client, main_loop);
+            close_client(client);
     }
 #endif
     Py_RETURN_NONE;
@@ -736,14 +736,14 @@ write_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 
         //timeout
         client->keep_alive = 0;
-        close_conn(client, loop);
+        close_client(client);
 
     } else if ((events & PICOEV_WRITE) != 0) {
         ret = process_body(client);
         DEBUG("process_body ret %d", ret);
         if(ret != 0){
             //ok or die
-            close_conn(client, loop);
+            close_client(client);
         }
     }
 }
@@ -761,7 +761,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             //Internal Server Error
             client->bad_request_code = 500;
             send_error_page(client);
-            close_conn(client, loop);
+            close_client(client, loop);
             return;
         case 0:
             // suspend
@@ -773,7 +773,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
 
     if(client->response_closed){
         //closed
-        close_conn(client, loop);
+        close_client(client, loop);
         return;
     }
 
@@ -783,7 +783,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             // Internal Server Error
             client->bad_request_code = 500;
             send_error_page(client);
-            close_conn(client, loop);
+            close_client(client, loop);
             return;
         case 0:
             // continue
@@ -795,7 +795,7 @@ resume_wsgi_app(ClientObject *pyclient, picoev_loop* loop)
             return;
         default:
             // send OK
-            close_conn(client, loop);
+            close_client(client, loop);
     }
 }
 */
@@ -813,7 +813,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
             //Internal Server Error
             client->bad_request_code = 500;
             send_error_page(client);
-            close_conn(client, loop);
+            close_client(client, loop);
             return;
         case 0:
             // suspend
@@ -823,7 +823,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
     }
     if(client->response_closed){
         //closed
-        close_conn(client, loop);
+        close_client(client, loop);
         return;
     }
     ret = response_start(client);
@@ -833,7 +833,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
             // Internal Server Error
             client->bad_request_code = 500;
             send_error_page(client);
-            close_conn(client, loop);
+            close_client(client, loop);
             return;
         case 0:
             // continue
@@ -845,7 +845,7 @@ call_wsgi_app(client_t *client, picoev_loop* loop)
             return;
         default:
             // send OK
-            close_conn(client, loop);
+            close_client(client, loop);
     }
 }
 */
@@ -871,7 +871,7 @@ check_http_expect(client_t *client)
                     client->keep_alive = 0;
                     client->status_code = 500;
                     send_error_page(client);
-                    close_conn(client, main_loop);
+                    close_client(client);
                     return -1;
                 }
             }else{
@@ -879,7 +879,7 @@ check_http_expect(client_t *client)
                 client->keep_alive = 0;
                 client->status_code = 417;
                 send_error_page(client);
-                close_conn(client, main_loop);
+                close_client(client);
                 return -1;
             }
         }
@@ -1016,7 +1016,7 @@ prepare_call_wsgi(client_t *client)
 static void
 read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
-    client_t *cli = ( client_t *)(cb_arg);
+    client_t *client = ( client_t *)(cb_arg);
     //PyObject *body = NULL;
     char *key = NULL;
     int finish = 0, nread;
@@ -1025,104 +1025,104 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 
         DEBUG("** read_callback timeout %d **", fd);
         //timeout
-        cli->keep_alive = 0;
-        if(cli->request_queue->size > 0){
+        client->keep_alive = 0;
+        if(client->request_queue->size > 0){
             //piplining
-            set_bad_request_code(cli, 408);
+            set_bad_request_code(client, 408);
             finish = 1;
         }else{
-            close_conn(cli, loop);
+            close_client(client);
         }
 
     } else if ((events & PICOEV_READ) != 0) {
         char buf[READ_BUF_SIZE];
         ssize_t r;
-        if(!cli->keep_alive){
-            picoev_set_timeout(loop, cli->fd, READ_TIMEOUT_SECS);
+        if(!client->keep_alive){
+            picoev_set_timeout(loop, client->fd, READ_TIMEOUT_SECS);
         }
         Py_BEGIN_ALLOW_THREADS
-        r = read(cli->fd, buf, sizeof(buf));
+        r = read(client->fd, buf, sizeof(buf));
         Py_END_ALLOW_THREADS
         switch (r) {
             case 0: 
-                cli->keep_alive = 0;
+                client->keep_alive = 0;
                 //503??
-                if(cli->request_queue->size > 0){
+                if(client->request_queue->size > 0){
                     //piplining
-                    set_bad_request_code(cli, 503);
+                    set_bad_request_code(client, 503);
                     finish = 1;
                 }else{
-                    cli->status_code = 503;
-                    send_error_page(cli);
-                    close_conn(cli, loop);
+                    client->status_code = 503;
+                    send_error_page(client);
+                    close_client(client);
                     return;
                 }
             case -1: /* error */
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
                     break;
                 } else { /* fatal error */
-                    if(cli->request_queue->size > 0){
+                    if(client->request_queue->size > 0){
                         //piplining
-                        set_bad_request_code(cli, 500);
+                        set_bad_request_code(client, 500);
                         if(errno != ECONNRESET){
                             PyErr_SetFromErrno(PyExc_IOError);
                             write_error_log(__FILE__, __LINE__); 
                         }
                         finish = 1;
                     }else{
-                        if(cli->keep_alive && errno == ECONNRESET){
-                            cli->keep_alive = 0;
-                            cli->status_code = 500;
-                            cli->header_done = 1;
-                            cli->response_closed = 1;
+                        if(client->keep_alive && errno == ECONNRESET){
+                            client->keep_alive = 0;
+                            client->status_code = 500;
+                            client->header_done = 1;
+                            client->response_closed = 1;
                         }else{
                             PyErr_SetFromErrno(PyExc_IOError);
                             write_error_log(__FILE__, __LINE__); 
-                            cli->keep_alive = 0;
-                            cli->status_code = 500;
+                            client->keep_alive = 0;
+                            client->status_code = 500;
                             if(errno != ECONNRESET){
-                                send_error_page(cli);
+                                send_error_page(client);
                             }else{
-                                cli->header_done = 1;
-                                cli->response_closed = 1;
+                                client->header_done = 1;
+                                client->response_closed = 1;
                             }
                         }
-                        close_conn(cli, loop);
+                        close_client(client);
                         return;
                     }
                 }
                 break;
             default:
-                BDEBUG("fd:%d \n%.*s", cli->fd, (int)r, buf);
-                nread = execute_parse(cli, buf, r);
-                BDEBUG("read request fd %d readed %d nread %d", cli->fd, (int)r, nread);
+                BDEBUG("fd:%d \n%.*s", client->fd, (int)r, buf);
+                nread = execute_parse(client, buf, r);
+                BDEBUG("read request fd %d readed %d nread %d", client->fd, (int)r, nread);
 
-                if(cli->bad_request_code > 0){
-                    DEBUG("fd %d bad_request code %d",cli->fd,  cli->bad_request_code);
-                    set_bad_request_code(cli, cli->bad_request_code);
+                if(client->bad_request_code > 0){
+                    DEBUG("fd %d bad_request code %d",client->fd,  client->bad_request_code);
+                    set_bad_request_code(client, client->bad_request_code);
                     ///force end
                     finish = 1;
                     break;
                 }
 
-                if(!cli->upgrade && nread != r){
+                if(!client->upgrade && nread != r){
                     // parse error
-                    DEBUG("fd:%d parse error bad_status_code=%d", cli->fd, cli->bad_request_code);
-                    set_bad_request_code(cli, 400);
+                    DEBUG("fd:%d parse error bad_status_code=%d", client->fd, client->bad_request_code);
+                    set_bad_request_code(client, 400);
                     ///force end
                     finish = 1;
                     break;
                 }
                 //DEBUG("parse ok, fd %d %d nread", cli->fd, nread);
 
-                if(parser_finish(cli) > 0){
-                    if(cli->upgrade){
+                if(parser_finish(client) > 0){
+                    if(client->upgrade){
                         //WebSocket Key
-                        DEBUG("upgrade websocket %d", cli->fd);
+                        DEBUG("upgrade websocket %d", client->fd);
                         key = buf + nread + 1;
                         buffer *b = new_buffer(r - nread -1, r - nread -1);
                         if(write2buf(b, key, r - nread -1) == WRITE_OK){
-                            cli->request_queue->tail->body = b;
+                            client->request_queue->tail->body = b;
                         }else{
                             free_buffer(b);
                         }
@@ -1133,13 +1133,13 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }
     }
     if(finish == 1){
-        if(!picoev_del(main_loop, cli->fd)){
+        if(!picoev_del(main_loop, client->fd)){
             ioactivecnt--;
         }
-        if(check_status_code(cli) > 0){
+        if(check_status_code(client) > 0){
             //current request ok
-            prepare_call_wsgi(cli);
-            call_wsgi_handler(cli);
+            prepare_call_wsgi(client);
+            call_wsgi_handler(client);
         }
         return;
     }
