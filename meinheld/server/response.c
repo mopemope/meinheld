@@ -176,6 +176,8 @@ static void
 free_write_bucket(write_bucket *bucket)
 {
     GDEBUG("free %p", bucket);
+    Py_CLEAR(bucket->temp1);
+    Py_CLEAR(bucket->temp2);
     PyMem_Free(bucket->iov);
     PyMem_Free(bucket);
 }
@@ -243,7 +245,7 @@ writev_bucket(write_bucket *data)
     BDEBUG("\nwritev_bucket fd:%d", data->fd);
     printf("\x1B[34m");
     writev_log(data);
-    printf("\x1B[0m");
+    printf("\x1B[0m\n");
 #endif
     w = writev(data->fd, data->iov, data->iov_cnt);
     BDEBUG("writev fd:%d ret:%d total_size:%d", data->fd, (int)w, data->total);
@@ -275,8 +277,8 @@ writev_bucket(write_bucket *data)
                     break;
                 }
             }
-            data->total = data->total -w;
-            BDEBUG("writev_bucket write %d progeress %d/%d", (int)w, data->total, data->total_size);
+            data->total = data->total - w;
+            BDEBUG("writev_bucket write %d progress %d/%d", (int)w, data->total, data->total_size);
             //resume
             // again later
             return writev_bucket(data);
@@ -326,7 +328,7 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
 */
 
 static int
-add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, PyObject *templist, client_t *client)
+add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t *client)
 {
     int i;
     PyObject *tuple = NULL;
@@ -411,9 +413,15 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, PyObject
             add_header(bucket, name, namelen, value, valuelen);
 #ifdef PY3
             //keep bytes string 
-            //TODO ERROR CHECK
-            int o = PyList_Append(templist, bytes1);
-            o = PyList_Append(templist, bytes2);
+            int o = PyList_Append(bucket->temp1, bytes1);
+            if(o != -1){
+                o = PyList_Append(bucket->temp1, bytes2);
+                if(o == -1){
+                    goto error;
+                }
+            }else{
+                goto error;
+            }
 #endif
             Py_XDECREF(bytes1);
             Py_XDECREF(bytes2);
@@ -457,6 +465,37 @@ add_status_line(write_bucket *bucket, client_t *client)
     return 1;
 }
 
+static PyObject*
+get_chunk_data(size_t datalen)
+{
+    char lendata[32];
+    int i = 0;
+    i = snprintf(lendata, 32, "%zx", datalen);
+    DEBUG("Transfer-Encoding chunk_size %s", lendata);
+    return PyBytes_FromStringAndSize(lendata, (Py_ssize_t)i);
+}
+
+
+static void
+set_first_body_data(client_t *client, char *data, size_t datalen)
+{
+    write_bucket *bucket = client->bucket;
+    if(data){
+        if(client->chunked_response){
+            char *lendata  = NULL;
+            Py_ssize_t len = 0;
+
+            PyObject *chunk_data = get_chunk_data(datalen);
+            //TODO CHECK ERROR
+            PyBytes_AsStringAndSize(chunk_data, &lendata, &len);
+            set_chunked_data(bucket, lendata, len, data, datalen);
+            bucket->temp2 = chunk_data;
+        }else{
+            set2bucket(bucket, data, datalen);
+        }
+    }
+}
+
 static response_status
 write_headers(client_t *client, char *data, size_t datalen)
 {
@@ -473,18 +512,20 @@ write_headers(client_t *client, char *data, size_t datalen)
     //TODO ERROR CHECK
     headers = PySequence_Fast(client->headers, "header must be list");
     hlen = PySequence_Fast_GET_SIZE(headers);
-    templist = PyList_New(hlen);
 
-    bucket = new_write_bucket(client->fd, (hlen * 4) + 40 );
+    bucket = new_write_bucket(client->fd, (hlen * 4) + 42 );
 
     if(bucket == NULL){
         goto error;
     }
+    templist = PyList_New(hlen * 4);
+    bucket->temp1 = templist;
+
     if(add_status_line(bucket, client) == -1){
         goto error;
     }
     //write header
-    if(add_all_headers(bucket, headers, hlen, templist, client) == -1){
+    if(add_all_headers(bucket, headers, hlen, client) == -1){
         //Error
         goto error;
     }
@@ -505,18 +546,9 @@ write_headers(client_t *client, char *data, size_t datalen)
     set2bucket(bucket, CRLF, 2);
 
     //write body
-    if(data){
-        if(client->chunked_response){
-            char lendata[32];
-            int i = 0;
-            i = snprintf(lendata, 32, "%zx", datalen);
-            DEBUG("Transfer-Encoding chunk_size %s", lendata);
-            set_chunked_data(bucket, lendata, i, data, datalen);
-        }else{
-            set2bucket(bucket, data, datalen);
-        }
-    }
     client->bucket = bucket;
+    set_first_body_data(client, data, datalen);
+
     ret = writev_bucket(bucket);
     if(ret != STATUS_SUSPEND){
         client->header_done = 1;
@@ -529,14 +561,12 @@ write_headers(client_t *client, char *data, size_t datalen)
     }
 
     Py_DECREF(headers);
-    Py_DECREF(templist);
     return ret;
 error:
     if (PyErr_Occurred()){
         write_error_log(__FILE__, __LINE__);
     }
     Py_XDECREF(headers);
-    Py_XDECREF(templist);
     if(bucket){
         free_write_bucket(bucket);
         client->bucket = NULL;
@@ -684,6 +714,7 @@ process_write(client_t *client)
     if(iterator != NULL){
         while((item =  PyIter_Next(iterator))){
             if(PyBytes_Check(item)){
+                //TODO CHECK
                 PyBytes_AsStringAndSize(item, &buf, &buflen);
                 //write
                 if(client->chunked_response){
@@ -693,11 +724,14 @@ process_write(client_t *client)
                         Py_DECREF(item);
                         return STATUS_ERROR;
                     }
-                    char lendata[32];
-                    int i = 0;
-                    i = snprintf(lendata, 32, "%zx", buflen);
-                    DEBUG("Transfer-Encoding chunk_size %s", lendata);
-                    set_chunked_data(bucket, lendata, i, buf, buflen);
+                    char *lendata  = NULL;
+                    Py_ssize_t len = 0;
+
+                    PyObject *chunk_data = get_chunk_data(buflen);
+                    //TODO CHECK ERROR
+                    PyBytes_AsStringAndSize(chunk_data, &lendata, &len);
+                    set_chunked_data(bucket, lendata, len, buf, buflen);
+                    bucket->temp2 = chunk_data;
                 }else{
                     bucket = new_write_bucket(client->fd, 1);
                     if(bucket == NULL){
@@ -707,10 +741,11 @@ process_write(client_t *client)
                     }
                     set2bucket(bucket, buf, buflen);
                 }
+                bucket->temp1 = item;
                 ret = writev_bucket(bucket);
                 if(ret != STATUS_OK){
                     client->bucket = bucket;
-                    Py_DECREF(item);
+                    /* Py_DECREF(item); */
                     return ret;
                 }
 
@@ -721,10 +756,11 @@ process_write(client_t *client)
                 if(client->content_length_set){
                     if(client->content_length <= client->write_bytes){
                         // all done
-                        Py_DECREF(item);
+                        /* Py_DECREF(item); */
                         break;
                     }
                 }
+                /* Py_DECREF(item); */
             }else{
                 PyErr_SetString(PyExc_TypeError, "response item must be a byte string");
                 Py_DECREF(item);
@@ -734,7 +770,6 @@ process_write(client_t *client)
                     return STATUS_ERROR;
                 }
             }
-            Py_DECREF(item);
         }
 
         if(client->chunked_response){
@@ -765,14 +800,17 @@ process_body(client_t *client)
         //retry send
         ret = writev_bucket(bucket);
 
-        if(ret != 0){
+        if(ret == STATUS_OK){
             client->write_bytes += bucket->total_size;
-            //free
             free_write_bucket(bucket);
             client->bucket = NULL;
+        }else if(ret == STATUS_ERROR){
+            free_write_bucket(bucket);
+            client->bucket = NULL;
+            return ret;
         }else{
             //
-            return STATUS_SUSPEND;
+            return ret;
         }
     }
 
