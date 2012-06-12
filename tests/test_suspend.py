@@ -40,7 +40,7 @@ class ResumeApp(object):
             c = environ[CONTINUATION_KEY]
             self.waiter = c
             self.suspend = False
-            c.suspend(5)
+            c.suspend(3)
             return [b"RESUMED"]
         else:
             self.waiter.resume()
@@ -96,7 +96,7 @@ class ManyResumeApp(object):
         else:
             c = environ[CONTINUATION_KEY]
             self.waiters.append(c)
-            c.suspend(5)
+            c.suspend(3)
 
         return [path.encode()]
 
@@ -209,6 +209,6 @@ def test_many_resume():
         results.append(res.content)
     results = sorted(results)
     s.shutdown()
-    print(results)
+    # print(results)
     assert(results == [b'/0', b'/1', b'/2', b'/3', b'/4', b'/5', b'/6', b'/7', b'/8', b'/9', b'/wakeup'])
 

@@ -3,7 +3,8 @@
 from util import *
 import requests
 
-RESPONSE = b"Hello world!"
+ASSERT_RESPONSE = b"Hello world!"
+RESPONSE = [b"Hello ", b"world!"]
 
 class App(object):
 
@@ -13,7 +14,7 @@ class App(object):
         start_response(status, response_headers)
         self.environ = environ.copy()
         print(environ)
-        return [RESPONSE]
+        return RESPONSE
 
 
 class ErrApp(object):
@@ -25,7 +26,7 @@ class ErrApp(object):
         self.environ = environ.copy()
         print(environ)
         environ["XXXX"]
-        return [RESPONSE]
+        return SIMPLE_RESPONSE
 
 class IterErrApp(object):
 
@@ -44,7 +45,7 @@ def test_check_key():
         return requests.get("http://localhost:8000/foo/bar")
     
     env, res = run_client(client, App)
-    assert(res.content == RESPONSE)
+    assert(res.content == ASSERT_RESPONSE)
     assert(env.get("REQUEST_METHOD") == "GET")
     assert(env.get("SCRIPT_NAME") == "")
     assert(env.get("PATH_INFO") == "/foo/bar")
@@ -63,7 +64,7 @@ def test_simple():
     
     env, res = run_client(client, App)
     # print(res.content)
-    assert(res.content == RESPONSE)
+    assert(res.content == ASSERT_RESPONSE)
     assert(env.get("PATH_INFO") == "/")
     assert(env.get("QUERY_STRING") == None)
 
@@ -73,7 +74,7 @@ def test_encode():
         return requests.get("http://localhost:8000/あいう")
     
     env, res = run_client(client, App)
-    assert(res.content == RESPONSE)
+    assert(res.content == ASSERT_RESPONSE)
     assert(env.get("PATH_INFO") == "/あいう")
     assert(env.get("QUERY_STRING") == None)
 
@@ -84,7 +85,7 @@ def test_query():
         return requests.get("http://localhost:8000/ABCDEF?a=1234&bbbb=ccc")
     
     env, res = run_client(client, App)
-    assert(RESPONSE == res.content)
+    assert(res.content == ASSERT_RESPONSE)
     assert(env.get("PATH_INFO") == "/ABCDEF")
     assert(env.get("QUERY_STRING") == "a=1234&bbbb=ccc")
 
@@ -95,7 +96,7 @@ def test_chunk_response():
     
     env, res = run_client(client, App)
     headers = res.headers
-    assert(res.content == RESPONSE)
+    assert(res.content == ASSERT_RESPONSE)
     assert(headers["transfer-encoding"] == "chunked")
     assert(headers["connection"] == "close")
 
