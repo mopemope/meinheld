@@ -5,7 +5,7 @@ from meinheld.middleware import ContinuationMiddleware, CONTINUATION_KEY
 
 RESPONSE = b"Hello world!"
 
-class App(object):
+class App(BaseApp):
 
     def __call__(self, environ, start_response):
         status = '200 OK'
@@ -15,7 +15,7 @@ class App(object):
         print(environ)
         return [RESPONSE]
 
-class SuspendApp(object):
+class SuspendApp(BaseApp):
 
     def __call__(self, environ, start_response):
         status = '200 OK'
@@ -27,7 +27,7 @@ class SuspendApp(object):
         c.suspend(1)
         return [RESPONSE]
 
-class ResumeApp(object):
+class ResumeApp(BaseApp):
     waiter = True
     suspend = True
     def __call__(self, environ, start_response):
@@ -47,7 +47,7 @@ class ResumeApp(object):
 
         return [RESPONSE]
 
-class DoubleSuspendApp(object):
+class DoubleSuspendApp(BaseApp):
     waiter = True
     suspend = True
     def __call__(self, environ, start_response):
@@ -68,7 +68,7 @@ class DoubleSuspendApp(object):
 
         return [RESPONSE]
 
-class IllicalResumeApp(object):
+class IlligalResumeApp(BaseApp):
     def __call__(self, environ, start_response):
         status = '200 OK'
         response_headers = [('Content-type','text/plain')]
@@ -80,7 +80,7 @@ class IllicalResumeApp(object):
 
         return [RESPONSE]
 
-class ManyResumeApp(object):
+class ManyResumeApp(BaseApp):
     waiters = []
     environ = dict() 
     def __call__(self, environ, start_response):
@@ -179,7 +179,7 @@ def test_illigal_resume():
     def client():
         return requests.get("http://localhost:8000/")
     
-    env, res = run_client(client, IllicalResumeApp, ContinuationMiddleware)
+    env, res = run_client(client, IlligalResumeApp, ContinuationMiddleware)
     assert(res.status_code == 500)
     assert(env.get(CONTINUATION_KEY))
 

@@ -62,6 +62,7 @@ class ClientRunner(threading.Thread):
         r = self.func()
         self.receive_data = r
         self.environ = self.app.environ
+        
 
     def get_result(self):
         self.join()
@@ -79,5 +80,7 @@ def run_client(client=None, app=None, middleware=None):
     s.shutdown()
     return r.environ, r.receive_data
 
+class BaseApp(object):
 
+    environ = None
 

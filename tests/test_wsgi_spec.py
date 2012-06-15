@@ -6,7 +6,9 @@ import requests
 ASSERT_RESPONSE = b"Hello world!"
 RESPONSE = [b"Hello ", b"world!"]
 
-class App(object):
+class App(BaseApp):
+
+    environ = None
 
     def __call__(self, environ, start_response):
         status = '200 OK'
@@ -17,7 +19,7 @@ class App(object):
         return RESPONSE
 
 
-class ErrApp(object):
+class ErrApp(BaseApp):
 
     def __call__(self, environ, start_response):
         status = '200 OK'
@@ -28,7 +30,7 @@ class ErrApp(object):
         environ["XXXX"]
         return SIMPLE_RESPONSE
 
-class IterErrApp(object):
+class IterErrApp(BaseApp):
 
     def __call__(self, environ, start_response):
         status = '200 OK'
