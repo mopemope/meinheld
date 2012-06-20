@@ -2,6 +2,8 @@
 #define MEINHELD_H
 
 #include <Python.h>
+#include <structmember.h>
+
 #include <assert.h>
 #include <fcntl.h>
 #include <stddef.h>
@@ -30,33 +32,34 @@
 #include "http_parser.h"
 
 #define SERVER "meinheld/0.5dev"
+#define MODULE_NAME "meinheld.server"
 
 #ifdef DEVELOP
 #define DEBUG(...) \
     do { \
         /*printf("DEBUG: ");*/ \
-        printf("%-40s %-22s%4u: ", __FILE__, __func__, __LINE__); \
+        printf("%-40s %-26s%4u: ", __FILE__, __func__, __LINE__); \
         printf(__VA_ARGS__); \
         printf("\n"); \
     } while(0)
 #define RDEBUG(...) \
     do { \
         /*printf("%-22s%4u: ", __FILE__, __LINE__);*/ \
-        printf("\x1B[31m%-40s %-22s%4u: ", __FILE__, __func__, __LINE__); \
+        printf("\x1B[31m%-40s %-26s%4u: ", __FILE__, __func__, __LINE__); \
         printf(__VA_ARGS__); \
         printf("\x1B[0m\n"); \
     } while(0)
 #define GDEBUG(...) \
     do { \
         /*printf("%-22s%4u: ", __FILE__, __LINE__);*/ \
-        printf("\x1B[32m%-40s %-22s%4u: ", __FILE__, __func__, __LINE__); \
+        printf("\x1B[32m%-40s %-26s%4u: ", __FILE__, __func__, __LINE__); \
         printf(__VA_ARGS__); \
         printf("\x1B[0m\n"); \
     } while(0)
 #define BDEBUG(...) \
     do { \
         /*printf("%-22s%4u: ", __FILE__, __LINE__);*/ \
-        printf("\x1B[34m%-40s %-22s%4u: ", __FILE__, __func__, __LINE__); \
+        printf("\x1B[34m%-40s %-26s%4u: ", __FILE__, __func__, __LINE__); \
         printf(__VA_ARGS__); \
         printf("\x1B[0m\n"); \
     } while(0)

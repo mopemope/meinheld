@@ -73,6 +73,7 @@ __imports__ = ['error',
                'RAND_status',
                ]
 
+patched = True
 
 import sys
 import time
@@ -408,7 +409,8 @@ def internal_shutdown(s, how):
 
 if is_py3():
     class socket(object):
-
+        
+        patched = True
         #__slots__ = ["__weakref__", "_io_refs", "_closed", "_sock", "timeout"]
         
         def __init__(self, family=AF_INET, type=SOCK_STREAM, proto=0, fileno=None):
@@ -487,6 +489,8 @@ if is_py3():
         del _m, _s
 else:
     class socket(object):
+        
+        patched = True
 
         def __init__(self, family=AF_INET, type=SOCK_STREAM, proto=0, _sock=None):
             if _sock is None:

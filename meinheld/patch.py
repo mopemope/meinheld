@@ -26,6 +26,7 @@ def patch_socket(aggressive=True):
     """
     from meinheld import socket
     _socket = __import__('socket')
+    _socket.patched = True
     _socket.socket = socket.socket
     _socket.SocketType = socket.SocketType
     if hasattr(socket, 'socketpair'):

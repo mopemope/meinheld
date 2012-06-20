@@ -66,6 +66,7 @@ picoev_loop* picoev_create_loop(int max_timeout)
     return NULL;
   }
   
+  loop->loop.now = time(NULL);
   return &loop->loop;
 }
 
