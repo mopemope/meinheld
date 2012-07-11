@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from util import *
+from base import *
 import requests
 
 ASSERT_RESPONSE = b"Hello world!"

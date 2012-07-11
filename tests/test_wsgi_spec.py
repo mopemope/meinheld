@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from util import *
+from base import *
 import requests
 
 ASSERT_RESPONSE = b"Hello world!"
@@ -117,4 +117,3 @@ def test_iter_err():
     
     env, res = run_client(client, IterErrApp)
     assert(res.status_code == 500)
-

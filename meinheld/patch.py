@@ -19,10 +19,8 @@ def patch_werkzeug():
     except ImportError:
         pass
 
-def patch_socket(aggressive=True):
+def patch_socket(aggressive=False):
     """Replace the standard socket object with meinheld's cooperative sockets.
-    
-    If *dns* is true, also patch dns functions in :mod:`socket`.
     """
     from meinheld import socket
     _socket = __import__('socket')
@@ -64,7 +62,7 @@ def patch_all(werkzeug=True, socket=True, ssl=True, aggressive=True):
         patch_werkzeug()
     if socket:
         patch_socket(aggressive=aggressive)
-    if ssl:
-        patch_ssl()
+    # if ssl:
+        # patch_ssl()
 
 
