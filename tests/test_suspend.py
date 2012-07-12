@@ -96,7 +96,7 @@ class ManyResumeApp(BaseApp):
         else:
             c = environ[CONTINUATION_KEY]
             self.waiters.append(c)
-            c.suspend(3)
+            c.suspend(10)
 
         return [path.encode()]
 
@@ -122,8 +122,8 @@ def test_suspend():
     assert(res.status_code == 500)
     assert(env.get(CONTINUATION_KEY))
 
-"""
 def test_resume():
+
     def client1():
         return requests.get("http://localhost:8000/1")
     def client2():
@@ -131,16 +131,14 @@ def test_resume():
     
     application = ResumeApp()
     s = ServerRunner(application, ContinuationMiddleware)
-    s.start()
-    r1 = ClientRunner(application, client1)
-    r1.start()
-    time.sleep(1)
-    r2 = ClientRunner(application, client2)
-    r2.start()
+    r1 = ClientRunner(application, client1, False)
+    r2 = ClientRunner(application, client2, False)
+    r1.run()
+    r2.run()
+    s.run(shutdown=True)
 
     env1, res1 = r1.get_result()
     env2, res2 = r2.get_result()
-    s.shutdown()
     assert(res1.status_code == 200)
     assert(res2.status_code == 200)
     assert(res1.content == b"RESUMED")
@@ -154,20 +152,18 @@ def test_double_suspend():
     
     application = DoubleSuspendApp()
     s = ServerRunner(application, ContinuationMiddleware)
-    s.start()
-    r1 = ClientRunner(application, client)
-    r1.start()
-    r2 = ClientRunner(application, client)
-    r2.start()
+    r1 = ClientRunner(application, client, False)
+    r2 = ClientRunner(application, client, False)
+    r1.run()
+    r2.run()
+    s.run(shutdown=True)
 
     env1, res1 = r1.get_result()
     env2, res2 = r2.get_result()
-    s.shutdown()
     assert(res1.status_code == 500)
     assert(res2.status_code == 500)
     assert(env1.get(CONTINUATION_KEY))
     assert(env2.get(CONTINUATION_KEY))
-"""
 
 def test_illigal_resume():
     def client():
@@ -187,24 +183,26 @@ def test_many_resume():
 
     application = ManyResumeApp()
     s = ServerRunner(application, ContinuationMiddleware)
-    s.start()
     runners = []
     for i in range(10):
-        r = ClientRunner(application, mk_client(i))
-        r.start()
+        r = ClientRunner(application, mk_client(i), False)
+        r.run()
         runners.append(r)
-    time.sleep(1)
-    r = ClientRunner(application, mk_client("wakeup"))
-    r.start()
-    runners.append(r)
-    time.sleep(1)
+
+    def _wakeup():
+        r = ClientRunner(application, mk_client("wakeup"))
+        r.run()
+        runners.append(r)
+    
+    server.schedule_call(3, _wakeup)
+    s.run()
     results = []
     for r in runners:
         env, res = r.get_result()
         results.append(res.content)
     results = sorted(results)
-    s.shutdown()
-    # print(results)
+    print(results)
     assert(results == [b'/0', b'/1', b'/2', b'/3', b'/4', b'/5', b'/6', b'/7', b'/8', b'/9', b'/wakeup'])
-"""
 
+test_many_resume()
+"""

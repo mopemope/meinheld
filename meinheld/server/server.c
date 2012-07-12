@@ -289,6 +289,9 @@ kill_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static inline void
 kill_server(int timeout)
 {
+    if(main_loop == NULL){
+        return;
+    }
     //stop accepting
     if(!picoev_del(main_loop, listen_sock)){
         activecnt--;
@@ -1578,13 +1581,14 @@ meinheld_stop(PyObject *self, PyObject *args, PyObject *kwds)
     Py_RETURN_NONE;
 }
 
+/*
 static PyObject *
 meinheld_shutdown(PyObject *self, PyObject *args)
 {
     call_shutdown = 1;
     kill_server(0);
     Py_RETURN_NONE;
-}
+}*/
 
 static inline int
 fire_timer(void)
@@ -1678,7 +1682,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
                 Py_XDECREF(watchdog_result);
             }
         }
-        /* DEBUG("after activecnt:%d", activecnt); */
+        DEBUG("after activecnt:%d", activecnt);
     }
 
     Py_DECREF(wsgi_app);
@@ -2266,7 +2270,7 @@ static PyMethodDef ServerMethods[] = {
 
     /* {"set_process_name", meinheld_set_process_name, METH_VARARGS, "set process name"}, */
     {"stop", (PyCFunction)meinheld_stop, METH_VARARGS|METH_KEYWORDS, "stop main loop"},
-    {"shutdown", meinheld_shutdown, METH_NOARGS, "stop and close listen socket "},
+    {"shutdown", (PyCFunction)meinheld_stop, METH_VARARGS|METH_KEYWORDS, "stop main loop "},
 
     {"schedule_call", (PyCFunction)meinheld_schedule_call, METH_VARARGS|METH_KEYWORDS, ""},
     {"spawn", (PyCFunction)meinheld_spawn, METH_VARARGS|METH_KEYWORDS, ""},

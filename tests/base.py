@@ -30,27 +30,26 @@ class ServerRunner(object):
         self.middleware = middleware
         self.running = False
 
-    def run(self):
+    def run(self, shutdown=False):
         if self.running:
             return
 
         server.listen(("0.0.0.0", 8000))
         self.running = True
+        if shutdown:
+            server.schedule_call(1, server.shutdown, 5)
         if self.middleware:
             server.run(self.middleware(self.app))
         else:
             server.run(self.app)
 
-    def shutdown(self):
-        server.shutdown()
-        self.running = False
-
 class ClientRunner(object):
 
 
-    def __init__(self, app, func):
+    def __init__(self, app, func, shutdown=True):
         self.func = func
         self.app = app
+        self.shutdown = shutdown
 
     def run(self):
 
@@ -58,7 +57,8 @@ class ClientRunner(object):
             r = self.func()
             self.receive_data = r
             self.environ = self.app.environ
-            server.shutdown()
+            if self.shutdown:
+                server.shutdown(2)
 
         server.spawn(_call)
 
