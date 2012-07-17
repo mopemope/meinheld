@@ -194,8 +194,8 @@ clean_client(client_t *client)
 
     DEBUG("status_code:%d env:%p", client->status_code, client->environ);
     if(client->environ){ 
-        PyDict_Clear(client->environ);
-        DEBUG("CLEAR environ");
+        /* PyDict_Clear(client->environ); */
+        /* DEBUG("CLEAR environ"); */
         Py_CLEAR(client->environ);
     }
     if(client->body){
