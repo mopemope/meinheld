@@ -88,16 +88,18 @@ class ManyResumeApp(BaseApp):
         response_headers = [('Content-type','text/plain')]
         start_response(status, response_headers)
         self.environ = environ.copy()
-        print(environ)
         path = environ.get("PATH_INFO")
+        print(path)
         if path == "/wakeup":
             for waiter in self.waiters:
+                print(waiter)
                 waiter.resume()
         else:
             c = environ[CONTINUATION_KEY]
             self.waiters.append(c)
             c.suspend(10)
 
+        print(environ)
         return [path.encode()]
 
 def test_middleware():
@@ -173,6 +175,7 @@ def test_illigal_resume():
     assert(res.status_code == 500)
     assert(env.get(CONTINUATION_KEY))
 
+
 """
 def test_many_resume():
     
@@ -190,11 +193,11 @@ def test_many_resume():
         runners.append(r)
 
     def _wakeup():
-        r = ClientRunner(application, mk_client("wakeup"))
+        r = ClientRunner(application, mk_client("wakeup"), False)
         r.run()
         runners.append(r)
-    
-    server.schedule_call(3, _wakeup)
+
+    server.schedule_call(1, _wakeup)
     s.run()
     results = []
     for r in runners:

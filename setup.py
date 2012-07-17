@@ -11,7 +11,7 @@ import platform
 import fnmatch
 
 
-develop = True
+develop = False
 
 def read(name):
     return open(os.path.join(os.path.dirname(__file__), name)).read()

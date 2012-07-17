@@ -654,13 +654,13 @@ size_t http_parser_execute (http_parser *parser,
     break;
   }
 
-  for (p=data; p != data + len; p++) {
+  for (p=data; likely(p != data + len); p++) {
     ch = *p;
 
     if (likely(PARSING_HEADER(parser->state))) {
       ++parser->nread;
       /* Buffer overflow attack */
-      if (parser->nread > HTTP_MAX_HEADER_SIZE) {
+      if (unlikely(parser->nread > HTTP_MAX_HEADER_SIZE)) {
         SET_ERRNO(HPE_HEADER_OVERFLOW);
         goto error;
       }

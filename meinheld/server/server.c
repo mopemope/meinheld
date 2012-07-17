@@ -1607,10 +1607,11 @@ fire_timer(void)
             if(!timer->called){
                 DEBUG("call timer:%p", timer);
                 res = PyObject_Call(timer->callback, timer->args, timer->kwargs);
+                timer->called = 1;
                 Py_XDECREF(res);
             }
-
             timer = heappop(q);
+
             Py_DECREF(timer);
             activecnt--;
             DEBUG("activecnt:%d", activecnt);
@@ -1622,6 +1623,7 @@ fire_timer(void)
                 ret = -1;
                 break;
             }
+            /* timer = q->heap[0]; */
         }else{
             break;
         }

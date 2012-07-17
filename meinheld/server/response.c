@@ -961,6 +961,37 @@ ResponseObject_dealloc(ResponseObject* self)
 }
 
 
+static PyObject*
+create_status(PyObject *bytes, int bytelen, int http_minor)
+{
+    buffer_result r;
+    buffer *b = new_buffer(256, 0);
+    if(b == NULL){
+        return NULL;
+    }
+    
+    if(http_minor == 1){
+        r = write2buf(b, "HTTP/1.1 ", 9); 
+    }else{
+        r = write2buf(b, "HTTP/1.0 ", 9); 
+    }
+    if(r != WRITE_OK){
+        goto error;
+    }
+    r = write2buf(b, PyBytes_AS_STRING(bytes), bytelen);
+    if(r != WRITE_OK){
+        goto error;
+    }
+    r = write2buf(b, "\r\n", 2);
+    if(r != WRITE_OK){
+        goto error;
+    }
+    return getPyString(b);
+error:
+    free_buffer(b);
+    return NULL;
+}
+
 static PyObject *
 ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 {
@@ -1044,11 +1075,12 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 
     Py_XDECREF(self->cli->http_status);
 
-    if(self->cli->http_parser->http_minor == 1){
-        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.1 %s\r\n", PyBytes_AS_STRING(bytes));
-    }else{
-        self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(bytes));
-    }
+    self->cli->http_status = create_status(bytes, bytelen, self->cli->http_parser->http_minor);
+    /* if(self->cli->http_parser->http_minor == 1){ */
+        /* self->cli->http_status =  PyBytes_FromFormat("HTTP/1.1 %s\r\n", PyBytes_AS_STRING(bytes)); */
+    /* }else{ */
+        /* self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(bytes)); */
+    /* } */
 
     /* DEBUG("set http_status %p", self->cli); */
     Py_XDECREF(bytes);
