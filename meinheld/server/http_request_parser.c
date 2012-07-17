@@ -376,7 +376,7 @@ write_body2file(client_t *client, const char *buffer, size_t buffer_len)
 static int
 write_body2mem(client_t *client, const char *buf, size_t buf_len)
 {
-    buffer *body = (buffer *)client->body;
+    buffer_t *body = (buffer_t*)client->body;
     write2buf(body, buf, buf_len);
 
     client->body_readed += buf_len;

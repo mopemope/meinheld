@@ -988,10 +988,10 @@ set_input_object(client_t *client)
 {
     PyObject *input = NULL;
     if(client->body_type == BODY_TYPE_BUFFER){
-        input = InputObject_New((buffer *)client->body);
+        input = InputObject_New((buffer_t*)client->body);
     }else{
         if(client->body){
-            input = InputObject_New((buffer *)client->body);
+            input = InputObject_New((buffer_t*)client->body);
         }else{
             input = InputObject_New(new_buffer(0, 0));
         }
@@ -1171,7 +1171,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                         //WebSocket Key
                         DEBUG("upgrade websocket %d", client->fd);
                         key = buf + nread + 1;
-                        buffer *b = new_buffer(r - nread -1, r - nread -1);
+                        buffer_t *b = new_buffer(r - nread -1, r - nread -1);
                         if(write2buf(b, key, r - nread -1) == WRITE_OK){
                             client->request_queue->tail->body = b;
                         }else{

@@ -14,17 +14,17 @@ typedef struct _buffer {
     size_t buf_size;
     size_t len;
     size_t limit;
-} buffer;
+} buffer_t;
 
-buffer* new_buffer(size_t buf_size, size_t limit);
+buffer_t* new_buffer(size_t buf_size, size_t limit);
 
-buffer_result write2buf(buffer *buf, const char *c, size_t  l);
+buffer_result write2buf(buffer_t *buf, const char *c, size_t  l);
 
-void free_buffer(buffer *buf);
+void free_buffer(buffer_t *buf);
 
-PyObject* getPyString(buffer *buf);
+PyObject* getPyString(buffer_t *buf);
 
-char* getString(buffer *buf);
+char* getString(buffer_t *buf);
 
 void buffer_list_fill(void);
 

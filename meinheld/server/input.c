@@ -66,7 +66,7 @@ Check_InputObject(PyObject *obj)
 }
 
 PyObject*
-InputObject_New(buffer *buf)
+InputObject_New(buffer_t *buf)
 {
     InputObject *io;
     io = alloc_InputObject();

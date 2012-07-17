@@ -965,7 +965,7 @@ static PyObject*
 create_status(PyObject *bytes, int bytelen, int http_minor)
 {
     buffer_result r;
-    buffer *b = new_buffer(256, 0);
+    buffer_t *b = new_buffer(256, 0);
     if(b == NULL){
         return NULL;
     }

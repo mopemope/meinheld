@@ -8,7 +8,7 @@
 
 typedef struct {
     PyObject_HEAD
-    buffer *buffer;
+    buffer_t *buffer;
     Py_ssize_t pos;
 } InputObject;
 
@@ -18,6 +18,6 @@ void InputObject_list_fill(void);
 
 void InputObject_list_clear(void);
 
-PyObject* InputObject_New(buffer *buf);
+PyObject* InputObject_New(buffer_t *buf);
 
 #endif

@@ -25,7 +25,7 @@ typedef enum {
 } field_type;
 
 typedef struct {
-    buffer *path;
+    buffer_t *path;
     uint32_t num_headers;
     field_type last_header_element;
 
