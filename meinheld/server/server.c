@@ -1604,13 +1604,13 @@ fire_timer(void)
         timer = q->heap[0];
         if(timer->seconds <= now){
             //call
+            timer = heappop(q);
             if(!timer->called){
                 DEBUG("call timer:%p", timer);
                 res = PyObject_Call(timer->callback, timer->args, timer->kwargs);
                 timer->called = 1;
                 Py_XDECREF(res);
             }
-            timer = heappop(q);
 
             Py_DECREF(timer);
             activecnt--;
