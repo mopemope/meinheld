@@ -2097,8 +2097,9 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     }*/
    
-    if(current_client != NULL){
-        pyclient = (ClientObject *) current_client;
+    current = greenlet_getcurrent();
+    pyclient = (ClientObject *) current_client;
+    if(pyclient != NULL && pyclient->greenlet == current){
 
         active = picoev_is_active(main_loop, fd);
         ret = picoev_add(main_loop, fd, event, timeout, trampoline_callback, (void *)pyclient);
@@ -2115,7 +2116,6 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
         return greenlet_switch(parent, hub_switch_value, NULL);
     }else{
         DEBUG("call from greenlet");
-        current = greenlet_getcurrent();
         parent = greenlet_getparent(current);
         if(parent == NULL){
             PyErr_SetString(PyExc_IOError, "call from same greenlet");

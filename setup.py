@@ -12,6 +12,7 @@ import fnmatch
 
 
 develop = False
+develop = True 
 
 def read(name):
     return open(os.path.join(os.path.dirname(__file__), name)).read()

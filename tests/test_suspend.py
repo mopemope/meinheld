@@ -89,15 +89,16 @@ class ManyResumeApp(BaseApp):
         start_response(status, response_headers)
         self.environ = environ.copy()
         path = environ.get("PATH_INFO")
-        print(path)
         if path == "/wakeup":
             for waiter in self.waiters:
-                print(waiter)
+                # print("resume %s" % waiter)
                 waiter.resume()
         else:
             c = environ[CONTINUATION_KEY]
             self.waiters.append(c)
+            # print("suspend %s" % c)
             c.suspend(10)
+            # print("wakup %s" % c)
 
         print(environ)
         return [path.encode()]
@@ -176,12 +177,13 @@ def test_illigal_resume():
     assert(env.get(CONTINUATION_KEY))
 
 
-"""
 def test_many_resume():
     
     def mk_client(i):
         def client():
-            return requests.get("http://localhost:8000/%s" % i)
+            r = requests.get("http://localhost:8000/%s" % i)
+            # print(r.content)
+            return r
         return client
 
     application = ManyResumeApp()
@@ -193,19 +195,17 @@ def test_many_resume():
         runners.append(r)
 
     def _wakeup():
-        r = ClientRunner(application, mk_client("wakeup"), False)
+        r = ClientRunner(application, mk_client("wakeup"), True)
         r.run()
         runners.append(r)
 
-    server.schedule_call(1, _wakeup)
+    server.schedule_call(3, _wakeup)
     s.run()
     results = []
     for r in runners:
         env, res = r.get_result()
         results.append(res.content)
     results = sorted(results)
-    print(results)
+    # print(results)
     assert(results == [b'/0', b'/1', b'/2', b'/3', b'/4', b'/5', b'/6', b'/7', b'/8', b'/9', b'/wakeup'])
 
-test_many_resume()
-"""
