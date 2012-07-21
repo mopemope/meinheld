@@ -15,4 +15,10 @@ void setup_static_env(char *name, int port);
 
 void clear_static_env(void);
 
+void parser_list_fill(void);
+
+void parser_list_clear(void);
+
+void dealloc_parser(http_parser *p);
+
 #endif

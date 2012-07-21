@@ -313,7 +313,7 @@ set_content_length(client_t *client, write_bucket *bucket, char *data, size_t da
         if (get_len(client->response) == 1) {
             client->content_length_set = 1;
             DEBUG("set content_length %d", (int)datalen);
-            length = PyBytes_FromFormat("%zu", datalen);
+            //length = PyBytes_FromFormat("%zu", datalen);
 
             header = Py_BuildValue("(sO)", "Content-Length", length);
             Py_DECREF(length);
@@ -337,12 +337,12 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
     char *name = NULL, *value = NULL;
     Py_ssize_t namelen, valuelen;
 
-    if(fast_headers){
+    if(likely(fast_headers != NULL)){
         for (i = 0; i < hlen; i++) {
 
             tuple = PySequence_Fast_GET_ITEM(fast_headers, i);
 
-            if (!PyTuple_Check(tuple)) {
+            if (unlikely( !PyTuple_Check(tuple))) {
                 PyErr_Format(PyExc_TypeError, "list of tuple values "
                              "expected, value of type %.200s found",
                              tuple->ob_type->tp_name);
@@ -350,7 +350,7 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
             }
 
 
-            if (PyTuple_GET_SIZE(tuple) != 2) {
+            if (unlikely(PyTuple_GET_SIZE(tuple) != 2)) {
                 PyErr_Format(PyExc_ValueError, "tuple of length 2 "
                              "expected, length is %d",
                              (int)PyTuple_Size(tuple));
@@ -359,31 +359,31 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
 
             obj1 = PyTuple_GET_ITEM(tuple, 0);
             obj2 = PyTuple_GET_ITEM(tuple, 1);
-            if(!obj1){
+            if(unlikely(!obj1)){
                 goto error;
             }
-            if(!obj2){
+            if(unlikely(!obj2)){
                 goto error;
             }
             bytes1 = wsgi_to_bytes(obj1);
-            if(PyBytes_AsStringAndSize(bytes1, &name, &namelen) == -1){
-                goto error;
-            }
-            
-            //value
-            bytes2 = wsgi_to_bytes(obj2);
-            if(PyBytes_AsStringAndSize(bytes2, &value, &valuelen) == -1){
+            if(unlikely(PyBytes_AsStringAndSize(bytes1, &name, &namelen) == -1)){
                 goto error;
             }
 
-            if (strchr(name, ':') != 0) {
+            //value
+            bytes2 = wsgi_to_bytes(obj2);
+            if(unlikely(PyBytes_AsStringAndSize(bytes2, &value, &valuelen) == -1)){
+                goto error;
+            }
+
+            if (unlikely(strchr(name, ':') != 0)) {
                 PyErr_Format(PyExc_ValueError, "header name may not contains ':'"
                              "response header with name '%s' and value '%s'",
                              name, value);
                 goto error;
             }
 
-            if (strchr(name, '\n') != 0 || strchr(value, '\n') != 0) {
+            if (unlikely(strchr(name, '\n') != 0 || strchr(value, '\n') != 0)) {
                 PyErr_Format(PyExc_ValueError, "embedded newline in "
                              "response header with name '%s' and value '%s'",
                              name, value);
@@ -440,6 +440,7 @@ error:
     Py_XDECREF(bytes2);
     return -1;
 }
+
 static int
 add_status_line(write_bucket *bucket, client_t *client)
 {

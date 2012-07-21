@@ -140,10 +140,10 @@ alloc_client_t(void)
     client_t *client;
     if (client_numfree) {
         client = client_free_list[--client_numfree];
-        //DEBUG("use pooled client %p", client);
+        GDEBUG("use pooled %p", client);
     }else{
         client = (client_t *)PyMem_Malloc(sizeof(client_t));
-        //DEBUG("alloc client %p", client);
+        GDEBUG("alloc %p", client);
     }
     memset(client, 0, sizeof(client_t));
     return client;
@@ -152,9 +152,9 @@ alloc_client_t(void)
 static void
 dealloc_client(client_t *client)
 {
-    GDEBUG("client dealloc %p", client);
     if (client_numfree < CLIENT_MAXFREELIST){
         client_free_list[client_numfree++] = client;
+        GDEBUG("back to pool %p", client);
     }else{
         PyMem_Free(client);
     }
@@ -246,7 +246,8 @@ close_client(client_t *client)
     }
 
     if(client->http_parser != NULL){
-        PyMem_Free(client->http_parser);
+        /* PyMem_Free(client->http_parser); */
+        dealloc_parser(client->http_parser);
     }
 
     free_request_queue(client->request_queue);
@@ -1257,6 +1258,7 @@ setup_server_env(void)
     
     ClientObject_list_fill();
     client_t_list_fill();
+    parser_list_fill();
     request_list_fill();
     buffer_list_fill();
     InputObject_list_fill();
@@ -1274,6 +1276,7 @@ clear_server_env(void)
     clear_start_response();
     clear_static_env();
     client_t_list_clear();
+    parser_list_clear();
     
     ClientObject_list_clear();
     request_list_clear();
@@ -1684,7 +1687,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
                 Py_XDECREF(watchdog_result);
             }
         }
-        DEBUG("after activecnt:%d", activecnt);
+        /* DEBUG("after activecnt:%d", activecnt); */
     }
 
     Py_DECREF(wsgi_app);

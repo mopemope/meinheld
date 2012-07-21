@@ -3,6 +3,7 @@
 #include "response.h"
 #include "input.h"
 
+#define MAXFREELIST 1024
 
 /**
  * environ spec.
@@ -111,6 +112,56 @@ static PyObject *http_method_mkactivity;
 static PyObject *http_method_checkout;
 static PyObject *http_method_merge;
 
+static http_parser *http_parser_free_list[MAXFREELIST];
+static int numfree = 0;
+
+void
+parser_list_fill(void)
+{
+    http_parser *p;
+
+    while (numfree < MAXFREELIST) {
+        p = (http_parser*)PyMem_Malloc(sizeof(http_parser));
+        http_parser_free_list[numfree++] = p;
+    }
+}
+
+void
+parser_list_clear(void)
+{
+    http_parser *p;
+
+    while (numfree) {
+        p = http_parser_free_list[--numfree];
+        PyMem_Free(p);
+    }
+}
+
+static http_parser*
+alloc_parser(void)
+{
+    http_parser *p;
+    if (numfree) {
+        p = http_parser_free_list[--numfree];
+        GDEBUG("use pooled %p", p);
+    }else{
+        p = (http_parser*)PyMem_Malloc(sizeof(http_parser));
+        GDEBUG("alloc %p", p);
+    }
+    memset(p, 0, sizeof(http_parser));
+    return p;
+}
+
+void
+dealloc_parser(http_parser *p)
+{
+    if (numfree < MAXFREELIST){
+        http_parser_free_list[numfree++] = p;
+        GDEBUG("back to pool %p", p);
+    }else{
+        PyMem_Free(p);
+    }
+}
 
 static PyObject*
 new_environ(client_t *client)
@@ -586,11 +637,12 @@ headers_complete_cb(http_parser *p)
     
     if(p->content_length != ULLONG_MAX){
         content_length = p->content_length;
-    }
-    if(max_content_length < content_length){
-        DEBUG("set request code %d", 413);
-        client->bad_request_code = 413;
-        return -1;
+        if(max_content_length < content_length){
+            RDEBUG("max_content_length over %d/%d", content_length, max_content_length);
+            DEBUG("set request code %d", 413);
+            client->bad_request_code = 413;
+            return -1;
+        }
     }
 
     if(p->http_major == 1 && p->http_minor == 1){
@@ -768,11 +820,12 @@ int
 init_parser(client_t *cli, const char *name, const short port)
 {
 
-    cli->http_parser = (http_parser*)PyMem_Malloc(sizeof(http_parser));
+    cli->http_parser = alloc_parser();
+    /* cli->http_parser = (http_parser*)PyMem_Malloc(sizeof(http_parser)); */
     if(cli->http_parser == NULL){
         return -1;
     }
-    memset(cli->http_parser, 0, sizeof(http_parser));
+    /* memset(cli->http_parser, 0, sizeof(http_parser)); */
     http_parser_init(cli->http_parser, HTTP_REQUEST);
     cli->http_parser->data = cli;
     return 0;

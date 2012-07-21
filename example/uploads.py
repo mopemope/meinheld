@@ -31,6 +31,7 @@ def application(environ, start_response):
     return resp(environ, start_response)
 
 
+meinheld.set_max_content_length(1024 * 1024 * 1024)
 meinheld.listen(("0.0.0.0", 8000))
 meinheld.run(application)
 

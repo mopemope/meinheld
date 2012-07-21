@@ -408,7 +408,7 @@ int http_message_needs_eof(http_parser *parser);
  * assumed that the caller cares about (and can detect) the transition between
  * URL and non-URL states by looking for these.
  */
-static enum state
+static inline enum state
 parse_url_char(enum state s, const char ch)
 {
   if (ch == ' ' || ch == '\r' || ch == '\n') {

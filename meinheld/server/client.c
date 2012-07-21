@@ -37,10 +37,10 @@ alloc_ClientObject(void)
     if (client_numfree) {
         client = client_free_list[--client_numfree];
         _Py_NewReference((PyObject *)client);
-        /* DEBUG("use pooled ClientObject %p", client); */
+        GDEBUG("use pooled %p", client);
     }else{
         client = PyObject_NEW(ClientObject, &ClientObjectType);
-        /* DEBUG("alloc ClientObject %p", client); */
+        GDEBUG("alloc %p", client);
     }
     return client;
 }
@@ -50,8 +50,8 @@ dealloc_ClientObject(ClientObject *client)
 {
     Py_CLEAR(client->greenlet);
     if (client_numfree < CLIENT_MAXFREELIST){
-        /* DEBUG("back to ClientObject pool %p", client); */
         client_free_list[client_numfree++] = client;
+        GDEBUG("back to pool %p", client);
     }else{
         PyObject_DEL(client);
     }
