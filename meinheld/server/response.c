@@ -1013,6 +1013,11 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     }
 #endif
 
+    if(self->cli->headers != NULL){
+        PyErr_SetString(PyExc_TypeError, "headers already set");
+        return NULL;
+    }
+
     if (!PyList_Check(headers)) {
         PyErr_SetString(PyExc_TypeError, "response headers must be a list");
         return NULL;
