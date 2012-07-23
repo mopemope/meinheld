@@ -289,6 +289,7 @@ writev_bucket(write_bucket *data)
     return STATUS_OK;
 }
 
+/*
 static int
 get_len(PyObject *v)
 {
@@ -301,7 +302,6 @@ get_len(PyObject *v)
     return (int)res;
 }
 
-/*
 static void
 set_content_length(client_t *client, write_bucket *bucket, char *data, size_t datalen )
 {
@@ -626,7 +626,7 @@ write_sendfile(int out_fd, int in_fd, int offset, size_t count)
 #endif
 }
 
-void 
+response_status
 close_response(client_t *client)
 {
     if(!client->response_closed){ 
@@ -636,7 +636,7 @@ close_response(client_t *client)
             PyObject *close = NULL;
             PyObject *args = NULL;
             PyObject *data = NULL;
-            
+
             close = PyObject_GetAttrString(client->response, "close");
 
             args = Py_BuildValue("()");
@@ -645,13 +645,14 @@ close_response(client_t *client)
             Py_DECREF(args);
             Py_XDECREF(data);
             Py_DECREF(close);
+            client->response_closed = 1;
             if (PyErr_Occurred()){
-                PyErr_Clear();
+                return STATUS_ERROR;
             }
         }
 
-        client->response_closed = 1;
     }
+    return STATUS_OK;
 
 }
 
@@ -695,9 +696,8 @@ process_sendfile(client_t *client)
 
         }
     }
-    close_response(client);
     //all send
-    return STATUS_OK;
+    return close_response(client);
 }
 
 static response_status
@@ -772,7 +772,9 @@ process_write(client_t *client)
                 }
             }
         }
-
+        if(PyErr_Occurred()){
+            return STATUS_ERROR;
+        }
         if(client->chunked_response){
             DEBUG("write last chunk");
             //last packet
@@ -785,7 +787,7 @@ process_write(client_t *client)
             writev_bucket(bucket);
             free_write_bucket(bucket);
         }
-        close_response(client);
+        return close_response(client);
     }
     return STATUS_OK;
 }

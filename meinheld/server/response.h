@@ -52,7 +52,7 @@ response_status response_start(client_t *client);
 
 response_status process_body(client_t *client);
 
-void close_response(client_t *client);
+response_status close_response(client_t *client);
 
 void setup_start_response(void);
 

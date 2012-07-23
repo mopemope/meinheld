@@ -436,17 +436,11 @@ app_handler(PyObject *self, PyObject *args)
     //check response & PyErr_Occurred
     if (res && res == Py_None){
         PyErr_SetString(PyExc_Exception, "response must be a iter or sequence object");
-        write_error_log(__FILE__, __LINE__);
-        send_error_page(client);
-        close_client(client);
-        Py_RETURN_NONE;
+        goto error;
     }
     //Check wsgi_app error
     if (PyErr_Occurred()){
-        write_error_log(__FILE__, __LINE__);
-        send_error_page(client);
-        close_client(client);
-        Py_RETURN_NONE;
+        goto error;
     }
 
     client->response = res;
@@ -463,8 +457,7 @@ app_handler(PyObject *self, PyObject *args)
         if(status == STATUS_ERROR){
             // Internal Server Error
             client->bad_request_code = 500;
-            send_error_page(client);
-            break;
+            goto error;
         }else{
             active = picoev_is_active(main_loop, client->fd);
             ret = picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, trampoline_callback, (void *)pyclient);
@@ -474,6 +467,10 @@ app_handler(PyObject *self, PyObject *args)
             status = process_body(client);
         }
     }
+    status = close_response(client);
+    if(status == STATUS_ERROR){
+        //TODO logging error
+    }
     // send OK
     close_client(client);
 #else
@@ -481,13 +478,10 @@ app_handler(PyObject *self, PyObject *args)
         case STATUS_ERROR:
             // Internal Server Error
             client->bad_request_code = 500;
-            send_error_page(client);
-            close_client(client);
-            Py_RETURN_NONE;
+            goto error;
         case STATUS_SUSPEND:
             // continue
             // set callback
-            //clear event
             active = picoev_is_active(main_loop, client->fd);
             ret = picoev_add(main_loop, client->fd, PICOEV_WRITE, 300, write_callback, (void *)pyclient);
             if((ret == 0 && !active)){
@@ -499,9 +493,19 @@ app_handler(PyObject *self, PyObject *args)
     }
 #endif
     Py_RETURN_NONE;
+
+error:
+    status = close_response(client);
+    if(status == STATUS_ERROR){
+        //TODO logging error
+    }
+    write_error_log(__FILE__, __LINE__);
+    send_error_page(client);
+    close_client(client);
+    Py_RETURN_NONE;
 }
 
-static PyMethodDef app_handler_def = {"handle",   (PyCFunction)app_handler, METH_VARARGS, 0};
+static PyMethodDef app_handler_def = {"_app_handler",   (PyCFunction)app_handler, METH_VARARGS, 0};
 
 static PyObject*
 get_app_handler(void)
@@ -1151,18 +1155,30 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 
                 if(client->bad_request_code > 0){
                     DEBUG("fd %d bad_request code %d",client->fd,  client->bad_request_code);
-                    set_bad_request_code(client, client->bad_request_code);
-                    ///force end
-                    finish = 1;
+                    if(client->request_queue->size > 0){
+                        set_bad_request_code(client, client->bad_request_code);
+                        //force end
+                        finish = 1;
+                    }else{
+                        send_error_page(client);
+                        close_client(client);
+                        return;
+                    }
                     break;
                 }
 
                 if(!client->upgrade && nread != r){
                     // parse error
                     DEBUG("fd:%d parse error bad_status_code=%d", client->fd, client->bad_request_code);
-                    set_bad_request_code(client, 400);
-                    ///force end
-                    finish = 1;
+                    if(client->request_queue->size > 0){
+                        set_bad_request_code(client, client->bad_request_code);
+                        //force end
+                        finish = 1;
+                    }else{
+                        send_error_page(client);
+                        close_client(client);
+                        return;
+                    }
                     break;
                 }
                 //DEBUG("parse ok, fd %d %d nread", cli->fd, nread);
