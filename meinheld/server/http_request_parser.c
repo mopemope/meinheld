@@ -635,10 +635,13 @@ headers_complete_cb(http_parser *p)
     request *req = client->req;
     PyObject *env = client->environ;
     
+    DEBUG("should keep alive %d", http_should_keep_alive(p));
+    client->keep_alive = http_should_keep_alive(p);
+
     if(p->content_length != ULLONG_MAX){
         content_length = p->content_length;
         if(max_content_length < content_length){
-            RDEBUG("max_content_length over %d/%d", content_length, max_content_length);
+            RDEBUG("max_content_length over %d/%d", content_length, (int)max_content_length);
             DEBUG("set request code %d", 413);
             client->bad_request_code = 413;
             return -1;

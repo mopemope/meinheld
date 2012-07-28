@@ -104,23 +104,23 @@ send_error_page(client_t *client)
 {
     shutdown(client->fd, SHUT_RD);
     if(client->header_done || client->response_closed){
-        //already sended response data
-        //close connection
+        // already sended response data
+        // close connection
         return;
     }
 
-    int status = client->bad_request_code;
-    int r = status < 0 ? status * -1:status;
-    client->status_code = r;
+    /* int status = client->bad_request_code; */
+    /* int r = status < 0 ? status * -1:status; */
+    client->status_code = client->bad_request_code;
 
-    DEBUG("send_error_page status_code %d client %p", status, client);
+    DEBUG("send_error_page status_code %d client %p", client->status_code, client);
 
-    switch(r){
+    switch(client->status_code){
         case 400:
             blocking_write(client, MSG_400, sizeof(MSG_400) -1);
             break;
         case 408:
-            blocking_write(client, MSG_400, sizeof(MSG_408) -1);
+            blocking_write(client, MSG_408, sizeof(MSG_408) -1);
             break;
         case 411:
             blocking_write(client, MSG_411, sizeof(MSG_411) -1);

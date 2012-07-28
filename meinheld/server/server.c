@@ -1010,6 +1010,7 @@ set_input_object(client_t *client)
     return 1;
 }
 
+/*
 static void 
 setting_keepalive(client_t *client)
 {
@@ -1045,6 +1046,7 @@ setting_keepalive(client_t *client)
         }
     }
 }
+*/
 
 static void
 prepare_call_wsgi(client_t *client)
@@ -1065,9 +1067,286 @@ prepare_call_wsgi(client_t *client)
             return;
         }
     }
-
-    setting_keepalive(client);
+    
+    if(!is_keep_alive){
+        client->keep_alive = 0;
+    }
+    /* setting_keepalive(client); */
 }
+
+static int
+set_read_error(client_t *client, int status_code)
+{
+    client->keep_alive = 0;
+    if(client->request_queue->size > 0){
+        //piplining
+        set_bad_request_code(client, status_code);
+        //finish = 1
+        return 1;
+    }else{
+        client->bad_request_code = status_code;
+        send_error_page(client);
+        close_client(client);
+        return 0;
+    }
+}
+
+static int
+read_timeout(int fd, client_t *client)
+{
+    DEBUG("** read_callback timeout %d **", fd);
+    //timeout
+    return set_read_error(client, 408);
+}
+
+static int
+parse_http_request(int fd, client_t *client, char *buf, ssize_t r)
+{
+    int nread = 0;
+
+    BDEBUG("fd:%d \n%.*s", fd, (int)r, buf);
+    nread = execute_parse(client, buf, r);
+    BDEBUG("read request fd %d readed %d nread %d", fd, (int)r, nread);
+
+    if(client->bad_request_code > 0){
+        DEBUG("fd %d bad_request code %d", fd,  client->bad_request_code);
+        return set_read_error(client, client->bad_request_code);
+    }
+    //check 
+    if(!client->upgrade && nread != r){
+        // parse error
+        DEBUG("fd:%d parse error bad_status_code %d", fd, client->bad_request_code);
+        return set_read_error(client, client->bad_request_code);
+    }
+    if(parser_finish(client) > 0){
+        if(client->upgrade){
+            //WebSocket Key
+            DEBUG("upgrade websocket %d", fd);
+            //TODO upgrade
+            /* key = buf + nread + 1; */
+            /* buffer_t *b = new_buffer(r - nread -1, r - nread -1); */
+            /* if(write2buf(b, key, r - nread -1) == WRITE_OK){ */
+                /* client->request_queue->tail->body = b; */
+            /* }else{ */
+                /* free_buffer(b); */
+            /* } */
+        }
+        return 1;
+    }
+    return 0;
+}
+
+static int
+read_request(picoev_loop *loop, int fd, client_t *client)
+{
+    char buf[READ_BUF_SIZE];
+    ssize_t r;
+
+    if(!client->keep_alive){
+        picoev_set_timeout(loop, fd, READ_TIMEOUT_SECS);
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    r = read(client->fd, buf, sizeof(buf));
+    Py_END_ALLOW_THREADS
+    switch (r) {
+        case 0: 
+            return set_read_error(client, 503);
+        case -1:
+            // Error
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // try again later
+                return 0;
+            } else {
+                // Fatal error
+                client->keep_alive = 0;
+                if(errno == ECONNRESET){
+                    client->header_done = 1;
+                    client->response_closed = 1;
+                }else{
+                    PyErr_SetFromErrno(PyExc_IOError);
+                    write_error_log(__FILE__, __LINE__); 
+                }
+                return set_read_error(client, 500);
+            }
+        default:
+            return parse_http_request(fd, client, buf, r);
+
+    }
+}
+
+static void
+_read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+{
+    client_t *client = ( client_t *)(cb_arg);
+    int finish = 0;
+
+    if ((events & PICOEV_TIMEOUT) != 0) {
+        finish = read_timeout(fd, client);
+
+    } else if ((events & PICOEV_READ) != 0) {
+        finish = read_request(loop, fd, client);
+    }
+    if(finish == 1){
+        if(!picoev_del(main_loop, client->fd)){
+            activecnt--;
+            DEBUG("activecnt:%d", activecnt);
+        }
+        if(check_status_code(client) > 0){
+            //current request ok
+            prepare_call_wsgi(client);
+            call_wsgi_handler(client);
+        }
+        return;
+    }
+}
+
+/*
+static void
+read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
+{
+    client_t *client = ( client_t *)(cb_arg);
+    //PyObject *body = NULL;
+    char *key = NULL;
+    int finish = 0, nread;
+
+    if ((events & PICOEV_TIMEOUT) != 0) {
+
+        DEBUG("** read_callback timeout %d **", fd);
+        //timeout
+        client->keep_alive = 0;
+        if(client->request_queue->size > 0){
+            //piplining
+            set_bad_request_code(client, 408);
+            finish = 1;
+        }else{
+            close_client(client);
+        }
+
+    } else if ((events & PICOEV_READ) != 0) {
+        char buf[READ_BUF_SIZE];
+        ssize_t r;
+        if(!client->keep_alive){
+            picoev_set_timeout(loop, client->fd, READ_TIMEOUT_SECS);
+        }
+        Py_BEGIN_ALLOW_THREADS
+        r = read(client->fd, buf, sizeof(buf));
+        Py_END_ALLOW_THREADS
+        switch (r) {
+            case 0: 
+                client->keep_alive = 0;
+                //503??
+                if(client->request_queue->size > 0){
+                    //piplining
+                    set_bad_request_code(client, 503);
+                    finish = 1;
+                }else{
+                    client->status_code = 503;
+                    send_error_page(client);
+                    close_client(client);
+                    return;
+                }
+            case -1:
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    break;
+                } else {
+                    if(client->request_queue->size > 0){
+                        //piplining
+                        set_bad_request_code(client, 500);
+                        if(errno != ECONNRESET){
+                            PyErr_SetFromErrno(PyExc_IOError);
+                            write_error_log(__FILE__, __LINE__); 
+                        }
+                        finish = 1;
+                    }else{
+                        if(client->keep_alive && errno == ECONNRESET){
+                            client->keep_alive = 0;
+                            client->status_code = 500;
+                            client->header_done = 1;
+                            client->response_closed = 1;
+                        }else{
+                            PyErr_SetFromErrno(PyExc_IOError);
+                            write_error_log(__FILE__, __LINE__); 
+                            client->keep_alive = 0;
+                            client->status_code = 500;
+                            if(errno != ECONNRESET){
+                                send_error_page(client);
+                            }else{
+                                client->header_done = 1;
+                                client->response_closed = 1;
+                            }
+                        }
+                        close_client(client);
+                        return;
+                    }
+                }
+                break;
+            default:
+                BDEBUG("fd:%d \n%.*s", client->fd, (int)r, buf);
+                nread = execute_parse(client, buf, r);
+                BDEBUG("read request fd %d readed %d nread %d", client->fd, (int)r, nread);
+
+                if(client->bad_request_code > 0){
+                    DEBUG("fd %d bad_request code %d",client->fd,  client->bad_request_code);
+                    if(client->request_queue->size > 0){
+                        set_bad_request_code(client, client->bad_request_code);
+                        //force end
+                        finish = 1;
+                    }else{
+                        send_error_page(client);
+                        close_client(client);
+                        return;
+                    }
+                    break;
+                }
+
+                if(!client->upgrade && nread != r){
+                    // parse error
+                    DEBUG("fd:%d parse error bad_status_code=%d", client->fd, client->bad_request_code);
+                    if(client->request_queue->size > 0){
+                        set_bad_request_code(client, client->bad_request_code);
+                        //force end
+                        finish = 1;
+                    }else{
+                        send_error_page(client);
+                        close_client(client);
+                        return;
+                    }
+                    break;
+                }
+                //DEBUG("parse ok, fd %d %d nread", cli->fd, nread);
+
+                if(parser_finish(client) > 0){
+                    if(client->upgrade){
+                        //WebSocket Key
+                        DEBUG("upgrade websocket %d", client->fd);
+                        key = buf + nread + 1;
+                        buffer_t *b = new_buffer(r - nread -1, r - nread -1);
+                        if(write2buf(b, key, r - nread -1) == WRITE_OK){
+                            client->request_queue->tail->body = b;
+                        }else{
+                            free_buffer(b);
+                        }
+                    }
+                    finish = 1;
+                }
+                break;
+        }
+    }
+    if(finish == 1){
+        if(!picoev_del(main_loop, client->fd)){
+            activecnt--;
+            DEBUG("activecnt:%d", activecnt);
+        }
+        if(check_status_code(client) > 0){
+            //current request ok
+            prepare_call_wsgi(client);
+            call_wsgi_handler(client);
+        }
+        return;
+    }
+}
+*/
 
 static void
 read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
@@ -1248,7 +1527,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             remote_port = ntohs(client_addr.sin_port);
             client = new_client_t(client_fd, remote_addr, remote_port);
             init_parser(client, server_name, server_port);
-            ret = picoev_add(loop, client_fd, PICOEV_READ, keep_alive_timeout, read_callback, (void *)client);
+            ret = picoev_add(loop, client_fd, PICOEV_READ, keep_alive_timeout, _read_callback, (void *)client);
             if(ret == 0){
                 activecnt++;
             }
