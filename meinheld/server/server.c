@@ -48,11 +48,6 @@ static PyObject *wsgi_app = NULL; //wsgi app
 static uint8_t watch_loop = 0;
 static PyObject *watchdog = NULL; //watchdog
 
-static char *log_path = NULL; //access log path
-static int log_fd = -1; //access log
-static char *error_log_path = NULL; //error log path
-static int err_log_fd = -1; //error log
-
 static int is_keep_alive = 0; //keep alive support
 static int keep_alive_timeout = 5;
 
@@ -184,12 +179,13 @@ clean_client(client_t *client)
 {
     request *req = client->current_req;
 
-    write_access_log(client, log_fd, log_path);
+    call_access_logger(req->environ);
+
     Py_CLEAR(client->http_status);
     Py_CLEAR(client->headers);
     Py_CLEAR(client->response_iter);
     Py_CLEAR(client->response);
-    
+
     if(req == NULL){
         goto init;
     }
@@ -445,7 +441,8 @@ error:
     if(status == STATUS_ERROR){
         //TODO logging error
     }
-    write_error_log(__FILE__, __LINE__);
+    /* write_error_log(__FILE__, __LINE__); */
+    call_error_logger();
     send_error_page(client);
     close_client(client);
     Py_RETURN_NONE;
@@ -675,7 +672,8 @@ check_http_expect(client_t *client)
                 if(ret < 0){
                     //fail
                     PyErr_SetFromErrno(PyExc_IOError);
-                    write_error_log(__FILE__, __LINE__); 
+                    /* write_error_log(__FILE__, __LINE__);  */
+                    call_error_logger();
                     client->keep_alive = 0;
                     client->status_code = 500;
                     send_error_page(client);
@@ -997,7 +995,8 @@ read_request(picoev_loop *loop, int fd, client_t *client)
                     client->response_closed = 1;
                 }else{
                     PyErr_SetFromErrno(PyExc_IOError);
-                    write_error_log(__FILE__, __LINE__); 
+                    /* write_error_log(__FILE__, __LINE__);  */
+                    call_error_logger();
                 }
                 return set_read_error(client, 500);
             }
@@ -1057,7 +1056,8 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             //printf("connected: %d\n", client_fd);
             if(setup_sock(client_fd) == -1){
                 PyErr_SetFromErrno(PyExc_IOError);
-                write_error_log(__FILE__, __LINE__);
+                /* write_error_log(__FILE__, __LINE__); */
+                call_error_logger();
                 // die
                 loop_done = 0;
                 return;
@@ -1073,7 +1073,8 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }else{
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 PyErr_SetFromErrno(PyExc_IOError);
-                write_error_log(__FILE__, __LINE__);
+                /* write_error_log(__FILE__, __LINE__); */
+                call_error_logger();
                 // die
                 kill_server(0);
             }
@@ -1344,61 +1345,35 @@ sigpipe_cb(int signum)
 static PyObject *
 meinheld_access_log(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, "s:access_log", &log_path)){
+    PyObject *o = NULL;
+
+    if (!PyArg_ParseTuple(args, "O:access_log", &o)){
         return NULL;
     }
-
-
-    if(log_fd > 0){
-        close(log_fd);
-    }
-
-    if(!strcasecmp(log_path, "stdout")){
-        log_fd = 1;
-        Py_RETURN_NONE;
-    }
-    if(!strcasecmp(log_path, "stderr")){
-        log_fd = 2;
-        Py_RETURN_NONE;
-    }
-
-    log_fd = open_log_file(log_path);
-    if(log_fd < 0){
-        PyErr_Format(PyExc_TypeError, "not open file. %s", log_path);
+    
+    if(!PyCallable_Check(o)){
+        PyErr_SetString(PyExc_TypeError, "must be callable");
         return NULL;
     }
+    set_access_logger(o);
     Py_RETURN_NONE;
 }
 
 static PyObject *
 meinheld_error_log(PyObject *self, PyObject *args)
 {
-    PyObject *f = NULL;
 
-    if (!PyArg_ParseTuple(args, "s:error_log", &error_log_path)){
-        return NULL;
-    }
-    if(err_log_fd > 0){
-        close(err_log_fd);
-    }
-#ifdef PY3
-    int fd = open(error_log_path, O_CREAT|O_APPEND|O_WRONLY, 0744);
-    if(fd < 0){
-        PyErr_Format(PyExc_TypeError, "not open file. %s", error_log_path);
-        return NULL;
-    }
-    f = PyFile_FromFd(fd, NULL, NULL, -1, NULL, NULL, NULL, 1);
-#else
-    f = PyFile_FromString(error_log_path, "a");
-#endif
-    if(!f){
-        PyErr_Format(PyExc_TypeError, "not open file. %s", error_log_path);
-        return NULL;
-    }
-    PySys_SetObject("stderr", f);
-    Py_DECREF(f);
-    err_log_fd = PyObject_AsFileDescriptor(f);
+    PyObject *o = NULL;
 
+    if (!PyArg_ParseTuple(args, "O:err_log", &o)){
+        return NULL;
+    }
+    
+    if(!PyCallable_Check(o)){
+        PyErr_SetString(PyExc_TypeError, "must be callable");
+        return NULL;
+    }
+    set_err_logger(o);
     Py_RETURN_NONE;
 }
 
@@ -2081,8 +2056,8 @@ meinheld_schedule_call(PyObject *self, PyObject *args, PyObject *kwargs)
 
 static PyMethodDef ServerMethods[] = {
     {"listen", (PyCFunction)meinheld_listen, METH_VARARGS|METH_KEYWORDS, "set host and port num"},
-    /* {"access_log", meinheld_access_log, METH_VARARGS, "set access log file path."}, */
-    /* {"error_log", meinheld_error_log, METH_VARARGS, "set error log file path."}, */
+    {"set_access_logger", meinheld_access_log, METH_VARARGS, "set access logger function."},
+    {"set_error_logger", meinheld_error_log, METH_VARARGS, "set error logger function."},
 
     {"set_keepalive", meinheld_set_keepalive, METH_VARARGS, "set keep-alive support. value set timeout sec. default 0. (disable keep-alive)"},
     {"get_keepalive", meinheld_get_keepalive, METH_VARARGS, "return keep-alive support."},

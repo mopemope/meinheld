@@ -3,12 +3,105 @@
 
 #define LOG_BUF_SIZE 1024 * 16
 
+static PyObject *access_logger;
+static PyObject *err_logger;
+
+int
+set_access_logger(PyObject *obj)
+{
+    if(access_logger != NULL){
+        Py_DECREF(access_logger);
+    }
+    access_logger = obj;
+    Py_INCREF(access_logger);
+    return 1;
+}
+
+int
+set_err_logger(PyObject *obj)
+{
+    if(err_logger != NULL){
+        Py_DECREF(err_logger);
+    }
+    err_logger = obj;
+    Py_INCREF(err_logger);
+    return 1;
+}
+
+int
+call_access_logger(PyObject *environ)
+{
+    PyObject *args = NULL, *res = NULL;
+
+    if(access_logger){
+        args = Py_BuildValue("(O)", environ);
+        res = PyObject_CallObject(access_logger, args);
+        Py_DECREF(args);
+        Py_XDECREF(res);
+        if(PyErr_Occurred()){
+            PyErr_Print();
+            PyErr_Clear();
+        }
+    }
+    return 1;
+}
+
+int
+call_error_logger(void)
+{
+    PyObject *exception, *v, *tb;
+    PyObject *args = NULL, *res = NULL;
+
+    if(err_logger){
+        PyErr_Fetch(&exception, &v, &tb);
+        if(exception == NULL){
+            goto err;
+        }
+        PyErr_NormalizeException(&exception, &v, &tb);
+        if(exception == NULL){
+            goto err;
+        }
+        DEBUG("exc:%p val:%p tb:%p",exception, v, tb);
+        if(v == NULL){
+            v = Py_None;
+            Py_INCREF(v);
+        }
+        if(tb == NULL){
+            tb = Py_None;
+            Py_INCREF(tb);
+        }
+        /* PySys_SetObject("last_type", exception); */
+        /* PySys_SetObject("last_value", v); */
+        /* PySys_SetObject("last_traceback", tb); */
+        PyErr_Clear();
+
+        args = Py_BuildValue("(OOO)", exception, v, tb);
+        if(args == NULL){
+            PyErr_Print();
+            goto err;
+        }
+        res = PyObject_CallObject(err_logger, args);
+        Py_DECREF(args);
+        Py_XDECREF(res);
+        if(PyErr_Occurred()){
+            PyErr_Print();
+        }
+    }
+err:
+    PyErr_Clear();
+    return 1;
+}
+
+
+
+
 int
 open_log_file(const char *path)
 {
     return open(path, O_CREAT|O_APPEND|O_WRONLY, 0744);
 }
 
+/*
 int
 write_error_log(char *file_name, int line)
 {
@@ -56,7 +149,9 @@ write_error_log(char *file_name, int line)
     }
     return 1;
 }
+*/
 
+/*
 static int
 write_log(const char *new_path, int fd, const char *data, size_t len)
 {
@@ -86,12 +181,12 @@ write_log(const char *new_path, int fd, const char *data, size_t len)
     flock(fd, LOCK_UN);
     return fd;
 }
-
+*/
+/*
 int
 write_access_log(client_t *cli, int log_fd, const char *log_path)
 {
     char buf[LOG_BUF_SIZE];
-    /*
     if(log_fd > 0){
 
         PyObject *obj;
@@ -147,6 +242,7 @@ write_access_log(client_t *cli, int log_fd, const char *log_path)
                ua);
         return write_log(log_path, log_fd, buf, strlen(buf));
     }
-    */
     return 0;
 }
+*/
+

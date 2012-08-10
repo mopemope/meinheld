@@ -85,7 +85,8 @@ blocking_write(client_t *client, char *data, size_t len)
                         client->response_closed = 1;
                     }else{
                         PyErr_SetFromErrno(PyExc_IOError);
-                        write_error_log(__FILE__, __LINE__);
+                        /* write_error_log(__FILE__, __LINE__); */
+                        call_error_logger();
                         client->keep_alive = 0;
                     }
                     return -1;
@@ -258,7 +259,8 @@ writev_bucket(write_bucket *data)
         }else{
             //ERROR
             PyErr_SetFromErrno(PyExc_IOError);
-            write_error_log(__FILE__, __LINE__);
+            /* write_error_log(__FILE__, __LINE__); */
+            call_error_logger();
             return STATUS_ERROR;
         }
     }if(w == 0){
@@ -434,7 +436,8 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
     return 1;
 error:
     if (PyErr_Occurred()){
-        write_error_log(__FILE__, __LINE__);
+        /* write_error_log(__FILE__, __LINE__); */
+        call_error_logger();
     }
     Py_XDECREF(bytes1);
     Py_XDECREF(bytes2);
@@ -565,7 +568,8 @@ write_headers(client_t *client, char *data, size_t datalen)
     return ret;
 error:
     if (PyErr_Occurred()){
-        write_error_log(__FILE__, __LINE__);
+        /* write_error_log(__FILE__, __LINE__); */
+        call_error_logger();
     }
     Py_XDECREF(headers);
     if(bucket){
@@ -721,7 +725,8 @@ process_write(client_t *client)
                 if(client->chunked_response){
                     bucket = new_write_bucket(client->fd, 4);
                     if(bucket == NULL){
-                        write_error_log(__FILE__, __LINE__);
+                        /* write_error_log(__FILE__, __LINE__); */
+                        call_error_logger();
                         Py_DECREF(item);
                         return STATUS_ERROR;
                     }
@@ -736,7 +741,8 @@ process_write(client_t *client)
                 }else{
                     bucket = new_write_bucket(client->fd, 1);
                     if(bucket == NULL){
-                        write_error_log(__FILE__, __LINE__);
+                        /* write_error_log(__FILE__, __LINE__); */
+                        call_error_logger();
                         Py_DECREF(item);
                         return STATUS_ERROR;
                     }
@@ -768,7 +774,8 @@ process_write(client_t *client)
                 if (PyErr_Occurred()){
                     /* client->bad_request_code = 500; */
                     client->status_code = 500;
-                    write_error_log(__FILE__, __LINE__);
+                    /* write_error_log(__FILE__, __LINE__); */
+                    call_error_logger();
                     return STATUS_ERROR;
                 }
             }
@@ -781,7 +788,8 @@ process_write(client_t *client)
             //last packet
             bucket = new_write_bucket(client->fd, 3);
             if(bucket == NULL){
-                write_error_log(__FILE__, __LINE__);
+                /* write_error_log(__FILE__, __LINE__); */
+                call_error_logger();
                 return STATUS_ERROR;
             }
             set_last_chunked_data(bucket);
@@ -848,7 +856,8 @@ start_response_file(client_t *client)
     if(!client->content_length_set){
         if (fstat(in_fd, &info) == -1){
             PyErr_SetFromErrno(PyExc_IOError);
-            write_error_log(__FILE__, __LINE__); 
+            /* write_error_log(__FILE__, __LINE__);  */
+            call_error_logger();
             return STATUS_ERROR;
         }
 
@@ -871,7 +880,8 @@ start_response_write(client_t *client)
 
     iterator = PyObject_GetIter(client->response);
     if (PyErr_Occurred()){
-        write_error_log(__FILE__, __LINE__);
+        /* write_error_log(__FILE__, __LINE__); */
+        call_error_logger();
         return STATUS_ERROR;
     }
     client->response_iter = iterator;
@@ -898,7 +908,8 @@ start_response_write(client_t *client)
             PyErr_SetString(PyExc_TypeError, "response item must be a string");
             Py_XDECREF(item);
             if (PyErr_Occurred()){
-                write_error_log(__FILE__, __LINE__);
+                /* write_error_log(__FILE__, __LINE__); */
+                call_error_logger();
                 return STATUS_ERROR;
             }
         }
