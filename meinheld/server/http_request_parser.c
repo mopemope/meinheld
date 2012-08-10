@@ -414,34 +414,36 @@ key_upper(char *s, const char *key, size_t len)
 }
 
 static int
-write_body2file(client_t *client, const char *buffer, size_t buffer_len)
+write_body2file(request *req, const char *buffer, size_t buffer_len)
 {
-    FILE *tmp = (FILE *)client->body;
+
+    FILE *tmp = (FILE *)req->body;
     fwrite(buffer, 1, buffer_len, tmp);
-    client->body_readed += buffer_len;
+    req->body_readed += buffer_len;
     DEBUG("write_body2file %d bytes", (int)buffer_len);
-    return client->body_readed;
+    return req->body_readed;
 
 }
 
 static int
-write_body2mem(client_t *client, const char *buf, size_t buf_len)
+write_body2mem(request *req, const char *buf, size_t buf_len)
 {
-    buffer_t *body = (buffer_t*)client->body;
+    buffer_t *body = (buffer_t*)req->body;
     write2buf(body, buf, buf_len);
 
-    client->body_readed += buf_len;
+    req->body_readed += buf_len;
     DEBUG("write_body2mem %d bytes", (int)buf_len);
-    return client->body_readed;
+    return req->body_readed;
 }
 
 static int
-write_body(client_t *cli, const char *buffer, size_t buffer_len)
+write_body(request *req, const char *buffer, size_t buffer_len)
 {
-    if(cli->body_type == BODY_TYPE_TMPFILE){
-        return write_body2file(cli, buffer, buffer_len);
+
+    if(req->body_type == BODY_TYPE_TMPFILE){
+        return write_body2file(req, buffer, buffer_len);
     }else{
-        return write_body2mem(cli, buffer, buffer_len);
+        return write_body2mem(req, buffer, buffer_len);
     }
 }
 
@@ -451,22 +453,36 @@ get_client(http_parser *p)
     return (client_t *)p->data;
 }
 
+static request *
+get_current_request(http_parser *p)
+{
+    client_t *client =  (client_t *)p->data;
+    return client->current_req;
+}
+
 static int
 message_begin_cb(http_parser *p)
 {
-    DEBUG("message_begin_cb");
+    request *req = NULL;
+    PyObject *environ = NULL;
 
+    DEBUG("message_begin_cb");
+    
     client_t *client = get_client(p);
 
-    client->req = new_request();
-    client->environ = new_environ(client);
+    req = new_request();
+    if(req == NULL){
+        return -1;
+    }
+    client->current_req = req;
+    environ = new_environ(client);
     client->complete = 0;
-    client->bad_request_code = 0;
-    client->body_type = BODY_TYPE_NONE;
-    client->body_readed = 0;
-    client->body_length = 0;
-    client->req->env = client->environ;
-    push_request(client->request_queue, client->req);
+    /* client->bad_request_code = 0; */
+    /* client->body_type = BODY_TYPE_NONE; */
+    /* client->body_readed = 0; */
+    /* client->body_length = 0; */
+    req->environ = environ;
+    push_request(client->request_queue, client->current_req);
     return 0;
 }
 
@@ -474,16 +490,15 @@ message_begin_cb(http_parser *p)
 static int
 header_field_cb(http_parser *p, const char *buf, size_t len)
 {
-    client_t *client = get_client(p);
-    request *req = client->req;
-    PyObject *env = NULL, *obj;
+    request *req = get_current_request(p);
+    PyObject *env = NULL, *obj = NULL;
 
     DEBUG("field key:%.*s", (int)len, buf);
 
     if(req->last_header_element != FIELD){
-        env = req->env;
+        env = req->environ;
         if(LIMIT_REQUEST_FIELDS <= req->num_headers){
-            client->bad_request_code = 400;
+            req->bad_request_code = 400;
             return -1;
         }
 #ifdef PY3
@@ -514,11 +529,11 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     }
 
     if(unlikely(obj == NULL)){
-        client->bad_request_code = 500;
+        req->bad_request_code = 500;
         return -1;
     }
     if(unlikely(PyBytes_GET_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
-        client->bad_request_code = 400;
+        req->bad_request_code = 400;
         return -1;
     }
 
@@ -530,8 +545,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
 static int
 header_value_cb(http_parser *p, const char *buf, size_t len)
 {
-    client_t *client = get_client(p);
-    request *req = client->req;
+    request *req = get_current_request(p);
     PyObject *obj;
 
     DEBUG("field value:%.*s", (int)len, buf);
@@ -542,11 +556,11 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     }
 
     if(unlikely(obj == NULL)){
-        client->bad_request_code = 500;
+        req->bad_request_code = 500;
         return -1; 
     }
     if(unlikely(PyBytes_GET_SIZE(obj) > LIMIT_REQUEST_FIELD_SIZE)){
-        client->bad_request_code = 400;
+        req->bad_request_code = 400;
         return -1;
     }
 
@@ -558,8 +572,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
 static int
 url_cb(http_parser *p, const char *buf, size_t len)
 {
-    client_t *client = get_client(p);
-    request *req = client->req;
+    request *req = get_current_request(p);
     buffer_result ret = MEMORY_ERROR;
 
     if(unlikely(req->path)){
@@ -570,10 +583,10 @@ url_cb(http_parser *p, const char *buf, size_t len)
     }
     switch(ret){
         case MEMORY_ERROR:
-            client->bad_request_code = 500;
+            req->bad_request_code = 500;
             return -1;
         case LIMIT_OVER:
-            client->bad_request_code = 400;
+            req->bad_request_code = 400;
             return -1;
         default:
             break;
@@ -588,39 +601,40 @@ static int
 body_cb(http_parser *p, const char *buf, size_t len)
 {
     DEBUG("body_cb");
-    client_t *client = get_client(p);
+    request *req = get_current_request(p);
 
-    if(max_content_length < client->body_readed + len){
+    if(max_content_length < req->body_readed + len){
 
         DEBUG("set request code %d", 413);
-        client->bad_request_code = 413;
+        req->bad_request_code = 413;
         return -1;
     }
-    if(client->body_type == BODY_TYPE_NONE){
-        if(client->body_length == 0){
+    if(req->body_type == BODY_TYPE_NONE){
+        if(req->body_length == 0){
             //Length Required
-            client->bad_request_code = 411;
+            req->bad_request_code = 411;
             return -1;
         }
-        if(client->body_length > client_body_buffer_size){
+        if(req->body_length > client_body_buffer_size){
             //large size request
             FILE *tmp = tmpfile();
             if(tmp < 0){
-                client->bad_request_code = 500;
+                req->bad_request_code = 500;
                 return -1;
             }
-            client->body = tmp;
-            client->body_type = BODY_TYPE_TMPFILE;
+
+            req->body = tmp;
+            req->body_type = BODY_TYPE_TMPFILE;
             DEBUG("BODY_TYPE_TMPFILE");
         }else{
             //default memory stream
-            DEBUG("client->body_length %d", client->body_length);
-            client->body = new_buffer(client->body_length, 0);
-            client->body_type = BODY_TYPE_BUFFER;
+            DEBUG("client->body_length %d", req->body_length);
+            req->body = new_buffer(req->body_length, 0);
+            req->body_type = BODY_TYPE_BUFFER;
             DEBUG("BODY_TYPE_BUFFER");
         }
     }
-    write_body(client, buf, len);
+    write_body(req, buf, len);
     return 0;
 }
 
@@ -632,8 +646,8 @@ headers_complete_cb(http_parser *p)
     uint64_t content_length = 0;
 
     client_t *client = get_client(p);
-    request *req = client->req;
-    PyObject *env = client->environ;
+    request *req = client->current_req;
+    PyObject *env = req->environ;
     
     DEBUG("should keep alive %d", http_should_keep_alive(p));
     client->keep_alive = http_should_keep_alive(p);
@@ -641,9 +655,9 @@ headers_complete_cb(http_parser *p)
     if(p->content_length != ULLONG_MAX){
         content_length = p->content_length;
         if(max_content_length < content_length){
-            RDEBUG("max_content_length over %d/%d", content_length, (int)max_content_length);
+            RDEBUG("max_content_length over %d/%d", (int)content_length, (int)max_content_length);
             DEBUG("set request code %d", 413);
-            client->bad_request_code = 413;
+            req->bad_request_code = 413;
             return -1;
         }
     }
@@ -773,9 +787,8 @@ headers_complete_cb(http_parser *p)
     if(unlikely(ret == -1)){
         return -1;
     }
-    //free_request(req);
-    client->req = NULL;
-    client->body_length = content_length;
+    req->body_length = content_length;
+    /* client->current_req = NULL; */
 
     //keep client data
     obj = ClientObject_New(client);
@@ -796,12 +809,15 @@ int
 message_complete_cb(http_parser *p)
 {
     DEBUG("message_complete_cb");
+    
+    request *req = get_current_request(p);
+    req->upgrade = p->upgrade;
     client_t *client = get_client(p);
     client->complete = 1;
 
-    request *req = client->request_queue->tail;
-    req->body = client->body;
-    req->body_type = client->body_type;
+    /* request *req = client->request_queue->tail; */
+    /* req->body = client->body; */
+    /* req->body_type = client->body_type; */
 
     return 0;
 }
@@ -839,7 +855,7 @@ execute_parse(client_t *cli, const char *data, size_t len)
 {
     size_t ret = http_parser_execute(cli->http_parser, &settings, data, len);
     //check new protocol
-    cli->upgrade = cli->http_parser->upgrade;
+    /* cli->upgrade = cli->http_parser->upgrade; */
 
     return ret;
 }

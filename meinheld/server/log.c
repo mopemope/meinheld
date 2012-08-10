@@ -91,6 +91,7 @@ int
 write_access_log(client_t *cli, int log_fd, const char *log_path)
 {
     char buf[LOG_BUF_SIZE];
+    /*
     if(log_fd > 0){
 
         PyObject *obj;
@@ -146,5 +147,6 @@ write_access_log(client_t *cli, int log_fd, const char *log_path)
                ua);
         return write_log(log_path, log_fd, buf, strlen(buf));
     }
+    */
     return 0;
 }

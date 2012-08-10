@@ -29,13 +29,15 @@ typedef struct {
     uint32_t num_headers;
     field_type last_header_element;
 
-    PyObject *env;
+    PyObject *environ;
     void *next;
     int body_length;
     int body_readed;
     int bad_request_code;
     void *body;
     request_body_type body_type;
+    char upgrade;               // new protocol
+    
     PyObject *field;
     PyObject *value;
 

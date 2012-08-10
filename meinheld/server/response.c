@@ -111,7 +111,7 @@ send_error_page(client_t *client)
 
     /* int status = client->bad_request_code; */
     /* int r = status < 0 ? status * -1:status; */
-    client->status_code = client->bad_request_code;
+    /* client->status_code = client->bad_request_code; */
 
     DEBUG("send_error_page status_code %d client %p", client->status_code, client);
 
@@ -686,7 +686,7 @@ process_sendfile(client_t *client)
                     return STATUS_SUSPEND;
                 } else { /* fatal error */
                     client->keep_alive = 0;
-                    client->bad_request_code = 500;
+                    /* client->bad_request_code = 500; */
                     client->status_code = 500;
                     //close
                     return STATUS_ERROR;
@@ -766,7 +766,8 @@ process_write(client_t *client)
                 PyErr_SetString(PyExc_TypeError, "response item must be a byte string");
                 Py_DECREF(item);
                 if (PyErr_Occurred()){
-                    client->bad_request_code = 500;
+                    /* client->bad_request_code = 500; */
+                    client->status_code = 500;
                     write_error_log(__FILE__, __LINE__);
                     return STATUS_ERROR;
                 }

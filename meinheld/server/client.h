@@ -9,19 +9,14 @@ typedef struct _client {
     char *remote_addr;
     int remote_port;
 
-    uint8_t keep_alive;
-    request *req;
+    char keep_alive;
+    request *current_req;
     request_queue *request_queue;
-    int body_length;
-    uint8_t body_readed;
-    void *body;
-    int bad_request_code;
-    request_body_type body_type;
-    char upgrade;               // new protocol
-    uint8_t complete;
+    
+    char complete;
 
     http_parser *http_parser;          // http req parser
-    PyObject *environ;          // wsgi environ
+    //PyObject *environ;          // wsgi environ
     int status_code;            // response status code
 
     PyObject *http_status;      // response status line(PyBytes)

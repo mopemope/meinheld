@@ -35,10 +35,10 @@ alloc_request(void)
     request *req;
     if (request_numfree) {
         req = request_free_list[--request_numfree];
-        //DEBUG("use pooled req %p", req);
+        GDEBUG("use pooled req %p", req);
     }else{
         req = (request *)PyMem_Malloc(sizeof(request));
-        //DEBUG("alloc req %p", req);
+        GDEBUG("alloc req %p", req);
     }
     memset(req, 0, sizeof(request));
     return req;
@@ -48,7 +48,7 @@ void
 dealloc_request(request *req)
 {
     if (request_numfree < REQUEST_MAXFREELIST){
-        //DEBUG("back to request pool %p", req);
+        GDEBUG("back to request pool %p", req);
         request_free_list[request_numfree++] = req;
     }else{
         PyMem_Free(req);
@@ -61,7 +61,11 @@ new_request_queue(void)
 {
     request_queue *q = NULL;
     q = (request_queue *)PyMem_Malloc(sizeof(request_queue));
+    if(q == NULL){
+        return q;
+    }
     memset(q, 0, sizeof(request_queue));
+    GDEBUG("alloc req queue %p", q);
     return q;
 }
 
@@ -76,6 +80,7 @@ free_request_queue(request_queue *q)
         free_request(temp_req);
     }
 
+    GDEBUG("dealloc req queue %p", q);
     PyMem_Free(q);
 }
 
