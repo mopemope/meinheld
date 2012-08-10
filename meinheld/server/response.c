@@ -6,19 +6,34 @@
 #define CRLF "\r\n"
 #define DELIM ": "
 
-#define MSG_500 ("HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/html\r\nServer:  " SERVER "\r\n\r\n<html><head><title>500 Internal Server Error</title></head><body><h1>Internal Server Error</h1><p>The server encountered an internal error and was unable to complete your request.  Either the server is overloaded or there is an error in the application.</p></body></html>")
+#define H_MSG_500 "HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/html\r\nServer:  " SERVER "\r\n\r\n"
 
-#define MSG_503 ("HTTP/1.0 503 Service Unavailable\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Service Unavailable</title></head><body><p>Service Unavailable.</p></body></html>")
+#define H_MSG_503 "HTTP/1.0 503 Service Unavailable\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n"
 
-#define MSG_400 ("HTTP/1.0 400 Bad Request\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Bad Request</title></head><body><p>Bad Request.</p></body></html>")
+#define H_MSG_400 "HTTP/1.0 400 Bad Request\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n"
 
-#define MSG_408 ("HTTP/1.0 408 Request Timeout\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Request Timeout</title></head><body><p>Request Timeout.</p></body></html>")
+#define H_MSG_408 "HTTP/1.0 408 Request Timeout\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n"
 
-#define MSG_411 ("HTTP/1.0 411 Length Required\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Length Required</title></head><body><p>Length Required.</p></body></html>")
+#define H_MSG_411 "HTTP/1.0 411 Length Required\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n"
 
-#define MSG_413 ("HTTP/1.0 413 Request Entity Too Large\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Request Entity Too Large</title></head><body><p>Request Entity Too Large.</p></body></html>")
+#define H_MSG_413 "HTTP/1.0 413 Request Entity Too Large\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n"
 
-#define MSG_417 ("HTTP/1.1 417 Expectation Failed\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n<html><head><title>Expectation Failed</title></head><body><p>Expectation Failed.</p></body></html>")
+#define H_MSG_417 "HTTP/1.1 417 Expectation Failed\r\nContent-Type: text/html\r\nServer: " SERVER "\r\n\r\n"
+
+
+#define MSG_500 H_MSG_500 "<html><head><title>500 Internal Server Error</title></head><body><h1>Internal Server Error</h1><p>The server encountered an internal error and was unable to complete your request.  Either the server is overloaded or there is an error in the application.</p></body></html>"
+
+#define MSG_503 H_MSG_503 "<html><head><title>Service Unavailable</title></head><body><p>Service Unavailable.</p></body></html>"
+
+#define MSG_400 H_MSG_400 "<html><head><title>Bad Request</title></head><body><p>Bad Request.</p></body></html>"
+
+#define MSG_408 H_MSG_408 "<html><head><title>Request Timeout</title></head><body><p>Request Timeout.</p></body></html>"
+
+#define MSG_411 H_MSG_411 "<html><head><title>Length Required</title></head><body><p>Length Required.</p></body></html>"
+
+#define MSG_413 H_MSG_413 "<html><head><title>Request Entity Too Large</title></head><body><p>Request Entity Too Large.</p></body></html>"
+
+#define MSG_417 H_MSG_417 "<html><head><title>Expectation Failed</title></head><body><p>Expectation Failed.</p></body></html>"
 
 ResponseObject *start_response = NULL;
 
@@ -72,7 +87,7 @@ blocking_write(client_t *client, char *data, size_t len)
                 break;
             case -1:
                 if (errno == EAGAIN || errno == EWOULDBLOCK) { /* try again later */
-                    usleep(500);
+                    usleep(200);
                     break;
                 }else{
                     // fatal error
@@ -94,7 +109,7 @@ blocking_write(client_t *client, char *data, size_t len)
             default:
                 data += (int)r;
                 len -= r;
-                client->content_length += r;
+                client->write_bytes += r;
         }
     }
     return 1;
@@ -119,25 +134,32 @@ send_error_page(client_t *client)
     switch(client->status_code){
         case 400:
             blocking_write(client, MSG_400, sizeof(MSG_400) -1);
+            client->write_bytes -= sizeof(H_MSG_400) -1;
             break;
         case 408:
             blocking_write(client, MSG_408, sizeof(MSG_408) -1);
+            client->write_bytes -= sizeof(H_MSG_408) -1;
             break;
         case 411:
             blocking_write(client, MSG_411, sizeof(MSG_411) -1);
+            client->write_bytes -= sizeof(H_MSG_411) -1;
             break;
         case 413:
             blocking_write(client, MSG_413, sizeof(MSG_413) -1);
+            client->write_bytes -= sizeof(H_MSG_413) -1;
             break;
         case 417:
             blocking_write(client, MSG_417, sizeof(MSG_417) -1);
+            client->write_bytes -= sizeof(H_MSG_417) -1;
             break;
         case 503:
             blocking_write(client, MSG_503, sizeof(MSG_503) -1);
+            client->write_bytes -= sizeof(H_MSG_503) -1;
             break;
         default:
             //Internal Server Error
             blocking_write(client, MSG_500, sizeof(MSG_500) -1);
+            client->write_bytes -= sizeof(H_MSG_500) -1;
             break;
     }
     client->keep_alive = 0;

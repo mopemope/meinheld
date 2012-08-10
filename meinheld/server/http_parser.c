@@ -865,6 +865,7 @@ size_t http_parser_execute (http_parser *parser,
 
       case s_start_req:
       {
+        CALLBACK_NOTIFY(message_begin);
         if (ch == CR || ch == LF)
           break;
         parser->flags = 0;
@@ -899,7 +900,7 @@ size_t http_parser_execute (http_parser *parser,
         }
         parser->state = s_req_method;
 
-        CALLBACK_NOTIFY(message_begin);
+        /* CALLBACK_NOTIFY(message_begin); */
 
         break;
       }

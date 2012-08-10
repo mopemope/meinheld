@@ -81,3 +81,11 @@ def test_bad_method1():
 
     env, res = run_client(client, App)
     assert(res == None)
+
+def test_bad_method2():
+
+    def client():
+        send_data(method="GET" * 100)
+
+    env, res = run_client(client, App)
+    assert(res == None)

@@ -846,6 +846,7 @@ init_parser(client_t *cli, const char *name, const short port)
     /* memset(cli->http_parser, 0, sizeof(http_parser)); */
     http_parser_init(cli->http_parser, HTTP_REQUEST);
     cli->http_parser->data = cli;
+
     return 0;
 }
 

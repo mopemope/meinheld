@@ -180,9 +180,9 @@ clean_client(client_t *client)
     request *req = client->current_req;
     
     if(req){
-        call_access_logger(req->environ);
+        call_access_logger(client, req->environ);
     }else{
-        //TODO 
+        call_access_logger(client, NULL);
     }
 
     Py_CLEAR(client->http_status);
