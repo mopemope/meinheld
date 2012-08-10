@@ -10,6 +10,7 @@ typedef struct _client {
     int remote_port;
 
     char keep_alive;
+    char upgrade;
     request *current_req;
     request_queue *request_queue;
     

@@ -810,10 +810,9 @@ message_complete_cb(http_parser *p)
 {
     DEBUG("message_complete_cb");
     
-    request *req = get_current_request(p);
-    req->upgrade = p->upgrade;
     client_t *client = get_client(p);
     client->complete = 1;
+    client->upgrade = p->upgrade;
 
     /* request *req = client->request_queue->tail; */
     /* req->body = client->body; */

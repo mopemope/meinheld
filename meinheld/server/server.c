@@ -867,6 +867,70 @@ read_timeout(int fd, client_t *client)
 }
 
 static int
+compare_key(PyObject *env, char *key, char *compare)
+{
+    int ret = -1;
+    char *val = NULL;
+
+    PyObject *c = PyDict_GetItemString(env, key);
+    if(c){
+#ifdef PY3
+        c = PyUnicode_AsLatin1String(c);
+        val = PyBytes_AS_STRING(c);
+#else
+        val = PyBytes_AS_STRING(c);
+        Py_INCREF(c);
+#endif
+        ret = strcasecmp(val, compare);
+    }
+    Py_XDECREF(c);
+    return ret;
+}
+
+
+static int
+check_websocket(PyObject *env)
+{
+    //Support only RFC6455
+    if(PyMapping_HasKeyString(env, "HTTP_SEC_WEBSOCKET_KEY") == 1){
+        if(compare_key(env, "HTTP_SEC_WEBSOCKET_VERSION", "13") == 0){
+            return 1;
+        }
+    }
+
+    return -1;
+}
+
+
+static int
+parse_new_protocol(request *req, char *buf, ssize_t readed, int nread)
+{
+    PyObject *env, *c;
+    char *val = NULL;
+
+    env = req->environ;
+    c = PyDict_GetItemString(env, "HTTP_UPGRADE");
+    if(c){
+#ifdef PY3
+        c = PyUnicode_AsLatin1String(c);
+        val = PyBytes_AS_STRING(c);
+#else
+        val = PyBytes_AS_STRING(c);
+        Py_INCREF(c);
+#endif
+        DEBUG("Upgrade protocol %s", val);
+        if(!strcasecmp(val, "websocket")){
+            Py_DECREF(c);
+            //Support only RFC6455
+            return check_websocket(env);
+        }
+    }
+    // protocol not found error
+    PyErr_SetString(PyExc_IOError,"unknow protocol");
+    return -1;
+}
+
+static int
 parse_http_request(int fd, client_t *client, char *buf, ssize_t r)
 {
     int nread = 0;
@@ -878,8 +942,11 @@ parse_http_request(int fd, client_t *client, char *buf, ssize_t r)
 
     req = client->current_req;
 
-    if(req != NULL && req->upgrade){
+    if(client->upgrade){
         //TODO  New protocol
+        if(parse_new_protocol(req, buf, r, nread) == -1){
+            return set_read_error(client, req->bad_request_code);
+        }
     }else{
         if(nread != r || req->bad_request_code > 0){
             DEBUG("%d", req->bad_request_code);

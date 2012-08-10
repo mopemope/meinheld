@@ -29,6 +29,7 @@ extern "C" {
 
 #include <sys/types.h>
 #if defined(_WIN32) && !defined(__MINGW32__) && (!defined(_MSC_VER) || _MSC_VER<1600)
+#include <BaseTsd.h>
 typedef __int8 int8_t;
 typedef unsigned __int8 uint8_t;
 typedef __int16 int16_t;
@@ -37,9 +38,8 @@ typedef __int32 int32_t;
 typedef unsigned __int32 uint32_t;
 typedef __int64 int64_t;
 typedef unsigned __int64 uint64_t;
-
-typedef unsigned int size_t;
-typedef int ssize_t;
+typedef SIZE_T size_t;
+typedef SSIZE_T ssize_t;
 #else
 #include <stdint.h>
 #endif
@@ -256,7 +256,8 @@ enum http_parser_url_fields
   , UF_PATH             = 3
   , UF_QUERY            = 4
   , UF_FRAGMENT         = 5
-  , UF_MAX              = 6
+  , UF_USERINFO         = 6
+  , UF_MAX              = 7
   };
 
 
@@ -288,7 +289,7 @@ size_t http_parser_execute(http_parser *parser,
 
 
 /* If http_should_keep_alive() in the on_headers_complete or
- * on_message_complete callback returns true, then this will be should be
+ * on_message_complete callback returns 0, then this should be
  * the last message on the connection.
  * If you are the server, respond with the "Connection: close" header.
  * If you are the client, close the connection.

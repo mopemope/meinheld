@@ -36,7 +36,6 @@ typedef struct {
     int bad_request_code;
     void *body;
     request_body_type body_type;
-    char upgrade;               // new protocol
     
     PyObject *field;
     PyObject *value;
