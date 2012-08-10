@@ -2,6 +2,7 @@
 
 from base import *
 import requests
+import socket
 
 ASSERT_RESPONSE = b"Hello world!"
 RESPONSE = [b"Hello ", b"world!"]
@@ -73,3 +74,10 @@ def test_long_url2():
     env, res = run_client(client, App)
     assert(res.status_code == 400)
 
+def test_bad_method1():
+
+    def client():
+        send_data(method="")
+
+    env, res = run_client(client, App)
+    assert(res == None)

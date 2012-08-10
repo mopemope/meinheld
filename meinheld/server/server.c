@@ -178,8 +178,12 @@ static void
 clean_client(client_t *client)
 {
     request *req = client->current_req;
-
-    call_access_logger(req->environ);
+    
+    if(req){
+        call_access_logger(req->environ);
+    }else{
+        //TODO 
+    }
 
     Py_CLEAR(client->http_status);
     Py_CLEAR(client->headers);
@@ -949,7 +953,6 @@ parse_http_request(int fd, client_t *client, char *buf, ssize_t r)
         }
     }else{
         if(nread != r || req->bad_request_code > 0){
-            DEBUG("%d", req->bad_request_code);
             if(req == NULL){
                 DEBUG("fd %d bad_request code 400", fd);
                 return set_read_error(client, 400);
