@@ -86,6 +86,8 @@ call_error_logger(void)
         if(PyErr_Occurred()){
             PyErr_Print();
         }
+    }else{
+        PyErr_Print();
     }
 err:
     PyErr_Clear();
