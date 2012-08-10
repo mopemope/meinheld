@@ -493,7 +493,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     request *req = get_current_request(p);
     PyObject *env = NULL, *obj = NULL;
 
-    DEBUG("field key:%.*s", (int)len, buf);
+    /* DEBUG("field key:%.*s", (int)len, buf); */
 
     if(req->last_header_element != FIELD){
         env = req->environ;
@@ -548,7 +548,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     request *req = get_current_request(p);
     PyObject *obj;
 
-    DEBUG("field value:%.*s", (int)len, buf);
+    /* DEBUG("field value:%.*s", (int)len, buf); */
     if(likely(req->value== NULL)){
         obj = PyBytes_FromStringAndSize(buf, len);
     }else{

@@ -254,7 +254,7 @@ def internal_recv(s, *args):
             return sock.recv(*args)
         except error as ex:
             if ex.errno == EBADF:
-                return ''
+                raise 
             if ex.errno != EWOULDBLOCK or s.timeout == 0.0:
                 raise
             # QQQ without clearing exc_info test__refcount.test_clean_exit fails

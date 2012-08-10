@@ -606,7 +606,7 @@ trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         DEBUG("activecnt:%d", activecnt);
     }
     
-    DEBUG("call trampoline_callback fd:%d event:%d pyclient:%p", fd, events, cb_arg);
+    YDEBUG("call trampoline_callback fd:%d event:%d cb_arg:%p", fd, events, cb_arg);
     o = (PyObject*)cb_arg;
 
     if(CheckClientObject(o)){
@@ -620,8 +620,10 @@ trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
             client->keep_alive = 0;
             PyErr_SetString(timeout_error, "timeout");
         }
+        YDEBUG("resume_wsgi_handler");
         resume_wsgi_handler(pyclient);
     }else if(greenlet_check(o)){
+        YDEBUG("resume_greenlet");
         resume_greenlet(o);
     }
 }
@@ -1938,7 +1940,7 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
         // switch to hub
         current = pyclient->greenlet;
         parent = greenlet_getparent(current);
-        DEBUG("trampoline fd:%d event:%d current:%p parent:%p", fd, event, current, parent);
+        YDEBUG("trampoline fd:%d event:%d current:%p parent:%p cb_arg:%p", fd, event, current, parent, pyclient);
 
         return greenlet_switch(parent, hub_switch_value, NULL);
     }else{
@@ -1954,7 +1956,7 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
         if((ret == 0 && !active)){
             activecnt++;
         }
-        DEBUG("trampoline fd:%d event:%d current:%p parent:%p", fd, event, current, parent);
+        YDEBUG("trampoline fd:%d event:%d current:%p parent:%p cb_arg:%p", fd, event, current, parent, current);
         return greenlet_switch(parent, hub_switch_value, NULL);
     }
 #else
