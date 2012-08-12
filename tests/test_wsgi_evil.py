@@ -26,21 +26,32 @@ DEFAULT_HEADER = [
             ("Cache-Control", "max-age=0"),
         ]
 
+def to_bytes(s):
+    if isinstance(s, bytes):
+        return s
+    else:
+        return s.encode('iso-8859-1')
+
 def send_data(addr=DEFAULT_ADDR, method=DEFAULT_METHOD, path=DEFAULT_PATH,
         version=DEFAULT_VERSION, headers=DEFAULT_HEADER, post_data=None):
 
-    sock = socket.create_connection(addr)
-    sock.send("%s %s %s\r\n" % (method, path, version))
-    sock.send("Host: %s\r\n" % addr[0])
-    for h in  headers:
-        sock.send("%s: %s\r\n" % h)
-    sock.send("\r\n")
-    if post_data:
-        sock.send(post_data)
-        sock.send("\r\n")
+    try:
+        sock = socket.create_connection(addr)
+        sock.send(to_bytes("%s %s %s\r\n" % (method, path, version)))
+        sock.send(to_bytes("Host: %s\r\n" % addr[0]))
+        for h in  headers:
+            sock.send(to_bytes("%s: %s\r\n" % h))
+        sock.send(b"\r\n")
+        if post_data:
+            sock.send(to_bytes(post_data))
+            sock.send(b"\r\n")
 
-    data = sock.recv(1024 * 2)
-    return data
+        data = sock.recv(1024 * 2)
+        return data
+    except:
+        import traceback
+        print(traceback.format_exc())
+        raise
 
 class App(BaseApp):
 
@@ -77,7 +88,7 @@ def test_long_url2():
 def test_bad_method1():
 
     def client():
-        send_data(method="")
+        send_data(method=b"")
 
     env, res = run_client(client, App)
     assert(res == None)
@@ -85,7 +96,9 @@ def test_bad_method1():
 def test_bad_method2():
 
     def client():
-        send_data(method="GET" * 100)
+        send_data(method=b"GET" * 100)
 
     env, res = run_client(client, App)
     assert(res == None)
+
+
