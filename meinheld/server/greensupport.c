@@ -94,3 +94,17 @@ greenlet_check(PyObject *g)
     return PyGreenlet_Check((PyGreenlet*)g);
 }
 
+PyObject*
+get_greenlet_dict(PyObject *o)
+{
+    PyGreenlet *g = (PyGreenlet*)o;
+    if (g->dict == NULL) {
+        g->dict = PyDict_New();
+        if (g->dict == NULL){
+          return NULL;
+        }
+    }
+    Py_INCREF(g->dict);
+    return g->dict;
+}
+

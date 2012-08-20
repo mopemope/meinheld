@@ -62,7 +62,7 @@ else:
     define_macros=[
             ("WITH_GREENLET",None),
             ("HTTP_PARSER_DEBUG", "0") ]
-    install_requires=['greenlet==0.3.4']
+    install_requires=['greenlet==0.4.0']
 
 if develop:
     define_macros.append(("DEVELOP",None))

@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#define GREENLET_VERSION "0.3.4"
+#define GREENLET_VERSION "0.4.0"
 
 typedef struct _greenlet {
 	PyObject_HEAD
@@ -28,9 +28,11 @@ typedef struct _greenlet {
 	PyObject* exc_type;
 	PyObject* exc_value;
 	PyObject* exc_traceback;
+	PyObject* dict;
 } PyGreenlet;
 
 #define PyGreenlet_Check(op)      PyObject_TypeCheck(op, &PyGreenlet_Type)
+#define PyGreenlet_MAIN(op)       (((PyGreenlet*)(op))->stack_stop == (char*) -1)
 #define PyGreenlet_STARTED(op)    (((PyGreenlet*)(op))->stack_stop != NULL)
 #define PyGreenlet_ACTIVE(op)     (((PyGreenlet*)(op))->stack_start != NULL)
 #define PyGreenlet_GET_PARENT(op) (((PyGreenlet*)(op))->parent)
