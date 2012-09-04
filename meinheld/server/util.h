@@ -14,5 +14,6 @@ int disable_cork(client_t *client);
 
 int set_so_keepalive(int fd, int flag);
 
+uintptr_t get_current_msec(void);
 
 #endif

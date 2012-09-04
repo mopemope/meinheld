@@ -2,6 +2,7 @@
 #include "server.h"
 #include "response.h"
 #include "input.h"
+#include "util.h"
 
 #define MAXFREELIST 1024
 
@@ -474,6 +475,7 @@ message_begin_cb(http_parser *p)
     if(req == NULL){
         return -1;
     }
+    req->start_msec = get_current_msec();
     client->current_req = req;
     environ = new_environ(client);
     client->complete = 0;

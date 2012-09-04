@@ -99,4 +99,18 @@ disable_cork(client_t *client)
     return r;
 }
 
+uintptr_t
+get_current_msec()
+{
+    time_t sec = 0;
+    uintptr_t msec = 0;
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+
+    sec = tv.tv_sec;
+    msec = tv.tv_usec / 1000;
+
+    return (uintptr_t) sec * 1000 + msec;
+}
 

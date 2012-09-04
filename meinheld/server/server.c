@@ -67,6 +67,9 @@ PyObject* timeout_error;
 /* reuse object */
 static PyObject *client_key = NULL; //meinheld.client
 static PyObject *wsgi_input_key = NULL; //wsgi.input key
+static PyObject *status_code_key = NULL; //STATUS_CODE
+static PyObject *bytes_sent_key = NULL; // BYTES_SENT
+static PyObject *request_time_key = NULL; // REQUEST_TIME
 static PyObject *empty_string = NULL; //""
 
 static PyObject *app_handler_func = NULL; //""
@@ -175,14 +178,37 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port)
 }
 
 static void
+set_log_value(client_t *client, PyObject *environ, uintptr_t delta_msec)
+{
+    PyObject *status_code = NULL, *bytes = NULL, *request_time = NULL;
+    
+    status_code = PyLong_FromLong(client->status_code);
+    bytes = PyLong_FromLong(client->write_bytes);
+    request_time = PyLong_FromLong(delta_msec);
+    PyDict_SetItem(environ, status_code_key, status_code);
+    PyDict_SetItem(environ, bytes_sent_key, bytes);
+    PyDict_SetItem(environ, request_time_key, request_time);
+
+}
+
+    static void
 clean_client(client_t *client)
 {
+    PyObject *environ = NULL;
+    uintptr_t end, delta_msec = 0;
+
     request *req = client->current_req;
+    environ = req->environ;
     
+    end = get_current_msec();
+    if(req->start_msec > 0){
+        delta_msec = end - req->start_msec;
+    }
+    set_log_value(client, environ, delta_msec);
     if(req){
-        call_access_logger(client, req->environ);
+        call_access_logger(environ);
     }else{
-        call_access_logger(client, NULL);
+        call_access_logger(NULL);
     }
 
     Py_CLEAR(client->http_status);
@@ -441,6 +467,7 @@ app_handler(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 
 error:
+    client->status_code = 500;
     status = close_response(client);
     if(status == STATUS_ERROR){
         //TODO logging error
@@ -1104,6 +1131,9 @@ setup_server_env(void)
     hub_switch_value = Py_BuildValue("(i)", -1);
     client_key = NATIVE_FROMSTRING("meinheld.client");
     wsgi_input_key = NATIVE_FROMSTRING("wsgi.input");
+    status_code_key = NATIVE_FROMSTRING("STATUS_CODE");
+    bytes_sent_key = NATIVE_FROMSTRING("BYTES_SENT");
+    request_time_key = NATIVE_FROMSTRING("REQUEST_TIME");
     empty_string = NATIVE_FROMSTRING("");
 }
 
@@ -1124,6 +1154,9 @@ clear_server_env(void)
     Py_DECREF(hub_switch_value);
     Py_DECREF(client_key);
     Py_DECREF(wsgi_input_key);
+    Py_DECREF(status_code_key);
+    Py_DECREF(bytes_sent_key);
+    Py_DECREF(request_time_key);
     Py_DECREF(empty_string);
 }
 

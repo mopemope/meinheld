@@ -13,7 +13,7 @@
 int set_access_logger(PyObject *obj);
 int set_err_logger(PyObject *obj);
 
-int call_access_logger(client_t *client, PyObject *environ);
+int call_access_logger(PyObject *environ);
 int call_error_logger(void);
 
 

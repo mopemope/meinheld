@@ -37,6 +37,7 @@ def test_access_log():
 
     def access(environ):
         assert(environ != None)
+        print(environ)
 
     from meinheld import server
     server.set_access_logger(access)

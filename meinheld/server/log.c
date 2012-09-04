@@ -29,13 +29,10 @@ set_err_logger(PyObject *obj)
 }
 
 int
-call_access_logger(client_t *client, PyObject *environ)
+call_access_logger(PyObject *environ)
 {
     PyObject *args = NULL, *res = NULL;
-    
-    DEBUG("status_code %d", client->status_code);
-    DEBUG("response length %d", client->write_bytes);
-    DEBUG("content_length %d", client->content_length);
+
     if(access_logger){
         if(environ == NULL){
             environ = Py_None;
