@@ -22,17 +22,17 @@ def patch_werkzeug():
 def patch_socket(aggressive=False):
     """Replace the standard socket object with meinheld's cooperative sockets.
     """
-    from meinheld import socket
+    from meinheld import msocket
     _socket = __import__('socket')
     _socket.patched = True
-    _socket.socket = socket.socket
-    _socket.SocketType = socket.SocketType
-    if hasattr(socket, 'socketpair'):
-        _socket.socketpair = socket.socketpair
-    if hasattr(socket, 'fromfd'):
-        _socket.fromfd = socket.fromfd
+    _socket.socket = msocket.socket
+    _socket.SocketType = msocket.SocketType
+    if hasattr(msocket, 'socketpair'):
+        _socket.socketpair = msocket.socketpair
+    if hasattr(msocket, 'fromfd'):
+        _socket.fromfd = msocket.fromfd
     try:
-        from meinheld.socket import ssl, sslerror
+        from meinheld.msocket import ssl, sslerror
         _socket.ssl = ssl
         _socket.sslerror = sslerror
     except ImportError:
