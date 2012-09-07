@@ -70,6 +70,7 @@ static PyObject *wsgi_input_key = NULL; //wsgi.input key
 static PyObject *status_code_key = NULL; //STATUS_CODE
 static PyObject *bytes_sent_key = NULL; // BYTES_SENT
 static PyObject *request_time_key = NULL; // REQUEST_TIME
+static PyObject *local_time_key = NULL; // LOCAL_TIME
 static PyObject *empty_string = NULL; //""
 
 static PyObject *app_handler_func = NULL; //""
@@ -180,14 +181,29 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port)
 static void
 set_log_value(client_t *client, PyObject *environ, uintptr_t delta_msec)
 {
-    PyObject *status_code = NULL, *bytes = NULL, *request_time = NULL;
+    PyObject *status_code = NULL, *bytes = NULL, *request_time = NULL, *local_time = NULL;
     
     status_code = PyLong_FromLong(client->status_code);
     bytes = PyLong_FromLong(client->write_bytes);
     request_time = PyLong_FromLong(delta_msec);
-    PyDict_SetItem(environ, status_code_key, status_code);
-    PyDict_SetItem(environ, bytes_sent_key, bytes);
-    PyDict_SetItem(environ, request_time_key, request_time);
+    cache_time_update();
+    local_time = NATIVE_FROMSTRING(http_log_time);
+    
+    if(status_code){
+        PyDict_SetItem(environ, status_code_key, status_code);
+    }
+    
+    if(bytes){
+        PyDict_SetItem(environ, bytes_sent_key, bytes);
+    }
+    
+    if(request_time){
+        PyDict_SetItem(environ, request_time_key, request_time);
+    }
+
+    if(local_time){
+        PyDict_SetItem(environ, local_time_key, local_time);
+    }
 
 }
 
@@ -1134,6 +1150,7 @@ setup_server_env(void)
     status_code_key = NATIVE_FROMSTRING("STATUS_CODE");
     bytes_sent_key = NATIVE_FROMSTRING("BYTES_SENT");
     request_time_key = NATIVE_FROMSTRING("REQUEST_TIME");
+    local_time_key = NATIVE_FROMSTRING("LOCAL_TIME");
     empty_string = NATIVE_FROMSTRING("");
 }
 
@@ -1157,6 +1174,7 @@ clear_server_env(void)
     Py_DECREF(status_code_key);
     Py_DECREF(bytes_sent_key);
     Py_DECREF(request_time_key);
+    Py_DECREF(local_time_key);
     Py_DECREF(empty_string);
 }
 

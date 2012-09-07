@@ -40,7 +40,7 @@ def test_access_log():
         print(environ)
 
     from meinheld import server
-    server.set_access_logger(access)
+    #server.set_access_logger(access)
 
     env, res = run_client(client, App)
     assert(res.content == ASSERT_RESPONSE)
