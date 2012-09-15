@@ -100,4 +100,24 @@ def test_nested():
     server.run(App())
 
 
+def test_many():
+
+    l = [i for i in range(10)]
+    
+    def _schedule_call():
+        assert(len(l) == 0)
+        server.shutdown()
+    
+    
+    def _call(i):
+        l.pop()
+
+    server.listen(("0.0.0.0", 8000))
+
+    for i in l:
+        server.schedule_call(0, _call, i)
+
+    server.schedule_call(1, _schedule_call)
+    server.run(App())
+
 
