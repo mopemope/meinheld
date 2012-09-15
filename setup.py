@@ -82,7 +82,7 @@ setup(name='meinheld',
     author_email='yutaka.matsubara@gmail.com',
     url='http://meinheld.org',
     license='BSD',
-    platforms='Linux, Darwin',
+    platforms='Linux, BSD, Darwin',
     packages= ['meinheld'],
     install_requires=install_requires,
 

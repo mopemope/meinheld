@@ -191,23 +191,27 @@ set_log_value(client_t *client, PyObject *environ, uintptr_t delta_msec)
     
     if(status_code){
         PyDict_SetItem(environ, status_code_key, status_code);
+        Py_DECREF(status_code);
     }
     
     if(bytes){
         PyDict_SetItem(environ, bytes_sent_key, bytes);
+        Py_DECREF(bytes);
     }
     
     if(request_time){
         PyDict_SetItem(environ, request_time_key, request_time);
+        Py_DECREF(request_time);
     }
 
     if(local_time){
         PyDict_SetItem(environ, local_time_key, local_time);
+        Py_DECREF(local_time);
     }
 
 }
 
-    static void
+static void
 clean_client(client_t *client)
 {
     PyObject *environ = NULL;
@@ -1402,10 +1406,15 @@ meinheld_access_log(PyObject *self, PyObject *args)
     PyObject *o = NULL;
     PyObject *func = NULL;
 
-    if (!PyArg_ParseTuple(args, "O:access_log", &o)){
+    if (!PyArg_ParseTuple(args, "O:access_logger", &o)){
         return NULL;
     }
-    
+   
+    if(o == Py_None){
+        set_access_logger(NULL);
+        Py_RETURN_NONE;
+    }
+
     func = PyObject_GetAttrString(o, "access");
     if(func == NULL){
         return NULL;
@@ -1425,8 +1434,13 @@ meinheld_error_log(PyObject *self, PyObject *args)
     PyObject *o = NULL;
     PyObject *func = NULL;
 
-    if (!PyArg_ParseTuple(args, "O:err_log", &o)){
+    if (!PyArg_ParseTuple(args, "O:error_logger", &o)){
         return NULL;
+    }
+
+    if(o == Py_None){
+        set_err_logger(NULL);
+        Py_RETURN_NONE;
     }
 
     func = PyObject_GetAttrString(o, "error");
