@@ -218,17 +218,19 @@ clean_client(client_t *client)
     uintptr_t end, delta_msec = 0;
 
     request *req = client->current_req;
-    environ = req->environ;
     
-    end = get_current_msec();
-    if(req->start_msec > 0){
-        delta_msec = end - req->start_msec;
-    }
-    set_log_value(client, environ, delta_msec);
     if(req){
+        environ = req->environ;
+        end = get_current_msec();
+        if(req->start_msec > 0){
+            delta_msec = end - req->start_msec;
+        }
+        set_log_value(client, environ, delta_msec);
         call_access_logger(environ);
     }else{
-        call_access_logger(NULL);
+        environ = new_environ(client);
+        set_log_value(client, environ, delta_msec);
+        call_access_logger(environ);
     }
 
     Py_CLEAR(client->http_status);

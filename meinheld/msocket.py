@@ -189,7 +189,7 @@ def internal_accept(s):
             client_socket, address = sock.accept()
             break
         except error as ex:
-            if ex.errno != EWOULDBLOCK or self.timeout == 0.0:
+            if ex.errno != EWOULDBLOCK or s.timeout == 0.0:
                 raise
             #sys.exc_clear()
         wait_read(sock.fileno(), timeout=self.timeout)
@@ -418,6 +418,7 @@ if is_py3():
             self._io_refs = 0
             self._closed = False
             self._sock.setblocking(0)
+            self.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
             self.timeout = _socket.getdefaulttimeout()
 
         def __enter__(self):
@@ -463,8 +464,10 @@ if is_py3():
             self._closed = True
             return self._sock.detach()
         
+        def accept(self):
+            raise NotImplementedError()
+
         makefile = __socket__.socket.makefile
-        accept = internal_accept
         connect = internal_connect
         connect_ex = internal_connect_ex
         recv = internal_recv
@@ -506,6 +509,7 @@ else:
                     self._sock = _sock
                     self.timeout = _socket.getdefaulttimeout()
             self._sock.setblocking(0)
+            self.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
 
         def __repr__(self):
             return '<%s at %s %s>' % (type(self).__name__, hex(id(self)), self._formatinfo())
@@ -556,7 +560,8 @@ else:
             # how the standard socket behaves)
             return _fileobject(self.dup(), mode, bufsize)
         
-        accept = internal_accept
+        def accept(self):
+            raise NotImplementedError()
         close = internal_close
         connect = internal_connect
         connect_ex = internal_connect_ex

@@ -164,7 +164,7 @@ dealloc_parser(http_parser *p)
     }
 }
 
-static PyObject*
+PyObject*
 new_environ(client_t *client)
 {
     PyObject *object, *environ;

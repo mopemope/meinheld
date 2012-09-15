@@ -21,4 +21,6 @@ void parser_list_clear(void);
 
 void dealloc_parser(http_parser *p);
 
+PyObject* new_environ(client_t *client);
+
 #endif

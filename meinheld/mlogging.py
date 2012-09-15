@@ -97,13 +97,13 @@ class Logger(object):
                 'l': '-',
                 'u': '-', # would be cool to get username from basic auth header
                 't': environ.get('LOCAL_TIME', '-'),
-                'r': "%s %s %s" % (environ.get('REQUEST_METHOD', '-'), environ.get('PATH_INFO', '-'), environ["SERVER_PROTOCOL"]),
-                's': str(environ.get('STATUS_CODE')),
+                'r': "%s %s %s" % (environ.get('REQUEST_METHOD', '-'), environ.get('PATH_INFO', '-'), environ.get('SERVER_PROTOCOL', 'HTTP')),
+                's': str(environ.get('STATUS_CODE' '-')),
                 'b': str(environ.get('BYTES_SENT', '-')),
                 'f': environ.get('HTTP_REFERER', '-'),
                 'a': environ.get('HTTP_USER_AGENT', '-'),
-                'T': str(environ.get('REQUEST_TIME', 0) /100),
-                'D': str(environ.get('REQUEST_TIME', 0)),
+                'T': str(environ.get('REQUEST_TIME', 1) /100),
+                'D': str(environ.get('REQUEST_TIME', 1)),
                 'p': "<%s>" % os.getpid()
                 }
 
