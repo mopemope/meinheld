@@ -13,7 +13,7 @@ set_access_logger(PyObject *obj)
         Py_DECREF(access_logger);
     }
     access_logger = obj;
-    Py_INCREF(access_logger);
+    //Py_INCREF(access_logger);
     return 1;
 }
 
@@ -24,7 +24,7 @@ set_err_logger(PyObject *obj)
         Py_DECREF(err_logger);
     }
     err_logger = obj;
-    Py_INCREF(err_logger);
+    //Py_INCREF(err_logger);
     return 1;
 }
 
@@ -38,6 +38,8 @@ call_access_logger(PyObject *environ)
             environ = Py_None;
             Py_INCREF(environ);
         }
+
+        DEBUG("call access logger %p", access_logger);
         args = Py_BuildValue("(O)", environ);
         res = PyObject_CallObject(access_logger, args);
         Py_DECREF(args);
@@ -50,10 +52,11 @@ call_access_logger(PyObject *environ)
     return 1;
 }
 
+
 int
 call_error_logger(void)
 {
-    PyObject *exception, *v, *tb;
+    PyObject *exception = NULL, *v = NULL, *tb = NULL;
     PyObject *args = NULL, *res = NULL;
 
     if(err_logger){
@@ -66,6 +69,10 @@ call_error_logger(void)
             goto err;
         }
         DEBUG("exc:%p val:%p tb:%p",exception, v, tb);
+        /* PySys_SetObject("last_type", exception); */
+        /* PySys_SetObject("last_value", v); */
+        /* PySys_SetObject("last_traceback", tb); */
+        
         if(v == NULL){
             v = Py_None;
             Py_INCREF(v);
@@ -74,9 +81,6 @@ call_error_logger(void)
             tb = Py_None;
             Py_INCREF(tb);
         }
-        /* PySys_SetObject("last_type", exception); */
-        /* PySys_SetObject("last_value", v); */
-        /* PySys_SetObject("last_traceback", tb); */
         PyErr_Clear();
 
         args = Py_BuildValue("(OOO)", exception, v, tb);
@@ -84,10 +88,11 @@ call_error_logger(void)
             PyErr_Print();
             goto err;
         }
+        DEBUG("call error logger %p", err_logger);
         res = PyObject_CallObject(err_logger, args);
         Py_DECREF(args);
         Py_XDECREF(res);
-        if(PyErr_Occurred()){
+        if(res == NULL){
             PyErr_Print();
         }
     }else{
@@ -97,8 +102,6 @@ err:
     PyErr_Clear();
     return 1;
 }
-
-
 
 
 int

@@ -64,8 +64,10 @@ class Logger(object):
     def critical(self, msg, *args, **kwargs):
         self.error_log.critical(msg, *args, **kwargs)
 
-    def error(self, msg, *args, **kwargs):
-        self.error_log.error(msg, *args, **kwargs)
+    def error(self, exc, val, tb):
+        from traceback import format_exception
+        msg = ''.join(format_exception(exc, val, tb))
+        self.error_log.error(msg)
 
     def warning(self, msg, *args, **kwargs):
         self.error_log.warning(msg, *args, **kwargs)
@@ -172,6 +174,6 @@ class Logger(object):
 
 logger = Logger()
 from meinheld import server
-server.set_access_logger(logger.access)
-server.set_error_logger(logger.error)
+server.set_access_logger(logger)
+server.set_error_logger(logger)
 

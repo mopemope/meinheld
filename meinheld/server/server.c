@@ -1400,34 +1400,45 @@ static PyObject *
 meinheld_access_log(PyObject *self, PyObject *args)
 {
     PyObject *o = NULL;
+    PyObject *func = NULL;
 
     if (!PyArg_ParseTuple(args, "O:access_log", &o)){
         return NULL;
     }
     
-    if(!PyCallable_Check(o)){
+    func = PyObject_GetAttrString(o, "access");
+    if(func == NULL){
+        return NULL;
+    }
+
+    if(!PyCallable_Check(func)){
         PyErr_SetString(PyExc_TypeError, "must be callable");
         return NULL;
     }
-    set_access_logger(o);
+    set_access_logger(func);
     Py_RETURN_NONE;
 }
 
 static PyObject *
 meinheld_error_log(PyObject *self, PyObject *args)
 {
-
     PyObject *o = NULL;
+    PyObject *func = NULL;
 
     if (!PyArg_ParseTuple(args, "O:err_log", &o)){
         return NULL;
     }
+
+    func = PyObject_GetAttrString(o, "error");
+    if(func == NULL){
+        return NULL;
+    }
     
-    if(!PyCallable_Check(o)){
+    if(!PyCallable_Check(func)){
         PyErr_SetString(PyExc_TypeError, "must be callable");
         return NULL;
     }
-    set_err_logger(o);
+    set_err_logger(func);
     Py_RETURN_NONE;
 }
 
