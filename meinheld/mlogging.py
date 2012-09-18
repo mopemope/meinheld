@@ -98,7 +98,7 @@ class Logger(object):
                 'u': '-', # would be cool to get username from basic auth header
                 't': environ.get('LOCAL_TIME', '-'),
                 'r': "%s %s %s" % (environ.get('REQUEST_METHOD', '-'), environ.get('PATH_INFO', '-'), environ.get('SERVER_PROTOCOL', 'HTTP')),
-                's': str(environ.get('STATUS_CODE' '-')),
+                's': str(environ.get('STATUS_CODE', '-')),
                 'b': str(environ.get('BYTES_SENT', '-')),
                 'f': environ.get('HTTP_REFERER', '-'),
                 'a': environ.get('HTTP_USER_AGENT', '-'),
@@ -106,9 +106,8 @@ class Logger(object):
                 'D': str(environ.get('REQUEST_TIME', 1)),
                 'p': "<%s>" % os.getpid()
                 }
-
         # add request headers
-         
+        
         for k, v in environ.items():
             if k.startswith('HTTP_'):
                 #header
