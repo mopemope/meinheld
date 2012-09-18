@@ -199,13 +199,13 @@ def test_makefile_write_read():
     def _test():
         s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
         s.connect(("localhost", 8000))
-        f = s.makefile("rw")
+        f = s.makefile(mode="rwb")
         assert(f)
-        f.write("GET / HTTP/1.0\r\n")
-        f.write("\r\n")
+        f.write(b"GET / HTTP/1.0\r\n")
+        f.write(b"\r\n")
         f.flush()
         c = f.read(1024)
-        assert(len(c) == 132)
+        assert(len(c) == 138)
         server.shutdown()
 
     server.listen(("0.0.0.0", 8000))

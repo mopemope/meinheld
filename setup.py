@@ -70,7 +70,7 @@ if develop:
 sources = get_sources("meinheld", ["*picoev_*"])
 sources.append(get_picoev_file())
 
-library_dirs=['/usr/local/lib']
+library_dirs=[]
 #TODO set python include dirs
 include_dirs=[]
 
@@ -96,8 +96,8 @@ setup(name='meinheld',
             sources=sources,
             include_dirs=include_dirs,
             library_dirs=library_dirs,
-            #libraries=["profiler"],
-            #extra_compile_args=["-save-temps"],
+            # libraries=["profiler"],
+            # extra_compile_args=[""],
             define_macros=define_macros
         )],
 

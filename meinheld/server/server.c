@@ -2033,6 +2033,7 @@ meinheld_spawn(PyObject *self, PyObject *args, PyObject *kwargs)
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OO:spawn", keywords, &func, &func_args, &func_kwargs)){
         return NULL;
     }
+
     //new greenlet
     greenlet = greenlet_new(func, NULL);
     if(greenlet == NULL){
