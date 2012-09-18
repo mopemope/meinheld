@@ -527,6 +527,14 @@ resume_greenlet(PyObject *greenlet)
         res = greenlet_throw(greenlet, err_type, err_val, err_tb);
     }else{
         res = greenlet_switch(greenlet, NULL, NULL);
+        Py_XDECREF(res);
+        if(res == NULL){
+            call_error_logger();
+            /* PyErr_Fetch(&err_type, &err_val, &err_tb); */
+            /* PyErr_Clear(); */
+            //set error
+            /* res = greenlet_throw(greenlet, err_type, err_val, err_tb); */
+        }
     }
     Py_XDECREF(res);
 }
@@ -1495,6 +1503,7 @@ fire_timer(void)
                 res = PyObject_Call(timer->callback, timer->args, timer->kwargs);
                 timer->called = 1;
                 Py_XDECREF(res);
+                DEBUG("called timer:%p", timer);
             }
 
             Py_DECREF(timer);
@@ -1503,8 +1512,7 @@ fire_timer(void)
 
             if(PyErr_Occurred()){
                 RDEBUG("scheduled call raise exception");
-                //TODO PyErr_Print or write log
-                PyErr_Print();
+                call_error_logger();
                 ret = -1;
                 break;
             }

@@ -166,6 +166,18 @@ def test_send():
     server.spawn(_test)
     server.run(App())
 
+def test_sendall():
+    def _test():
+        s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
+        s.connect(("localhost", 8000))
+        s.sendall(b"GET / HTTP/1.0\r\n\r\n")
+        assert(len(s.recv(1024)) == 138)
+        server.shutdown()
+
+    server.listen(("0.0.0.0", 8000))
+    server.spawn(_test)
+    server.run(App())
+
 def test_recv():
 
     def _test():
