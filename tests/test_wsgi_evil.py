@@ -26,6 +26,8 @@ DEFAULT_HEADER = [
             ("Cache-Control", "max-age=0"),
         ]
 
+ERR_400 = b"HTTP/1.0 400 Bad Request"
+
 def to_bytes(s):
     if isinstance(s, bytes):
         return s
@@ -66,7 +68,6 @@ class App(BaseApp):
         return RESPONSE
 
 
-
 def test_long_url1():
 
     def client():
@@ -88,17 +89,25 @@ def test_long_url2():
 def test_bad_method1():
 
     def client():
-        send_data(method=b"")
+        return send_data(method=b"")
 
     env, res = run_client(client, App)
-    assert(res == None)
+    assert(res.split("\r\n")[0] == ERR_400)
 
 def test_bad_method2():
 
     def client():
-        send_data(method=b"GET" * 100)
+        return send_data(method=b"GET" * 100)
 
     env, res = run_client(client, App)
-    assert(res == None)
+    assert(res.split("\r\n")[0] == ERR_400)
 
+
+def test_bad_path():
+
+    def client():
+        return send_data(path=b"..")
+
+    env, res = run_client(client, App)
+    assert(res.split("\r\n")[0] == ERR_400)
 
