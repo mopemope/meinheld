@@ -92,7 +92,7 @@ def test_bad_method1():
         return send_data(method=b"")
 
     env, res = run_client(client, App)
-    assert(res.split("\r\n")[0] == ERR_400)
+    assert(res.split(b"\r\n")[0] == ERR_400)
 
 def test_bad_method2():
 
@@ -100,7 +100,7 @@ def test_bad_method2():
         return send_data(method=b"GET" * 100)
 
     env, res = run_client(client, App)
-    assert(res.split("\r\n")[0] == ERR_400)
+    assert(res.split(b"\r\n")[0] == ERR_400)
 
 
 def test_bad_path():
@@ -109,5 +109,5 @@ def test_bad_path():
         return send_data(path=b"..")
 
     env, res = run_client(client, App)
-    assert(res.split("\r\n")[0] == ERR_400)
+    assert(res.split(b"\r\n")[0] == ERR_400)
 
