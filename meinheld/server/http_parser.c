@@ -29,6 +29,14 @@
 #include <string.h>
 #include <limits.h>
 
+#if __GNUC__ >= 3
+# define likely(x)    __builtin_expect(!!(x), 1)
+# define unlikely(x)    __builtin_expect(!!(x), 0)
+#else
+# define likely(x) (x)
+# define unlikely(x) (x)
+#endif
+
 #ifndef ULLONG_MAX
 # define ULLONG_MAX ((uint64_t) -1) /* 2^64-1 */
 #endif
@@ -37,6 +45,19 @@
 # define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+#ifndef ARRAY_SIZE
+# define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#endif
+
+#ifndef BIT_AT
+# define BIT_AT(a, i)                                                \
+  (!!((unsigned int) (a)[(unsigned int) (i) >> 3] &                  \
+   (1 << ((unsigned int) (i) & 7))))
+#endif
+
+#ifndef ELEM_AT
+# define ELEM_AT(a, i, v) ((unsigned int) (i) < ARRAY_SIZE(a) ? (a)[(i)] : (v))
+#endif
 
 #if HTTP_PARSER_DEBUG
 #define SET_ERRNO(e)                                                 \
@@ -57,7 +78,7 @@ do {                                                                 \
 do {                                                                 \
   assert(HTTP_PARSER_ERRNO(parser) == HPE_OK);                       \
                                                                      \
-  if (settings->on_##FOR) {                                          \
+  if ( likely(settings->on_##FOR) ) {                                          \
     if (0 != settings->on_##FOR(parser)) {                           \
       SET_ERRNO(HPE_CB_##FOR);                                       \
     }                                                                \
@@ -80,8 +101,8 @@ do {                                                                 \
 do {                                                                 \
   assert(HTTP_PARSER_ERRNO(parser) == HPE_OK);                       \
                                                                      \
-  if (FOR##_mark) {                                                  \
-    if (settings->on_##FOR) {                                        \
+  if (likely(FOR##_mark)) {                                                  \
+    if (likely(settings->on_##FOR)) {                                        \
       if (0 != settings->on_##FOR(parser, FOR##_mark, (LEN))) {      \
         SET_ERRNO(HPE_CB_##FOR);                                     \
       }                                                              \
@@ -185,45 +206,45 @@ static const int8_t unhex[256] =
 
 
 #if HTTP_PARSER_STRICT
-# define T 0
+# define T(v) 0
 #else
-# define T 1
+# define T(v) v
 #endif
 
 
-static const uint8_t normal_url_char[256] = {
+static const uint8_t normal_url_char[32] = {
 /*   0 nul    1 soh    2 stx    3 etx    4 eot    5 enq    6 ack    7 bel  */
-        0,       0,       0,       0,       0,       0,       0,       0,
+        0    |   0    |   0    |   0    |   0    |   0    |   0    |   0,
 /*   8 bs     9 ht    10 nl    11 vt    12 np    13 cr    14 so    15 si   */
-        0,       T,       0,       0,       T,       0,       0,       0,
+        0    | T(2)   |   0    |   0    | T(16)  |   0    |   0    |   0,
 /*  16 dle   17 dc1   18 dc2   19 dc3   20 dc4   21 nak   22 syn   23 etb */
-        0,       0,       0,       0,       0,       0,       0,       0,
+        0    |   0    |   0    |   0    |   0    |   0    |   0    |   0,
 /*  24 can   25 em    26 sub   27 esc   28 fs    29 gs    30 rs    31 us  */
-        0,       0,       0,       0,       0,       0,       0,       0,
+        0    |   0    |   0    |   0    |   0    |   0    |   0    |   0,
 /*  32 sp    33  !    34  "    35  #    36  $    37  %    38  &    39  '  */
-        0,       1,       1,       0,       1,       1,       1,       1,
+        0    |   2    |   4    |   0    |   16   |   32   |   64   |  128,
 /*  40  (    41  )    42  *    43  +    44  ,    45  -    46  .    47  /  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /*  48  0    49  1    50  2    51  3    52  4    53  5    54  6    55  7  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /*  56  8    57  9    58  :    59  ;    60  <    61  =    62  >    63  ?  */
-        1,       1,       1,       1,       1,       1,       1,       0,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |   0,
 /*  64  @    65  A    66  B    67  C    68  D    69  E    70  F    71  G  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /*  72  H    73  I    74  J    75  K    76  L    77  M    78  N    79  O  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /*  80  P    81  Q    82  R    83  S    84  T    85  U    86  V    87  W  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /*  88  X    89  Y    90  Z    91  [    92  \    93  ]    94  ^    95  _  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /*  96  `    97  a    98  b    99  c   100  d   101  e   102  f   103  g  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /* 104  h   105  i   106  j   107  k   108  l   109  m   110  n   111  o  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
-        1,       1,       1,       1,       1,       1,       1,       1,
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |  128,
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
-        1,       1,       1,       1,       1,       1,       1,       0, };
+        1    |   2    |   4    |   8    |   16   |   32   |   64   |   0, };
 
 #undef T
 
@@ -364,12 +385,12 @@ enum http_host_state
 
 #if HTTP_PARSER_STRICT
 #define TOKEN(c)            (tokens[(unsigned char)c])
-#define IS_URL_CHAR(c)      (normal_url_char[(unsigned char) (c)])
+#define IS_URL_CHAR(c)      (BIT_AT(normal_url_char, (unsigned char)c))
 #define IS_HOST_CHAR(c)     (IS_ALPHANUM(c) || (c) == '.' || (c) == '-')
 #else
 #define TOKEN(c)            ((c == ' ') ? ' ' : tokens[(unsigned char)c])
 #define IS_URL_CHAR(c)                                                         \
-  (normal_url_char[(unsigned char) (c)] || ((c) & 0x80))
+  (BIT_AT(normal_url_char, (unsigned char)c) || ((c) & 0x80))
 #define IS_HOST_CHAR(c)                                                        \
   (IS_ALPHANUM(c) || (c) == '.' || (c) == '-' || (c) == '_')
 #endif
@@ -403,7 +424,7 @@ static struct {
 };
 #undef HTTP_STRERROR_GEN
 
-int http_message_needs_eof(http_parser *parser);
+int http_message_needs_eof(const http_parser *parser);
 
 /* Our URL parser.
  *
@@ -567,7 +588,7 @@ parse_url_char(enum state s, const char ch)
 size_t http_parser_execute (http_parser *parser,
                             const http_parser_settings *settings,
                             const char *data,
-                            size_t len)
+                            const size_t len)
 {
   char c, ch;
   int8_t unhex_val;
@@ -624,13 +645,13 @@ size_t http_parser_execute (http_parser *parser,
     break;
   }
 
-  for (p=data; p != data + len; p++) {
+  for (p=data; likely(p != data + len); p++) {
     ch = *p;
 
-    if (PARSING_HEADER(parser->state)) {
+    if ( likely(PARSING_HEADER(parser->state)) ) {
       ++parser->nread;
       /* Buffer overflow attack */
-      if (parser->nread > HTTP_MAX_HEADER_SIZE) {
+      if ( unlikely(parser->nread > HTTP_MAX_HEADER_SIZE) ) {
         SET_ERRNO(HPE_HEADER_OVERFLOW);
         goto error;
       }
@@ -865,7 +886,6 @@ size_t http_parser_execute (http_parser *parser,
 
       case s_start_req:
       {
-        CALLBACK_NOTIFY(message_begin);
         if (ch == CR || ch == LF)
           break;
         parser->flags = 0;
@@ -900,7 +920,7 @@ size_t http_parser_execute (http_parser *parser,
         }
         parser->state = s_req_method;
 
-        /* CALLBACK_NOTIFY(message_begin); */
+        CALLBACK_NOTIFY(message_begin);
 
         break;
       }
@@ -1369,7 +1389,7 @@ size_t http_parser_execute (http_parser *parser,
         }
 
         c = LOWER(ch);
-
+        
         switch (parser->header_state) {
           case h_upgrade:
             parser->flags |= F_UPGRADE;
@@ -1429,7 +1449,7 @@ size_t http_parser_execute (http_parser *parser,
         }
 
         c = LOWER(ch);
-
+        
         switch (parser->header_state) {
           case h_general:
             break;
@@ -1842,7 +1862,7 @@ error:
 
 /* Does the parser need to see an EOF to find the end of the message? */
 int
-http_message_needs_eof (http_parser *parser)
+http_message_needs_eof (const http_parser *parser)
 {
   if (parser->type == HTTP_REQUEST) {
     return 0;
@@ -1865,7 +1885,7 @@ http_message_needs_eof (http_parser *parser)
 
 
 int
-http_should_keep_alive (http_parser *parser)
+http_should_keep_alive (const http_parser *parser)
 {
   if (parser->http_major > 0 && parser->http_minor > 0) {
     /* HTTP/1.1 */
@@ -1883,9 +1903,10 @@ http_should_keep_alive (http_parser *parser)
 }
 
 
-const char * http_method_str (enum http_method m)
+const char *
+http_method_str (enum http_method m)
 {
-  return method_strings[m];
+  return ELEM_AT(method_strings, m, "<unknown>");
 }
 
 
@@ -2161,4 +2182,9 @@ http_parser_pause(http_parser *parser, int paused) {
   } else {
     assert(0 && "Attempting to pause parser in error state");
   }
+}
+
+int
+http_body_is_final(const struct http_parser *parser) {
+    return parser->state == s_message_done;
 }
