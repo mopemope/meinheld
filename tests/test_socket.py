@@ -206,6 +206,24 @@ def test_recv():
     server.spawn(_test)
     server.run(App())
 
+def test_recvfrom():
+
+    def _test():
+        s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
+        s.connect(("localhost", 8000))
+        s.send(b"GET / HTTP/1.0\r\n")
+        s.send(b"\r\n")
+        c, addr = s.recvfrom(1024)
+        assert(len(c) == 138)
+        print(c)
+        print(addr)
+
+        server.shutdown()
+
+    server.listen(("0.0.0.0", 8000))
+    server.spawn(_test)
+    server.run(App())
+
 def test_makefile():
     def _test():
         s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
