@@ -5,6 +5,7 @@ from pytest import *
 from base import *
 from meinheld import server
 from meinheld import msocket
+import array
 import socket
 import traceback
 
@@ -215,8 +216,40 @@ def test_recvfrom():
         s.send(b"\r\n")
         c, addr = s.recvfrom(1024)
         assert(len(c) == 138)
-        print(c)
-        print(addr)
+
+        server.shutdown()
+
+    server.listen(("0.0.0.0", 8000))
+    server.spawn(_test)
+    server.run(App())
+
+def test_recvfrom_into():
+
+    def _test():
+        s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
+        s.connect(("localhost", 8000))
+        s.send(b"GET / HTTP/1.0\r\n")
+        s.send(b"\r\n")
+        buf = array.array('b', [0] *1024)
+        r, addr = s.recvfrom_into(buf, 1024)
+        assert(r == 138)
+
+        server.shutdown()
+
+    server.listen(("0.0.0.0", 8000))
+    server.spawn(_test)
+    server.run(App())
+
+def test_recv_into():
+
+    def _test():
+        s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
+        s.connect(("localhost", 8000))
+        s.send(b"GET / HTTP/1.0\r\n")
+        s.send(b"\r\n")
+        buf = array.array('b', [0] *1024)
+        r = s.recv_into(buf)
+        assert(r == 138)
 
         server.shutdown()
 
@@ -276,5 +309,8 @@ def test_close_duble():
     server.listen(("0.0.0.0", 8000))
     server.spawn(_test)
     server.run(App())
+
+
+
 
 
