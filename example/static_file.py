@@ -30,7 +30,5 @@ def simple_app(environ, start_response):
 
 
 meinheld.listen(("0.0.0.0", 8000))
-#meinheld.access_log('/tmp/acc.log')
-#meinheld.error_log('/tmp/err.log')
 meinheld.run(simple_app)
 
