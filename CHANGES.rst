@@ -1,3 +1,13 @@
+0.5
+=======
+(New Feature release. rerelease 2012-10-09)
+
+* Support PEP3333
+* Support custom access logger and errror logger
+* Support Server Side Event
+* Not support SSL socket patch
+
+
 0.4.15
 =======
 (bug fix release, release 2012-6-10)

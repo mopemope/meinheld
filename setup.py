@@ -12,7 +12,7 @@ import fnmatch
 
 
 develop = False
-develop = True 
+# develop = True 
 
 def read(name):
     return open(os.path.join(os.path.dirname(__file__), name)).read()
@@ -75,7 +75,7 @@ library_dirs=[]
 include_dirs=[]
 
 setup(name='meinheld',
-    version="0.5dev",
+    version="0.5",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
@@ -111,6 +111,7 @@ setup(name='meinheld',
         'Operating System :: POSIX :: BSD :: FreeBSD',
         'Programming Language :: C',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Topic :: Internet :: WWW/HTTP :: WSGI :: Server'
     ],
 )

@@ -160,7 +160,7 @@ def test_send():
         s.connect(("localhost", 8000))
         s.send(b"GET / HTTP/1.0\r\n")
         s.send(b"\r\n")
-        assert(len(s.recv(1024)) == 138)
+        assert(len(s.recv(1024)) == 135)
         server.shutdown()
 
     server.listen(("0.0.0.0", 8000))
@@ -172,7 +172,7 @@ def test_sendall():
         s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
         s.connect(("localhost", 8000))
         s.sendall(b"GET / HTTP/1.0\r\n\r\n")
-        assert(len(s.recv(1024)) == 138)
+        assert(len(s.recv(1024)) == 135)
         server.shutdown()
 
     server.listen(("0.0.0.0", 8000))
@@ -184,7 +184,7 @@ def test_sendto():
         s = msocket.socket(msocket.AF_INET, msocket.SOCK_STREAM)
         s.connect(("localhost", 8000))
         s.sendto(b"GET / HTTP/1.0\r\n\r\n", (b'localhost',8000))
-        assert(len(s.recv(1024)) == 138)
+        assert(len(s.recv(1024)) == 135)
         server.shutdown()
 
     server.listen(("0.0.0.0", 8000))
@@ -199,7 +199,7 @@ def test_recv():
         s.send(b"GET / HTTP/1.0\r\n")
         s.send(b"\r\n")
         c = s.recv(1024)
-        assert(len(c) == 138)
+        assert(len(c) == 135)
 
         server.shutdown()
 
@@ -215,7 +215,7 @@ def test_recvfrom():
         s.send(b"GET / HTTP/1.0\r\n")
         s.send(b"\r\n")
         c, addr = s.recvfrom(1024)
-        assert(len(c) == 138)
+        assert(len(c) == 135)
 
         server.shutdown()
 
@@ -232,7 +232,7 @@ def test_recvfrom_into():
         s.send(b"\r\n")
         buf = array.array('b', [0] *1024)
         r, addr = s.recvfrom_into(buf, 1024)
-        assert(r == 138)
+        assert(r == 135)
 
         server.shutdown()
 
@@ -249,7 +249,7 @@ def test_recv_into():
         s.send(b"\r\n")
         buf = array.array('b', [0] *1024)
         r = s.recv_into(buf)
-        assert(r == 138)
+        assert(r == 135)
 
         server.shutdown()
 
@@ -280,7 +280,7 @@ def test_makefile_write_read():
         f.write(b"\r\n")
         f.flush()
         c = f.read(1024)
-        assert(len(c) == 138)
+        assert(len(c) == 135)
         server.shutdown()
 
     server.listen(("0.0.0.0", 8000))
