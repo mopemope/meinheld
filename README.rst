@@ -12,7 +12,7 @@ You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 Requirements
 ---------------------------------
 
-meinheld requires **Python 2.x >= 2.5**. and **greenlet >= 0.3.1**.
+meinheld requires **Python 2.x >= 2.5**. and **greenlet == 0.3.4**.
 
 meinheld supports Linux, FreeBSD, Mac OS X.
 
