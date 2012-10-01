@@ -13,7 +13,6 @@ def hello_world(environ, start_response):
     return [res]
 
 def run(app, i):
-    meinheld.set_process_name("hello_world-worker-%d" % i);
     meinheld.run(app)
 
 def kill_all(sig, st):
@@ -25,7 +24,6 @@ def start(num=2):
         p = Process(name="worker-%d" % i, target=run, args=(hello_world,i))
         workers.append(p)
         p.start()
-    meinheld.set_process_name("hello_world-master");
 
 signal.signal(signal.SIGTERM, kill_all)
 meinheld.listen(("0.0.0.0", 8000))
