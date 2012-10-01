@@ -68,7 +68,7 @@ PyObject* timeout_error;
 static PyObject *client_key = NULL; //meinheld.client
 static PyObject *wsgi_input_key = NULL; //wsgi.input key
 static PyObject *status_code_key = NULL; //STATUS_CODE
-static PyObject *bytes_sent_key = NULL; // BYTES_SENT
+static PyObject *bytes_sent_key = NULL; // SEND_BYTES
 static PyObject *request_time_key = NULL; // REQUEST_TIME
 static PyObject *local_time_key = NULL; // LOCAL_TIME
 static PyObject *empty_string = NULL; //""
@@ -1162,7 +1162,7 @@ setup_server_env(void)
     client_key = NATIVE_FROMSTRING("meinheld.client");
     wsgi_input_key = NATIVE_FROMSTRING("wsgi.input");
     status_code_key = NATIVE_FROMSTRING("STATUS_CODE");
-    bytes_sent_key = NATIVE_FROMSTRING("BYTES_SENT");
+    bytes_sent_key = NATIVE_FROMSTRING("SEND_BYTES");
     request_time_key = NATIVE_FROMSTRING("REQUEST_TIME");
     local_time_key = NATIVE_FROMSTRING("LOCAL_TIME");
     empty_string = NATIVE_FROMSTRING("");

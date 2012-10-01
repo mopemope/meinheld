@@ -99,7 +99,7 @@ class Logger(object):
                 't': environ.get('LOCAL_TIME', '-'),
                 'r': "%s %s %s" % (environ.get('REQUEST_METHOD', '-'), environ.get('PATH_INFO', '-'), environ.get('SERVER_PROTOCOL', 'HTTP')),
                 's': str(environ.get('STATUS_CODE', '-')),
-                'b': str(environ.get('BYTES_SENT', '-')),
+                'b': str(environ.get('SEND_BYTES', '-')),
                 'f': environ.get('HTTP_REFERER', '-'),
                 'a': environ.get('HTTP_USER_AGENT', '-'),
                 'T': str(environ.get('REQUEST_TIME', 1) /100),
