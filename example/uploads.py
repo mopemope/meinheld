@@ -1,6 +1,3 @@
-from meinheld.patch import patch_werkzeug
-patch_werkzeug()
-
 from werkzeug import BaseRequest, BaseResponse, run_simple, wrap_file
 import meinheld
 
@@ -31,6 +28,7 @@ def application(environ, start_response):
     return resp(environ, start_response)
 
 
+meinheld.set_max_content_length(1024 * 1024 * 1024)
 meinheld.listen(("0.0.0.0", 8000))
 meinheld.run(application)
 

@@ -27,13 +27,13 @@ def websocket_handle(environ, start_response):
     participants.add(ws)
     try:
         while True:
-            print "ws.wait()..."
+            print("ws.wait()...")
             m = ws.wait()
-            print "recv msg %s" % m
+            print("recv msg %s" % m)
             if m is None:
                 break
             for p in participants:
-                print "send message %s" % m
+                print("send message %s" % m)
                 p.send(m)
     finally:
         participants.remove(ws)
@@ -46,8 +46,8 @@ def dispatch(environ, start_response):
     else:
         start_response('200 OK', [('Content-Type', 'text/html')])
         ret = [open(os.path.join(
-                     os.path.dirname(__file__), 
-                     'templates/websocket_chat.html')).read()]
+                     os.path.dirname(__file__),
+                     'templates/websocket_chat.html'), 'rb').read()]
         return ret
         
 if __name__ == "__main__":

@@ -2,22 +2,25 @@
 #define HTTP_REQUEST_PARSER_H
 
 #include "client.h"
-#include "buffer.h"
-#include "request.h"
+//#include "buffer.h"
+//#include "request.h"
 
-inline int 
-init_parser(client_t *cli, const char *name, const short port);
+int init_parser(client_t *cli, const char *name, const short port);
 
-inline size_t 
-execute_parse(client_t *cli, const char *data, size_t len);
+size_t execute_parse(client_t *cli, const char *data, size_t len);
 
-inline int 
-parser_finish(client_t *cli);
+int parser_finish(client_t *cli);
 
-inline void 
-setup_static_env(char *name, int port);
+void setup_static_env(char *name, int port);
 
-inline void
-clear_static_env(void);
+void clear_static_env(void);
+
+void parser_list_fill(void);
+
+void parser_list_clear(void);
+
+void dealloc_parser(http_parser *p);
+
+PyObject* new_environ(client_t *client);
 
 #endif

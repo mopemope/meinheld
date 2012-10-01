@@ -1,6 +1,3 @@
-from meinheld.patch import patch_werkzeug
-patch_werkzeug()
-
 from flask import Flask, render_template, request, session, jsonify
 import uuid
 from meinheld import server, middleware
@@ -38,7 +35,7 @@ def message_update():
             waiters.remove(c)
             raise
 
-
+    print("suspend->resume %s" % c)
     assert cursor != cache[-1]['id'], cursor
     try:
         for index, m in enumerate(cache):
@@ -66,6 +63,7 @@ def message_new():
 
     for c in waiters:
         c.resume()
+        print("resume %s" % c)
     waiters = []
     return jsonify(msg)
     

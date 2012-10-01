@@ -43,7 +43,7 @@ class ChatRoom(object):
             try:
                 c.suspend(60)
             except:
-                self,waiters.remove(c)
+                self.waiters.remove(c)
                 raise
 
         assert cursor != self.cache[-1]['id'], cursor

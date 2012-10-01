@@ -1,11 +1,7 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include <Python.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <inttypes.h>
+#include "meinheld.h"
 
 typedef enum{
     WRITE_OK,
@@ -18,29 +14,19 @@ typedef struct _buffer {
     size_t buf_size;
     size_t len;
     size_t limit;
-} buffer;
+} buffer_t;
 
-inline buffer *
-new_buffer(size_t buf_size, size_t limit);
+buffer_t* new_buffer(size_t buf_size, size_t limit);
 
-inline buffer_result
-write2buf(buffer *buf, const char *c, size_t  l);
+buffer_result write2buf(buffer_t *buf, const char *c, size_t  l);
 
-inline void
-free_buffer(buffer *buf);
+void free_buffer(buffer_t *buf);
 
-inline PyObject *
-getPyString(buffer *buf);
+PyObject* getPyString(buffer_t *buf);
 
-inline PyObject *
-getPyStringAndDecode(buffer *buf);
+char* getString(buffer_t *buf);
 
-inline char *
-getString(buffer *buf);
+void buffer_list_fill(void);
 
-inline void
-buffer_list_fill(void);
-
-inline void
-buffer_list_clear(void);
+void buffer_list_clear(void);
 #endif

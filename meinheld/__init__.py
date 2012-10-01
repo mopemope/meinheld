@@ -1,2 +1,3 @@
 from meinheld.server import *
-__version__ = '0.4.15'
+from meinheld import mlogging
+__version__ = '0.5dev'

@@ -1,22 +1,19 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include "server.h"
+#include "meinheld.h"
 #include "client.h"
 
-inline void 
-setup_listen_sock(int fd);
+int setup_listen_sock(int fd);
 
-inline void 
-setup_sock(int fd);
+int setup_sock(int fd);
 
-inline void 
-enable_cork(client_t *client);
+int enable_cork(client_t *client);
 
-inline void 
-disable_cork(client_t *client);
+int disable_cork(client_t *client);
 
-inline void 
-set_so_keepalive(int fd, int flag);
+int set_so_keepalive(int fd, int flag);
+
+uintptr_t get_current_msec(void);
 
 #endif

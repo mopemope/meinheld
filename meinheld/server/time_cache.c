@@ -4,12 +4,6 @@
  * http://nginx.net/
  */
 
-#include <inttypes.h>
-#include <time.h>
-#include <sys/time.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "time_cache.h"
 
 #define TIME_SLOTS   64
@@ -56,7 +50,7 @@ cache_time_update(void)
     char          *p0, *p1, *p2;
     cache_time_t      *tp;
     struct timeval   tv;
-    
+
     gettimeofday(&tv, NULL);
 
     sec = tv.tv_sec;
@@ -82,7 +76,7 @@ cache_time_update(void)
     tp->sec = sec;
     tp->msec = msec;
 
-    time_t tt = time(NULL);
+	time_t tt = time(NULL);
     struct tm* gmt = gmtime(&tt);
 
     p0 = &cached_http_time[slot][0];

@@ -1,3 +1,4 @@
+
 try:
     from setuptools import Extension, setup
 except ImportError:
@@ -9,8 +10,9 @@ import os.path
 import platform
 import fnmatch
 
-develop = False 
 
+develop = False
+develop = True 
 
 def read(name):
     return open(os.path.join(os.path.dirname(__file__), name)).read()
@@ -53,35 +55,37 @@ check_platform()
 pypy = check_pypy()
 
 if pypy:
-    print("Sorry, not support platform.")
-    sys.exit(1)
+    define_macros=[
+            ("HTTP_PARSER_DEBUG", "0") ]
+    install_requires=[]
 else:
     define_macros=[
             ("WITH_GREENLET",None),
             ("HTTP_PARSER_DEBUG", "0") ]
-    install_requires=['greenlet==0.3.4']
+    install_requires=['greenlet==0.4.0']
 
 if develop:
-    define_macros.append(("DEBUG",None))
+    define_macros.append(("DEVELOP",None))
 
 sources = get_sources("meinheld", ["*picoev_*"])
 sources.append(get_picoev_file())
 
-library_dirs=['/usr/local/lib']
+library_dirs=[]
+#TODO set python include dirs
 include_dirs=[]
 
 setup(name='meinheld',
-    version="0.4.15",
+    version="0.5dev",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
     author_email='yutaka.matsubara@gmail.com',
     url='http://meinheld.org',
     license='BSD',
-    platforms='Linux, Darwin',
+    platforms='Linux, BSD, Darwin',
     packages= ['meinheld'],
     install_requires=install_requires,
-    
+
     entry_points="""
 
     [gunicorn.workers]
@@ -89,12 +93,12 @@ setup(name='meinheld',
     """,
     ext_modules = [
         Extension('meinheld.server',
-            sources=sources, 
-            define_macros=define_macros,
+            sources=sources,
             include_dirs=include_dirs,
             library_dirs=library_dirs,
-            #libraries=["profiler"],
-            # extra_compile_args=["-DDEBUG"],
+            # libraries=["profiler"],
+            # extra_compile_args=[""],
+            define_macros=define_macros
         )],
 
     classifiers=[

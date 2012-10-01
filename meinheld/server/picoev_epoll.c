@@ -66,6 +66,7 @@ picoev_loop* picoev_create_loop(int max_timeout)
     return NULL;
   }
   
+  loop->loop.now = time(NULL);
   return &loop->loop;
 }
 
@@ -90,7 +91,7 @@ int picoev_update_events_internal(picoev_loop* _loop, int fd, int events)
   
   assert(PICOEV_FD_BELONGS_TO_LOOP(&loop->loop, fd));
   
-  if ((events & PICOEV_READWRITE) == target->events) {
+  if (unlikely((events & PICOEV_READWRITE) == target->events)) {
     return 0;
   }
   
@@ -98,9 +99,9 @@ int picoev_update_events_internal(picoev_loop* _loop, int fd, int events)
     | ((events & PICOEV_WRITE) != 0 ? EPOLLOUT : 0);
   ev.data.fd = fd;
   
-#define SET(op, check_error) do {            \
+#define SET(op, check_error) do {		    \
     epoll_ret = epoll_ctl(loop->epfd, op, fd, &ev); \
-    assert(! check_error || epoll_ret == 0);        \
+    assert(! check_error || epoll_ret == 0);	    \
   } while (0)
   
 #if PICOEV_EPOLL_DEFER_DELETES
@@ -141,23 +142,20 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
   
   Py_BEGIN_ALLOW_THREADS
   nevents = epoll_wait(loop->epfd, loop->events,
-               sizeof(loop->events) / sizeof(loop->events[0]),
-               max_wait * 1000);
+		       sizeof(loop->events) / sizeof(loop->events[0]),
+		       max_wait * 1000);
   Py_END_ALLOW_THREADS
 
   if (nevents == -1) {
     return -1;
   }
-  for (i = 0; i < nevents; ++i) {
+  for (i = 0; likely(i < nevents); ++i) {
     struct epoll_event* event = loop->events + i;
     picoev_fd* target = picoev.fds + event->data.fd;
-    if (loop->loop.loop_id == target->loop_id
-    && (target->events & PICOEV_READWRITE) != 0) {
-      int revents = ((event->events & EPOLLIN) != 0 ? PICOEV_READ : 0)
-    | ((event->events & EPOLLOUT) != 0 ? PICOEV_WRITE : 0);
-      if (revents != 0) {
-    (*target->callback)(&loop->loop, event->data.fd, revents,
-                target->cb_arg);
+    if (loop->loop.loop_id == target->loop_id && likely((target->events & PICOEV_READWRITE) != 0)) {
+      int revents = ((event->events & EPOLLIN) != 0 ? PICOEV_READ : 0) | ((event->events & EPOLLOUT) != 0 ? PICOEV_WRITE : 0);
+      if (likely(revents != 0)) {
+        (*target->callback)(&loop->loop, event->data.fd, revents, target->cb_arg);
       }
     } else {
 #if PICOEV_EPOLL_DEFER_DELETES

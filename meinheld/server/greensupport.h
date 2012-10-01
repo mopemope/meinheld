@@ -1,7 +1,7 @@
 #ifndef GREENSUPPORT_H
 #define GREENSUPPORT_H
 
-#include <Python.h>
+#include "meinheld.h"
 
 //void import_greenlet(void);
 
@@ -17,5 +17,6 @@ PyObject* greenlet_throw(PyObject *g, PyObject *typ, PyObject *val, PyObject *tb
 PyObject* greenlet_throw_err(PyObject *g);
 int greenlet_dead(PyObject *g);
 int greenlet_check(PyObject *g);
+PyObject* get_greenlet_dict(PyObject *o);
 
 #endif

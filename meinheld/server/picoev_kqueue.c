@@ -34,6 +34,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "picoev.h"
+#include "meinheld.h"
 
 #define EV_QUEUE_SZ 128
 
@@ -117,6 +118,7 @@ picoev_loop* picoev_create_loop(int max_timeout)
   }
   loop->changed_fds = -1;
   
+  loop->loop.now = time(NULL);
   return &loop->loop;
 }
 
