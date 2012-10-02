@@ -33,7 +33,7 @@ as well as the constants from :mod:`socket` module are imported into this module
 """
 import sys
 def is_py3():
-    return sys.hexversion >=  0x3000000
+    return sys.hexversion >=  0x03000000
 
 __implements__ = ['getaddrinfo',
                   'gethostbyname',

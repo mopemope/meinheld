@@ -74,46 +74,90 @@ library_dirs=[]
 #TODO set python include dirs
 include_dirs=[]
 
-setup(name='meinheld',
-    version="0.5",
-    description="High performance asynchronous Python WSGI Web Server",
-    long_description=read('README.rst'),
-    author='yutaka matsubara',
-    author_email='yutaka.matsubara@gmail.com',
-    url='http://meinheld.org',
-    license='BSD',
-    platforms='Linux, BSD, Darwin',
-    packages= ['meinheld'],
-    install_requires=install_requires,
+if sys.hexversion >= 0x03030000:
+    setup(name='meinheld',
+        version="0.5",
+        description="High performance asynchronous Python WSGI Web Server",
+        long_description=read('README.rst'),
+        author='yutaka matsubara',
+        author_email='yutaka.matsubara@gmail.com',
+        url='http://meinheld.org',
+        license='BSD',
+        platforms='Linux, BSD, Darwin',
+        packages= ['meinheld'],
+        requires=["greeenlet (==0.4.0)"],
 
-    entry_points="""
+        # entry_points="""
 
-    [gunicorn.workers]
-    gunicorn_worker=meinheld.gmeinheld:MeinheldWorker
-    """,
-    ext_modules = [
-        Extension('meinheld.server',
-            sources=sources,
-            include_dirs=include_dirs,
-            library_dirs=library_dirs,
-            # libraries=["profiler"],
-            # extra_compile_args=[""],
-            define_macros=define_macros
-        )],
+        # [gunicorn.workers]
+        # gunicorn_worker=meinheld.gmeinheld:MeinheldWorker
+        # """,
+        ext_modules = [
+            Extension('meinheld.server',
+                sources=sources,
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                # libraries=["profiler"],
+                # extra_compile_args=[""],
+                define_macros=define_macros
+            )],
 
-    classifiers=[
-        'Development Status :: 4 - Beta',
-        'Environment :: Web Environment',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
-        'Operating System :: POSIX :: Linux',
-        'Operating System :: MacOS :: MacOS X',
-        'Operating System :: POSIX :: BSD :: FreeBSD',
-        'Programming Language :: C',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Topic :: Internet :: WWW/HTTP :: WSGI :: Server'
-    ],
-)
+        classifiers=[
+            'Development Status :: 4 - Beta',
+            'Environment :: Web Environment',
+            'Intended Audience :: Developers',
+            'License :: OSI Approved :: BSD License',
+            'Operating System :: POSIX :: Linux',
+            'Operating System :: MacOS :: MacOS X',
+            'Operating System :: POSIX :: BSD :: FreeBSD',
+            'Programming Language :: C',
+            'Programming Language :: Python',
+            'Programming Language :: Python :: 3',
+            'Topic :: Internet :: WWW/HTTP :: WSGI :: Server'
+        ],
+    )
 
+else:
+
+    setup(name='meinheld',
+        version="0.5",
+        description="High performance asynchronous Python WSGI Web Server",
+        long_description=read('README.rst'),
+        author='yutaka matsubara',
+        author_email='yutaka.matsubara@gmail.com',
+        url='http://meinheld.org',
+        license='BSD',
+        platforms='Linux, BSD, Darwin',
+        packages= ['meinheld'],
+        install_requires=install_requires,
+
+        entry_points="""
+
+        [gunicorn.workers]
+        gunicorn_worker=meinheld.gmeinheld:MeinheldWorker
+        """,
+        ext_modules = [
+            Extension('meinheld.server',
+                sources=sources,
+                include_dirs=include_dirs,
+                library_dirs=library_dirs,
+                # libraries=["profiler"],
+                # extra_compile_args=[""],
+                define_macros=define_macros
+            )],
+
+        classifiers=[
+            'Development Status :: 4 - Beta',
+            'Environment :: Web Environment',
+            'Intended Audience :: Developers',
+            'License :: OSI Approved :: BSD License',
+            'Operating System :: POSIX :: Linux',
+            'Operating System :: MacOS :: MacOS X',
+            'Operating System :: POSIX :: BSD :: FreeBSD',
+            'Programming Language :: C',
+            'Programming Language :: Python',
+            'Programming Language :: Python :: 3',
+            'Topic :: Internet :: WWW/HTTP :: WSGI :: Server'
+        ],
+    )
 
