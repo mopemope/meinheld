@@ -1,18 +1,18 @@
 What's this
 ---------------------------------
 
-this is a high performance python wsgi web server.
+This is a high performance python wsgi web server.
 
 Thus this is yet an another asynchronous web server like gevent.
 
-And meinheld is a WSGI compliant web server. (HTTP 1.1 supported)
+And meinheld is a WSGI compliant web server. (PEP333 and PEP3333 supported)
 
 You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 
 Requirements
 ---------------------------------
 
-meinheld requires **Python 2.x >= 2.5**. and **greenlet == 0.3.4**.
+meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.2** . and **greenlet == 0.4.0**.
 
 meinheld supports Linux, FreeBSD, Mac OS X.
 
@@ -29,7 +29,7 @@ Install from source::
 
 meinheld supports gunicorn.
 
-To install gunicorn::
+To install gunicorn (only python 2.x)::
 
   $ easy_install -ZU gunicorn
 
@@ -162,20 +162,6 @@ For Example::
 For more info see http://github.com/mopemope/meinheld/tree/master/example/patch/
 
 
-Werkzeug 
-==========================================
-
-This patch replaces Werkzeug's local get_ident function.
-
-If you use Werkzeug, and you don't want to leak memory, you must call this patch function.
-
-For example::
-    
-    from meinheld import patch
-    patch.patch_werkzeug()
-
-For more info see http://github.com/mopemope/meinheld/tree/master/example/flask_sample.py
-
 Performance
 ------------------------------
 
@@ -187,16 +173,12 @@ It is built around the high performance event library picoev.
 
 (see http://developer.cybozu.co.jp/kazuho/2009/08/picoev-a-tiny-e.html)
 
-`simple benchmark result here`_
-
 sendfile
 ===========================
 
 meinheld uses sendfile(2), over wgsi.file_wrapper.
 
 
-
-.. _simple benchmark result here: http://gist.github.com/544674
 .. _meinheld mailing list: http://groups.google.com/group/meinheld
 .. _`#meinheld`: http://webchat.freenode.net/?channels=meinheld
 .. _freenode: http://freenode.net
