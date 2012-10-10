@@ -59,7 +59,7 @@
 #define BDEBUG(...) \
     do { \
         /*printf("%-22s%4u: ", __FILE__, __LINE__);*/ \
-        printf("\x1B[34m%-40s %-26s%4u: ", __FILE__, __func__, __LINE__); \
+        printf("\x1B[1;34m%-40s %-26s%4u: ", __FILE__, __func__, __LINE__); \
         printf(__VA_ARGS__); \
         printf("\x1B[0m\n"); \
     } while(0)
