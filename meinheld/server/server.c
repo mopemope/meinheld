@@ -471,7 +471,7 @@ app_handler(PyObject *self, PyObject *args)
     switch(status){
         case STATUS_ERROR:
             // Internal Server Error
-            client->bad_request_code = 500;
+            req->bad_request_code = 500;
             goto error;
         case STATUS_SUSPEND:
             // continue
