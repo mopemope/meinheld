@@ -228,9 +228,11 @@ clean_client(client_t *client)
         set_log_value(client, environ, delta_msec);
         call_access_logger(environ);
     }else{
-        environ = new_environ(client);
-        set_log_value(client, environ, delta_msec);
-        call_access_logger(environ);
+        if(client->status_code != 408){
+            environ = new_environ(client);
+            set_log_value(client, environ, delta_msec);
+            call_access_logger(environ);
+        }
     }
 
     Py_CLEAR(client->http_status);
@@ -323,7 +325,8 @@ close_client(client_t *client)
     dealloc_client(client);
 }
 
-static void init_main_loop(void){
+static void init_main_loop(void)
+{
     if(main_loop == NULL){
         /* init picoev */
         picoev_init(max_fd);
@@ -922,7 +925,7 @@ set_read_error(client_t *client, int status_code)
 static int
 read_timeout(int fd, client_t *client)
 {
-    DEBUG("** read timeout %d **", fd);
+    RDEBUG("** read timeout fd:%d", fd);
     //timeout
     return set_read_error(client, 408);
 }
