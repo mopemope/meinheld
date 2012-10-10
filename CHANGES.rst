@@ -1,3 +1,10 @@
+0.5.1
+=======
+(bug fix release, release 2012-10-11)
+
+* Fix: Ignore setsocket error
+
+
 0.5
 =======
 (New Feature release. rerelease 2012-10-09)
