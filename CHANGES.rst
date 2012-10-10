@@ -2,7 +2,9 @@
 =======
 (bug fix release, release 2012-10-11)
 
-* Fix: Ignore setsocket error
+* Fix: ignore setsocket error
+* Fix: request timeout not written access log
+* Improve: support gunicorn logging
 
 
 0.5

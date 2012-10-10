@@ -1,13 +1,26 @@
 import sys
+import types
 from gunicorn.workers.base import Worker
+from gunicorn.glogging import Logger
 from meinheld import server
+from meinheld.mlogging import _access, _error
 import os
 
 def is_py3():
     return sys.hexversion >=  0x3000000
 
 if not is_py3():
+
+
     class MeinheldWorker(Worker):
+
+        def __init__(self, *args, **kwargs):
+            Worker.__init__(self, *args, **kwargs)
+            Logger.access = _access
+            Logger.error = _error
+
+            server.set_access_logger(self.log)
+            server.set_error_logger(self.log)
         
         def watchdog(self):
             self.notify()

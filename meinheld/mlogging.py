@@ -126,9 +126,10 @@ class Logger(object):
         safe_atoms = SafeAtoms(atoms)
 
         try:
+            # self.access_log.info(self.access_log_format % safe_atoms)
             self.access_log.info(self.access_log_format % safe_atoms)
         except:
-            self.error(traceback.format_exc())
+            self.error(*sys.exc_info())
 
 
     def reopen_files(self):
@@ -170,6 +171,56 @@ class Logger(object):
         h._meinheld = True
         h.setFormatter(fmt)
         log.addHandler(h)
+
+def _error(self, exc, val, tb):
+    from traceback import format_exception
+    msg = ''.join(format_exception(exc, val, tb))
+    self.error_log.error(msg)
+
+def _access(self, environ):
+    """ Seee http://httpd.apache.org/docs/2.0/logs.html#combined
+    for format details
+    """
+
+    # status = resp.status.split(None, 1)[0]
+    atoms = {
+            'h': environ.get('REMOTE_ADDR', '-'),
+            'l': '-',
+            'u': '-', # would be cool to get username from basic auth header
+            't': "[%s]" % environ.get('LOCAL_TIME', '-'),
+            'r': "%s %s %s" % (environ.get('REQUEST_METHOD', '-'), environ.get('PATH_INFO', '-'), environ.get('SERVER_PROTOCOL', 'HTTP/1.0')),
+            's': str(environ.get('STATUS_CODE', '-')),
+            'b': str(environ.get('SEND_BYTES', '-')),
+            'f': environ.get('HTTP_REFERER', '-'),
+            'a': environ.get('HTTP_USER_AGENT', '-'),
+            'T': str(environ.get('REQUEST_TIME', 1) /100),
+            'D': str(environ.get('REQUEST_TIME', 1)),
+            'p': "<%s>" % os.getpid()
+            }
+    # add request headers
+    
+    for k, v in environ.items():
+        if k.startswith('HTTP_'):
+            #header
+            header = "{%s}i" % k[5:].lower()
+            atoms[header] = v
+
+    # atoms.update(dict([("{%s}i" % k.lower(),v) for k, v in req_headers]))
+
+    # # add response headers
+    # atoms.update(dict([("{%s}o" % k.lower(),v) for k, v in resp.headers]))
+
+    # # wrap atoms:
+    # # - make sure atoms will be test case insensitively
+    # # - if atom doesn't exist replace it by '-'
+    
+    safe_atoms = SafeAtoms(atoms)
+
+    try:
+        msg = self.cfg.access_log_format % safe_atoms
+        self.access_log.info(msg)
+    except:
+        self.error(*sys.exc_info())
 
 logger = Logger()
 from meinheld import server
