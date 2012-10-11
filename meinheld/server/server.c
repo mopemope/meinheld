@@ -425,7 +425,7 @@ app_handler(PyObject *self, PyObject *args)
     }
 
     DEBUG("call wsgi app");
-    wsgi_args = Py_BuildValue("(OO)", env, start);
+    wsgi_args = PyTuple_Pack(2, env, start);
     res = PyObject_CallObject(wsgi_app, wsgi_args);
     Py_DECREF(wsgi_args);
     DEBUG("called wsgi app");
@@ -584,7 +584,7 @@ call_wsgi_handler(client_t *client)
     current_client = PyDict_GetItem(req->environ, client_key);
     pyclient = (ClientObject *)current_client;
 
-    args = Py_BuildValue("(O)", req->environ);
+    args = PyTuple_Pack(1, req->environ);
 #ifdef WITH_GREENLET
     //new greenlet
     greenlet = greenlet_new(handler, NULL);

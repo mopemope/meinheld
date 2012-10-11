@@ -665,7 +665,7 @@ close_response(client_t *client)
 
             close = PyObject_GetAttrString(client->response, "close");
 
-            args = Py_BuildValue("()");
+            args = PyTuple_New(0);
             data = PyEval_CallObject(close, args);
             DEBUG("call response object close");
             Py_DECREF(args);

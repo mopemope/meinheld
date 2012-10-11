@@ -40,7 +40,7 @@ call_access_logger(PyObject *environ)
         }
 
         DEBUG("call access logger %p", access_logger);
-        args = Py_BuildValue("(O)", environ);
+        args = PyTuple_Pack(1, environ);
         res = PyObject_CallObject(access_logger, args);
         Py_DECREF(args);
         Py_XDECREF(res);
@@ -83,7 +83,7 @@ call_error_logger(void)
         }
         PyErr_Clear();
 
-        args = Py_BuildValue("(OOO)", exception, v, tb);
+        args = PyTuple_Pack(3, exception, v, tb);
         if(args == NULL){
             PyErr_Print();
             goto err;
