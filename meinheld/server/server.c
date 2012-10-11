@@ -312,7 +312,6 @@ close_client(client_t *client)
         BDEBUG("close client:%p fd:%d", client, client->fd);
     }else{
         BDEBUG("keep alive client:%p fd:%d", client, client->fd);
-        disable_cork(client);
         new_client = new_client_t(client->fd, client->remote_addr, client->remote_port);
         new_client->keep_alive = 1;
         init_parser(new_client, server_name, server_port);
