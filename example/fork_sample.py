@@ -19,13 +19,16 @@ def kill_all(sig, st):
     for w in workers:
         w.terminate()
 
-def start(num=2):
+def start(num=4):
     for i in range(num):
         p = Process(name="worker-%d" % i, target=run, args=(hello_world,i))
         workers.append(p)
         p.start()
 
 signal.signal(signal.SIGTERM, kill_all)
+meinheld.set_keepalive(10)
+meinheld.set_access_logger(None)
+meinheld.set_error_logger(None)
 meinheld.listen(("0.0.0.0", 8000))
 start()
 

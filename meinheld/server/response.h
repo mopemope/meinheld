@@ -17,7 +17,7 @@ typedef struct {
     uint32_t total_size;
     uint8_t sended;
     PyObject *temp1; //keep origin pointer
-    PyObject *temp2; //keep origin pointer
+    PyObject *chunk_data; //keep chunk_data origin pointer
 } write_bucket;
 
 

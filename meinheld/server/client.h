@@ -18,7 +18,7 @@ typedef struct _client {
 
     http_parser *http_parser;          // http req parser
     //PyObject *environ;          // wsgi environ
-    uint32_t status_code;            // response status code
+    uint16_t status_code;            // response status code
 
     PyObject *http_status;      // response status line(PyBytes)
     PyObject *headers;          // http response headers
@@ -27,8 +27,8 @@ typedef struct _client {
     PyObject *response_iter;    // wsgi response object (iter)
     uint8_t chunked_response;     // use Transfer-Encoding: chunked
     uint8_t content_length_set;     // content_length_set flag
-    uint32_t content_length;         // content_length
-    uint32_t write_bytes;            // send body length
+    uint64_t content_length;         // content_length
+    uint64_t write_bytes;            // send body length
     void *bucket;               //write_data
     uint8_t response_closed;    //response closed flag
     uint8_t use_cork;     // use TCP_CORK

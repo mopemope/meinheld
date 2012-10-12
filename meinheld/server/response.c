@@ -200,7 +200,7 @@ free_write_bucket(write_bucket *bucket)
 {
     GDEBUG("free %p", bucket);
     Py_CLEAR(bucket->temp1);
-    Py_CLEAR(bucket->temp2);
+    Py_CLEAR(bucket->chunk_data);
     PyMem_Free(bucket->iov);
     PyMem_Free(bucket);
 }
@@ -311,6 +311,50 @@ writev_bucket(write_bucket *data)
     }
     data->sended = 1;
     return STATUS_OK;
+}
+
+static int
+set_file_content_length(client_t *client, write_bucket *bucket)
+{
+    struct stat info;
+    int in_fd, ret = 0;
+    size_t size = 0;
+    Py_ssize_t valuelen = 0;
+    FileWrapperObject *filewrap = NULL;
+    PyObject *filelike = NULL, *length = NULL;
+    char *value = NULL; 
+
+    filewrap = (FileWrapperObject *)client->response;
+    filelike = filewrap->filelike;
+
+    in_fd = PyObject_AsFileDescriptor(filelike);
+    if (in_fd == -1) {
+        call_error_logger();
+        return -1;
+    }
+    if (fstat(in_fd, &info) == -1){
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+
+    size = info.st_size;
+    client->content_length_set = 1;
+    client->content_length = size;
+    DEBUG("set content length:%" PRIu64 , size);
+    length = PyBytes_FromFormat("%zu", size);
+    if (length == NULL) {
+        return -1;
+    }
+
+    PyBytes_AsStringAndSize(length, &value, &valuelen);
+    
+    add_header(bucket, "Content-Length", 14, value, valuelen);
+    ret = PyList_Append(bucket->temp1, length);
+    if (ret == -1) {
+        return -1;
+    }
+    Py_DECREF(length);
+    return 1;
 }
 
 /*
@@ -515,7 +559,7 @@ set_first_body_data(client_t *client, char *data, size_t datalen)
             //TODO CHECK ERROR
             PyBytes_AsStringAndSize(chunk_data, &lendata, &len);
             set_chunked_data(bucket, lendata, len, data, datalen);
-            bucket->temp2 = chunk_data;
+            bucket->chunk_data = chunk_data;
         }else{
             set2bucket(bucket, data, datalen);
         }
@@ -523,7 +567,7 @@ set_first_body_data(client_t *client, char *data, size_t datalen)
 }
 
 static response_status
-write_headers(client_t *client, char *data, size_t datalen)
+write_headers(client_t *client, char *data, size_t datalen, char is_file)
 {
     write_bucket *bucket; 
     uint32_t hlen = 0;
@@ -563,12 +607,19 @@ write_headers(client_t *client, char *data, size_t datalen)
         client->chunked_response = 1;
     }
 
+    if (is_file && !client->content_length_set){
+        if (set_file_content_length(client, bucket) == -1) {
+            goto error;
+        }
+    }
+
     if(client->keep_alive == 1){
         //Keep-Alive
         add_header(bucket, "Connection", 10, "Keep-Alive", 10);
     }else{
         add_header(bucket, "Connection", 10, "close", 5);
     }
+    
     set2bucket(bucket, CRLF, 2);
 
     //write body
@@ -723,6 +774,7 @@ process_sendfile(client_t *client)
         }
     }
     //all send
+    //disable_cork(client);
     return close_response(client);
 }
 
@@ -759,7 +811,7 @@ process_write(client_t *client)
                     //TODO CHECK ERROR
                     PyBytes_AsStringAndSize(chunk_data, &lendata, &len);
                     set_chunked_data(bucket, lendata, len, buf, buflen);
-                    bucket->temp2 = chunk_data;
+                    bucket->chunk_data = chunk_data;
                 }else{
                     bucket = new_write_bucket(client->fd, 1);
                     if(bucket == NULL){
@@ -874,7 +926,7 @@ start_response_file(client_t *client)
         DEBUG("can't get fd");
         return STATUS_ERROR;
     }
-    ret = write_headers(client, NULL, 0);
+    ret = write_headers(client, NULL, 0, 1);
     if(!client->content_length_set){
         if (fstat(in_fd, &info) == -1){
             PyErr_SetFromErrno(PyExc_IOError);
@@ -917,7 +969,7 @@ start_response_write(client_t *client)
         buflen = PyBytes_GET_SIZE(item);
 
         /* DEBUG("status_code %d body:%.*s", client->status_code, (int)buflen, buf); */
-        ret = write_headers(client, buf, buflen);
+        ret = write_headers(client, buf, buflen, 0);
         //TODO when ret == STATUS_SUSPEND keep item
         Py_DECREF(item);
         return ret;
@@ -925,7 +977,7 @@ start_response_write(client_t *client)
         if (item == NULL && !PyErr_Occurred()){
             //Stop Iteration
             RDEBUG("WARN iter item == NULL");
-            return write_headers(client, NULL, 0);
+            return write_headers(client, NULL, 0, 0);
         }else{
             PyErr_SetString(PyExc_TypeError, "response item must be a string");
             Py_XDECREF(item);
@@ -945,11 +997,12 @@ response_start(client_t *client)
 {
     response_status ret ;
     if(client->status_code == 304){
-        return write_headers(client, NULL, 0);
+        return write_headers(client, NULL, 0, 0);
     }
 
     if (CheckFileWrapper(client->response)) {
         DEBUG("use sendfile");
+        //enable_cork(client);
         ret = start_response_file(client);
         if(ret == STATUS_OK){
             // sended header

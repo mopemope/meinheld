@@ -81,6 +81,7 @@ disable_cork(client_t *client)
 #endif
         DEBUG("disable TCP CORK");
         setsockopt(client->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+        client->use_cork = 0;
     }
     return 1;
 }
