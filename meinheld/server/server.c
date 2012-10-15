@@ -4,7 +4,9 @@
 #include <signal.h>
 
 #ifdef linux
+#define _GNU_SOURCE
 #include <sys/prctl.h>
+#include <sys/socket.h>
 #endif
 
 #include <sys/un.h>
@@ -1189,9 +1191,11 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     } else if ((events & PICOEV_READ) != 0) {
 
         socklen_t client_len = sizeof(client_addr);
-        Py_BEGIN_ALLOW_THREADS
+#if linux
+        client_fd = accept4(fd, (struct sockaddr *)&client_addr, &client_len, SOCK_NONBLOCK | SOCK_CLOEXEC);
+#else
         client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
-        Py_END_ALLOW_THREADS
+#endif
 
         if (client_fd != -1) {
             DEBUG("accept fd %d", client_fd);
@@ -1231,7 +1235,6 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 kill_server(0);
             }
         }
-
     }
 }
 
