@@ -1494,7 +1494,7 @@ fire_timer(void)
     time_t now = time(NULL);
     PyObject *res = NULL;
 
-    while(q->size > 0 && loop_done){
+    while(q->size > 0 && loop_done && activecnt > 0){
 
         timer = q->heap[0];
         if(timer->seconds <= now){
