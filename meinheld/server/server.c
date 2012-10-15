@@ -2060,7 +2060,9 @@ meinheld_spawn(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     Py_DECREF(switch_method);
     Py_DECREF(res);
-
+    Py_DECREF(greenlet);
+    DEBUG("greenlet refcnt:%d", (int)Py_REFCNT(greenlet));
+    DEBUG("switch_method refcnt:%d", (int)Py_REFCNT(switch_method));
     Py_RETURN_NONE;
 
 #else
