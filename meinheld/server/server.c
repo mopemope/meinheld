@@ -1995,7 +1995,7 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
     current = greenlet_getcurrent();
     pyclient = (ClientObject *) current_client;
     if(pyclient != NULL && pyclient->greenlet == current){
-
+        Py_DECREF(current);
         active = picoev_is_active(main_loop, fd);
         ret = picoev_add(main_loop, fd, event, timeout, trampoline_callback, (void *)pyclient);
         if((ret == 0 && !active)){

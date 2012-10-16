@@ -92,6 +92,9 @@ call_error_logger(void)
         res = PyObject_CallObject(err_logger, args);
         Py_DECREF(args);
         Py_XDECREF(res);
+        Py_XDECREF(exception);
+        Py_XDECREF(v);
+        Py_XDECREF(tb);
         if(res == NULL){
             PyErr_Print();
         }
