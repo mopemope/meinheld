@@ -144,8 +144,8 @@ def test_resume():
     env2, res2 = r2.get_result()
     assert(res1.status_code == 200)
     assert(res2.status_code == 200)
-    assert(res1.content == b"RESUMED")
-    assert(res2.content == RESPONSE)
+    assert(res2.content == b"RESUMED")
+    assert(res1.content == RESPONSE)
     assert(env1.get(CONTINUATION_KEY))
     assert(env2.get(CONTINUATION_KEY))
 

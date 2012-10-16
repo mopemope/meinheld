@@ -28,6 +28,11 @@
 
 #define READ_BUF_SIZE 1024 * 64
 
+typedef struct {
+   TimerObject **q;
+   uint32_t size;
+   uint32_t max;
+} pending_queue_t;
 
 static char *server_name = "127.0.0.1";
 static short server_port = 8000;
@@ -39,6 +44,7 @@ static volatile sig_atomic_t catch_signal = 0;
 
 static picoev_loop* main_loop = NULL; //main loop
 static heapq_t *g_timers;
+static pending_queue_t *g_pendings = NULL;
 
 // active event cnt
 static int activecnt = 0;
@@ -60,7 +66,7 @@ static int backlog = 1024 * 4; // backlog size
 static int max_fd = 1024 * 4;  // picoev max_fd
 
 // greenlet hub switch value
-PyObject* hub_switch_value;
+static PyObject *hub_switch_value;
 PyObject* current_client;
 PyObject* timeout_error;
 
@@ -73,7 +79,7 @@ static PyObject *request_time_key = NULL; // REQUEST_TIME
 static PyObject *local_time_key = NULL; // LOCAL_TIME
 static PyObject *empty_string = NULL; //""
 
-static PyObject *app_handler_func = NULL; //""
+static PyObject *app_handler_func = NULL;
 
 /* gunicorn */
 static int spinner = 0;
@@ -101,7 +107,7 @@ static void
 trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 
 static PyObject*
-internal_schedule_call(int seconds, PyObject *cb, PyObject *args, PyObject *kwargs);
+internal_schedule_call(int seconds, PyObject *cb, PyObject *args, PyObject *kwargs, PyObject *greenlet);
 
 static void
 prepare_call_wsgi(client_t *client);
@@ -111,6 +117,71 @@ call_wsgi_handler(client_t *client);
 
 static int
 check_status_code(client_t *client);
+
+static pending_queue_t*
+init_pendings(void)
+{
+    pending_queue_t *pendings = NULL;
+
+    pendings = PyMem_Malloc(sizeof(pending_queue_t));
+    if(pendings == NULL){
+        return NULL;
+    }
+    pendings->size = 0;
+    pendings->max= 1024;
+    pendings->q = (TimerObject**)malloc(sizeof(TimerObject*) * pendings->max);
+    if(pendings->q == NULL){
+        PyMem_Free(pendings);
+        return NULL;
+    }
+    return pendings;
+}
+
+static int
+realloc_pendings(void)
+{
+    TimerObject **new_heap;
+    uint32_t max;
+    pending_queue_t *pendings = g_pendings;
+
+    if(pendings->size >= pendings->max){
+        //realloc
+        max = pendings->max * 2;
+        new_heap = (TimerObject**)realloc(pendings->q, sizeof(TimerObject*) * max);
+        if(new_heap == NULL){
+            PyErr_SetString(PyExc_Exception, "size over timer queue");
+            return -1;
+        }
+        pendings->max = max;
+        pendings->q = new_heap;
+        RDEBUG("realloc max:%d", pendings->max);
+    }
+    return 1;
+}
+
+static void
+destroy_pendings(void)
+{
+    if(g_pendings == NULL){
+        return;
+    }
+    int i = 0; 
+    int len = g_pendings->size;
+    TimerObject *timer = NULL;
+    TimerObject **t = g_pendings->q;
+    t += i;
+
+    while(len--){
+        timer = *t;
+        Py_DECREF(timer);
+        t++;
+    }
+
+    free(g_pendings->q);
+    PyMem_Free(g_pendings);
+    g_pendings = NULL;
+}
+
 
 static void
 client_t_list_fill(void)
@@ -528,7 +599,8 @@ resume_greenlet(PyObject *greenlet)
         //set error
         res = greenlet_throw(greenlet, err_type, err_val, err_tb);
     }else{
-        res = greenlet_switch(greenlet, NULL, NULL);
+        Py_INCREF(hub_switch_value);
+        res = greenlet_switch(greenlet, hub_switch_value, NULL);
         Py_XDECREF(res);
         if(res == NULL){
             call_error_logger();
@@ -1160,7 +1232,6 @@ setup_server_env(void)
     buffer_list_fill();
     InputObject_list_fill();
     
-    hub_switch_value = Py_BuildValue("(i)", -1);
     client_key = NATIVE_FROMSTRING("meinheld.client");
     wsgi_input_key = NATIVE_FROMSTRING("wsgi.input");
     status_code_key = NATIVE_FROMSTRING("STATUS_CODE");
@@ -1184,7 +1255,6 @@ clear_server_env(void)
     buffer_list_clear();
     InputObject_list_clear();
 
-    Py_DECREF(hub_switch_value);
     Py_DECREF(client_key);
     Py_DECREF(wsgi_input_key);
     Py_DECREF(status_code_key);
@@ -1486,13 +1556,37 @@ meinheld_stop(PyObject *self, PyObject *args, PyObject *kwds)
 
 
 static inline int
-fire_timer(void)
+fire_pendings(void)
+{
+    int ret = 1;
+    TimerObject *timer = NULL;
+    pending_queue_t *pendings = g_pendings;
+
+    while(pendings->size && loop_done && activecnt > 0){
+        timer =  *(pendings->q + --pendings->size);
+        DEBUG("start timer:%p activecnt:%d", timer, activecnt);
+        fire_timer(timer);
+        Py_DECREF(timer);
+        activecnt--;
+
+        DEBUG("fin timer:%p activecnt:%d", timer, activecnt);
+        if(PyErr_Occurred()){
+            RDEBUG("pending call raise exception");
+            call_error_logger();
+            ret = -1;
+            break;
+        }
+    }
+    return ret;
+}
+
+static inline int
+fire_timers(void)
 {
     TimerObject *timer;
     int ret = 1;
     heapq_t *q = g_timers;
     time_t now = time(NULL);
-    PyObject *res = NULL;
 
     while(q->size > 0 && loop_done && activecnt > 0){
 
@@ -1500,17 +1594,11 @@ fire_timer(void)
         if(timer->seconds <= now){
             //call
             timer = heappop(q);
-            if(!timer->called){
-                DEBUG("call timer:%p", timer);
-                res = PyObject_Call(timer->callback, timer->args, timer->kwargs);
-                timer->called = 1;
-                Py_XDECREF(res);
-                DEBUG("called timer:%p", timer);
-            }
+            fire_timer(timer);
 
             Py_DECREF(timer);
             activecnt--;
-            DEBUG("activecnt:%d", activecnt);
+            DEBUG("fin timer:%p activecnt:%d", timer, activecnt);
 
             if(PyErr_Occurred()){
                 RDEBUG("scheduled call raise exception");
@@ -1550,7 +1638,6 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     setup_server_env();
 
     init_main_loop();
-
     loop_done = 1;
 
     PyOS_setsig(SIGPIPE, sigpipe_cb);
@@ -1565,7 +1652,8 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     /* loop */
     while (likely(loop_done == 1 && activecnt > 0)) {
         /* DEBUG("before activecnt:%d", activecnt); */
-        fire_timer();
+        fire_pendings();
+        fire_timers();
         picoev_loop_once(main_loop, 10);
         if(watch_loop){
             if(tempfile_fd){
@@ -1580,6 +1668,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
             }
         }
         /* DEBUG("after activecnt:%d", activecnt); */
+        /* DEBUG("pendings->size:%d", g_pendings->size); */
     }
 
     Py_DECREF(wsgi_app);
@@ -1795,11 +1884,10 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
 {
 
 #ifdef WITH_GREENLET
-    PyObject *temp;
+    PyObject *temp = NULL, *parent = NULL, *res = NULL;
     ClientObject *pyclient;
     client_t *client;
-    PyObject *parent;
-    int timeout = 0, ret, active;
+    int timeout = 0, ret = 0, active = 0;
 
     if (!PyArg_ParseTuple(args, "O|i:_suspend_client", &temp, &timeout)){
         return NULL;
@@ -1847,7 +1935,9 @@ meinheld_suspend_client(PyObject *self, PyObject *args)
         if((ret == 0 && !active)){
             activecnt++;
         }
-        return greenlet_switch(parent, hub_switch_value, NULL);
+        /* Py_INCREF(hub_switch_value); */
+        res = greenlet_switch(parent, hub_switch_value, NULL);
+        return res;
     }else{
         PyErr_SetString(PyExc_IOError, "already suspended");
         return NULL;
@@ -1949,7 +2039,7 @@ static PyObject*
 meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 #ifdef WITH_GREENLET
-    PyObject *current, *parent;
+    PyObject *current = NULL, *parent = NULL, *res = NULL;
     ClientObject *pyclient;
     int fd, event, timeout = 0, ret, active;
     PyObject *read = Py_None, *write = Py_None;
@@ -2007,8 +2097,10 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
         current = pyclient->greenlet;
         parent = greenlet_getparent(current);
         YDEBUG("trampoline fd:%d event:%d current:%p parent:%p cb_arg:%p", fd, event, current, parent, pyclient);
-
-        return greenlet_switch(parent, hub_switch_value, NULL);
+        
+        /* Py_INCREF(hub_switch_value); */
+        res = greenlet_switch(parent, hub_switch_value, NULL);
+        return res;
     }else{
         DEBUG("call from greenlet");
         parent = greenlet_getparent(current);
@@ -2023,7 +2115,9 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
             activecnt++;
         }
         YDEBUG("trampoline fd:%d event:%d current:%p parent:%p cb_arg:%p", fd, event, current, parent, current);
-        return greenlet_switch(parent, hub_switch_value, NULL);
+        /* Py_INCREF(hub_switch_value); */
+        res = greenlet_switch(parent, hub_switch_value, NULL);
+        return res;
     }
 #else
     NO_GREENLET_ERROR;
@@ -2031,11 +2125,12 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
 
 }
 
+
 static PyObject*
 meinheld_spawn(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 #ifdef WITH_GREENLET
-    PyObject *greenlet = NULL, *switch_method = NULL, *res = NULL;
+    PyObject *greenlet = NULL, *res = NULL;
     PyObject *func = NULL, *func_args = NULL, *func_kwargs = NULL;
 
     static char *keywords[] = {"func", "args", "kwargs", NULL};
@@ -2049,20 +2144,10 @@ meinheld_spawn(PyObject *self, PyObject *args, PyObject *kwargs)
     if(greenlet == NULL){
         return NULL;
     }
-    switch_method = PyObject_GetAttrString(greenlet, "switch");
-    if(switch_method == NULL){
-        return NULL;
-    }
-    res = internal_schedule_call(0, switch_method, func_args, func_kwargs);
-    if(res == NULL){
-        Py_DECREF(switch_method);
-        return NULL;
-    }
-    Py_DECREF(switch_method);
-    Py_DECREF(res);
+    res = internal_schedule_call(0, func, func_args, func_kwargs, greenlet);
+    Py_XDECREF(res);
     Py_DECREF(greenlet);
     DEBUG("greenlet refcnt:%d", (int)Py_REFCNT(greenlet));
-    DEBUG("switch_method refcnt:%d", (int)Py_REFCNT(switch_method));
     Py_RETURN_NONE;
 
 #else
@@ -2081,20 +2166,34 @@ meinheld_get_ident(PyObject *self, PyObject *args)
 }
 
 static PyObject*
-internal_schedule_call(int seconds, PyObject *cb, PyObject *args, PyObject *kwargs)
+internal_schedule_call(int seconds, PyObject *cb, PyObject *args, PyObject *kwargs, PyObject *greenlet)
 {
     TimerObject* timer;
     heapq_t *timers = g_timers;
+    pending_queue_t *pendings = g_pendings;
 
-    timer = TimerObject_new(seconds, cb, args, kwargs);
+    timer = TimerObject_new(seconds, cb, args, kwargs, greenlet);
     if(timer == NULL){
         return NULL;
     }
-        
-    if(heappush(timers, timer) == -1){
-        Py_DECREF(timer);
-        return NULL;
+    if(!seconds){
+        if(realloc_pendings() == -1){
+            Py_DECREF(timer);
+            return NULL;
+        }
+        Py_INCREF(timer);
+
+        //timer->pending = ++pendings->size;
+        pendings->q[pendings->size] = timer;
+        pendings->size++;
+        DEBUG("add timer:%p pendings->size:%d", timer, pendings->size);
+    }else{
+        if(heappush(timers, timer) == -1){
+            Py_DECREF(timer);
+            return NULL;
+        }
     }
+        
     activecnt++;
     return (PyObject*)timer;
 }
@@ -2143,7 +2242,7 @@ meinheld_schedule_call(PyObject *self, PyObject *args, PyObject *kwargs)
         cbargs = PyTuple_GetSlice(args, 2, size);
     }
 
-    timer = internal_schedule_call(seconds, cb, cbargs, kwargs);
+    timer = internal_schedule_call(seconds, cb, cbargs, kwargs, NULL);
     Py_XDECREF(cbargs);
     return timer;
 }
@@ -2256,6 +2355,15 @@ initserver(void)
     if(g_timers == NULL){
         INITERROR;
     }
+    g_pendings = init_pendings();
+    if(g_pendings == NULL){
+        INITERROR;
+    }
+
+#ifdef WITH_GREENLET
+    hub_switch_value = PyTuple_New(0);
+#endif
+
 #ifdef PY3
     return m;
 #endif
