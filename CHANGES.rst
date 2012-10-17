@@ -1,3 +1,10 @@
+0.5.2
+=======
+(bug fix release, release 2012-10-17)
+
+* Fix: some memory leak 
+* Fix: add sleep API
+
 0.5.1
 =======
 (bug fix release, release 2012-10-11)
