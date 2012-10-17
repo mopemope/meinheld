@@ -59,7 +59,9 @@ fire_timer(TimerObject *timer)
         if (timer->greenlet) {
             DEBUG("call have greenlet timer:%p", timer);
             res = greenlet_switch(timer->greenlet, timer->args, timer->kwargs);
-            Py_CLEAR(timer->greenlet);
+            if (greenlet_dead(timer->greenlet)) {
+                Py_DECREF(timer->greenlet);
+            }
         } else {
             DEBUG("call timer:%p", timer);
             res = PyEval_CallObjectWithKeywords(timer->callback, timer->args, timer->kwargs);

@@ -599,9 +599,8 @@ resume_greenlet(PyObject *greenlet)
         //set error
         res = greenlet_throw(greenlet, err_type, err_val, err_tb);
     }else{
-        Py_INCREF(hub_switch_value);
+        /* Py_INCREF(hub_switch_value); */
         res = greenlet_switch(greenlet, hub_switch_value, NULL);
-        Py_XDECREF(res);
         if(res == NULL){
             call_error_logger();
             /* PyErr_Fetch(&err_type, &err_val, &err_tb); */
@@ -611,6 +610,9 @@ resume_greenlet(PyObject *greenlet)
         }
     }
     Py_XDECREF(res);
+    if (greenlet_dead(greenlet)) {
+        Py_DECREF(greenlet);
+    }
 }
 
 static void
@@ -659,6 +661,7 @@ call_wsgi_handler(client_t *client)
 #ifdef WITH_GREENLET
     //new greenlet
     greenlet = greenlet_new(handler, NULL);
+    Py_DECREF(greenlet_getparent(greenlet));
     // set_greenlet
     pyclient->greenlet = greenlet;
     Py_INCREF(pyclient->greenlet);
@@ -2084,8 +2087,8 @@ meinheld_trampoline(PyObject *self, PyObject *args, PyObject *kwargs)
    
     current = greenlet_getcurrent();
     pyclient = (ClientObject *) current_client;
+    Py_DECREF(current);
     if(pyclient != NULL && pyclient->greenlet == current){
-        Py_DECREF(current);
         active = picoev_is_active(main_loop, fd);
         ret = picoev_add(main_loop, fd, event, timeout, trampoline_callback, (void *)pyclient);
         if((ret == 0 && !active)){
@@ -2144,10 +2147,42 @@ meinheld_spawn(PyObject *self, PyObject *args, PyObject *kwargs)
     if(greenlet == NULL){
         return NULL;
     }
+    Py_DECREF(greenlet_getparent(greenlet));
     res = internal_schedule_call(0, func, func_args, func_kwargs, greenlet);
     Py_XDECREF(res);
-    Py_DECREF(greenlet);
     DEBUG("greenlet refcnt:%d", (int)Py_REFCNT(greenlet));
+    Py_RETURN_NONE;
+
+#else
+    NO_GREENLET_ERROR;
+#endif
+}
+
+static PyObject*
+meinheld_sleep(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+#ifdef WITH_GREENLET
+    PyObject *current = NULL, *parent = NULL, *res = NULL;
+    int sec = 0;
+    static char *keywords[] = {"seconds", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i:sleep", keywords, &sec)){
+        return NULL;
+    }
+    
+    current = greenlet_getcurrent();
+    parent = greenlet_getparent(current);
+    Py_DECREF(current);
+    if(parent == NULL){
+        PyErr_SetString(PyExc_IOError, "call from same greenlet");
+        return NULL;
+    }
+    DEBUG("sleep sec:%d", sec);
+    res = internal_schedule_call(sec, NULL, NULL, NULL, current);
+    Py_XDECREF(res);
+    res = greenlet_switch(parent, hub_switch_value, NULL);
+    Py_XDECREF(res);
+
     Py_RETURN_NONE;
 
 #else
@@ -2176,6 +2211,7 @@ internal_schedule_call(int seconds, PyObject *cb, PyObject *args, PyObject *kwar
     if(timer == NULL){
         return NULL;
     }
+    DEBUG("seconds:%d", seconds);
     if(!seconds){
         if(realloc_pendings() == -1){
             Py_DECREF(timer);
@@ -2273,6 +2309,7 @@ static PyMethodDef ServerMethods[] = {
 
     {"schedule_call", (PyCFunction)meinheld_schedule_call, METH_VARARGS|METH_KEYWORDS, ""},
     {"spawn", (PyCFunction)meinheld_spawn, METH_VARARGS|METH_KEYWORDS, ""},
+    {"sleep", (PyCFunction)meinheld_sleep, METH_VARARGS|METH_KEYWORDS, ""},
 
     // support gunicorn
     {"set_listen_socket", meinheld_set_listen_socket, METH_VARARGS, "set listen_sock"},
