@@ -53,6 +53,7 @@ static PyObject *wsgi_app = NULL; //wsgi app
 
 static uint8_t watch_loop = 0;
 static PyObject *watchdog = NULL; //watchdog
+static char is_write_access_log = 0;
 
 static int is_keep_alive = 0; //keep alive support
 static int keep_alive_timeout = 5;
@@ -288,21 +289,24 @@ clean_client(client_t *client)
     uintptr_t end, delta_msec = 0;
 
     request *req = client->current_req;
-    
-    cache_time_update();
-    if(req){
-        environ = req->environ;
-        end = current_msec;
-        if(req->start_msec > 0){
-            delta_msec = end - req->start_msec;
-        }
-        set_log_value(client, environ, delta_msec);
-        call_access_logger(environ);
-    } else {
-        if (client->status_code != 408) {
-            environ = new_environ(client);
+   
+    if (is_write_access_log) {
+        DEBUG("write access log");
+        cache_time_update();
+        if (req) {
+            environ = req->environ;
+            end = current_msec;
+            if (req->start_msec > 0){
+                delta_msec = end - req->start_msec;
+            }
             set_log_value(client, environ, delta_msec);
             call_access_logger(environ);
+        } else {
+            if (client->status_code != 408) {
+                environ = new_environ(client);
+                set_log_value(client, environ, delta_msec);
+                call_access_logger(environ);
+            }
         }
     }
 
@@ -1507,6 +1511,7 @@ meinheld_access_log(PyObject *self, PyObject *args)
     }
    
     if (o == Py_None) {
+        is_write_access_log = 0;
         set_access_logger(NULL);
         Py_RETURN_NONE;
     }
@@ -1521,6 +1526,7 @@ meinheld_access_log(PyObject *self, PyObject *args)
         return NULL;
     }
     set_access_logger(func);
+    is_write_access_log = 1;
     Py_RETURN_NONE;
 }
 
