@@ -102,7 +102,7 @@ picoev_loop* picoev_create_loop(int max_timeout)
     return NULL;
   }
   
-  loop->loop.now = time(NULL);
+  loop->loop.now = current_msec / 1000;
   return loop;
 }
 
@@ -154,6 +154,7 @@ int picoev_poll_once_internal(picoev_loop* loop, int max_wait)
   Py_BEGIN_ALLOW_THREADS
   r = select(maxfd + 1, &readfds, &writefds, &errorfds, &tv);
   Py_END_ALLOW_THREADS
+  cache_time_update();
 
   if (r == -1) {
     return -1;
