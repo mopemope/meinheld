@@ -118,7 +118,7 @@ picoev_loop* picoev_create_loop(int max_timeout)
   }
   loop->changed_fds = -1;
   
-  loop->loop.now = time(NULL);
+  loop->loop.now = current_msec / 1000;
   return &loop->loop;
 }
 
@@ -182,6 +182,7 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
   nevents = kevent(loop->kq, loop->changelist, cl_off, loop->events,
 		   sizeof(loop->events) / sizeof(loop->events[0]), &ts);
   Py_END_ALLOW_THREADS
+  cache_time_update();
 
   if (nevents == -1) {
     /* the errors we can only rescue */

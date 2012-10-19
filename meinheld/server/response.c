@@ -527,7 +527,7 @@ add_status_line(write_bucket *bucket, client_t *client)
         set2bucket(bucket, value, valuelen);
 
         add_header(bucket, "Server", 6,  SERVER, sizeof(SERVER) -1);
-        cache_time_update();
+        //cache_time_update();
         add_header(bucket, "Date", 4, (char *)http_time, 29);
     }else{
         DEBUG("missing status_line %p", client);

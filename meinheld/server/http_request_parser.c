@@ -475,7 +475,7 @@ message_begin_cb(http_parser *p)
     if(req == NULL){
         return -1;
     }
-    req->start_msec = get_current_msec();
+    req->start_msec = current_msec;
     client->current_req = req;
     environ = new_environ(client);
     client->complete = 0;
