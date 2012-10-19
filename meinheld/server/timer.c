@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "greensupport.h"
+#include "time_cache.h"
 
 int
 is_active_timer(TimerObject *timer)
@@ -11,7 +12,6 @@ TimerObject*
 TimerObject_new(long seconds, PyObject *callback, PyObject *args, PyObject *kwargs, PyObject *greenlet)
 {
     TimerObject *self;
-    time_t now;
     PyObject *temp = NULL;
 
     //self = PyObject_NEW(TimerObject, &TimerObjectType);
@@ -23,8 +23,7 @@ TimerObject_new(long seconds, PyObject *callback, PyObject *args, PyObject *kwar
     //DEBUG("args seconds:%ld callback:%p args:%p kwargs:%p", seconds, callback, args, kwargs);
 
     if(seconds > 0){
-        now = time(NULL);
-        self->seconds = now + seconds;
+        self->seconds = current_msec/1000 + seconds;
     }else{
         self->seconds = 0;
     }

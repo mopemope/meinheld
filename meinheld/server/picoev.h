@@ -42,7 +42,7 @@ extern "C" {
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include "time_cache.h"
 
 #define PICOEV_IS_INITED (picoev.max_fd != 0)  
 #define PICOEV_IS_INITED_AND_FD_IN_RANGE(fd) \
@@ -329,7 +329,7 @@ extern "C" {
     loop->timeout.vec = loop->timeout.vec_of_vec
       + picoev.timeout_vec_of_vec_size * PICOEV_TIMEOUT_VEC_SIZE;
     loop->timeout.base_idx = 0;
-    loop->timeout.base_time = time(NULL);
+    loop->timeout.base_time = current_msec/1000;
     loop->timeout.resolution
       = PICOEV_RND_UP(max_timeout, PICOEV_TIMEOUT_VEC_SIZE)
       / PICOEV_TIMEOUT_VEC_SIZE;
@@ -382,15 +382,11 @@ extern "C" {
   /* loop once */
   PICOEV_INLINE
   int picoev_loop_once(picoev_loop* loop, int max_wait) {
-    loop->now = time(NULL);
     if (max_wait > loop->timeout.resolution) {
       max_wait = loop->timeout.resolution;
     }
     if ( unlikely(picoev_poll_once_internal(loop, max_wait) != 0) ) {
       return -1;
-    }
-    if (max_wait != 0) {
-      loop->now = time(NULL);
     }
     picoev_handle_timeout_internal(loop);
     return 0;

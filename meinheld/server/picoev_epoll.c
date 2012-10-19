@@ -32,6 +32,7 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include "picoev.h"
+#include "time_cache.h"
 
 #ifndef PICOEV_EPOLL_DEFER_DELETES
 # define PICOEV_EPOLL_DEFER_DELETES 1
@@ -66,7 +67,7 @@ picoev_loop* picoev_create_loop(int max_timeout)
     return NULL;
   }
   
-  loop->loop.now = time(NULL);
+  loop->loop.now = current_msec / 1000;
   return &loop->loop;
 }
 
@@ -145,6 +146,7 @@ int picoev_poll_once_internal(picoev_loop* _loop, int max_wait)
 		       sizeof(loop->events) / sizeof(loop->events[0]),
 		       max_wait * 1000);
   Py_END_ALLOW_THREADS
+  cache_time_update();
 
   if (nevents == -1) {
     return -1;

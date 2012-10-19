@@ -13,6 +13,7 @@ void cache_time_init(void);
 
 void cache_time_update(void);
 
+extern volatile uintptr_t current_msec;
 extern volatile char *err_log_time;
 extern volatile char *http_time;
 extern volatile char *http_log_time;

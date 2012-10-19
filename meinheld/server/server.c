@@ -257,7 +257,6 @@ set_log_value(client_t *client, PyObject *environ, uintptr_t delta_msec)
     status_code = PyLong_FromLong(client->status_code);
     bytes = PyLong_FromLong(client->write_bytes);
     request_time = PyLong_FromLong(delta_msec);
-    cache_time_update();
     local_time = NATIVE_FROMSTRING(http_log_time);
     
     if(status_code){
@@ -290,9 +289,10 @@ clean_client(client_t *client)
 
     request *req = client->current_req;
     
+    cache_time_update();
     if(req){
         environ = req->environ;
-        end = get_current_msec();
+        end = current_msec;
         if(req->start_msec > 0){
             delta_msec = end - req->start_msec;
         }
@@ -1589,7 +1589,7 @@ fire_timers(void)
     TimerObject *timer;
     int ret = 1;
     heapq_t *q = g_timers;
-    time_t now = time(NULL);
+    time_t now = current_msec / 1000;
 
     while(q->size > 0 && loop_done && activecnt > 0){
 
