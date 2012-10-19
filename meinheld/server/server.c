@@ -4,7 +4,9 @@
 #include <signal.h>
 
 #ifdef linux
+#define _GNU_SOURCE
 #include <sys/prctl.h>
+#include <sys/socket.h>
 #endif
 
 #include <sys/un.h>
@@ -1189,49 +1191,53 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
     } else if ((events & PICOEV_READ) != 0) {
 
         socklen_t client_len = sizeof(client_addr);
-        Py_BEGIN_ALLOW_THREADS
-        client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
-        Py_END_ALLOW_THREADS
+        for (;;) {
+#if linux
+            client_fd = accept4(fd, (struct sockaddr *)&client_addr, &client_len, SOCK_NONBLOCK | SOCK_CLOEXEC);
+#else
+            client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
+#endif
 
-        if (client_fd != -1) {
-            DEBUG("accept fd %d", client_fd);
-            //printf("connected: %d\n", client_fd);
-            if (setup_sock(client_fd) == -1) {
-                PyErr_SetFromErrno(PyExc_IOError);
-                /* write_error_log(__FILE__, __LINE__); */
-                call_error_logger();
-                // die
-                loop_done = 0;
-                return;
-            }
-            remote_addr = inet_ntoa (client_addr.sin_addr);
-            remote_port = ntohs(client_addr.sin_port);
-            client = new_client_t(client_fd, remote_addr, remote_port);
-            init_parser(client, server_name, server_port);
+            if (client_fd != -1) {
+                DEBUG("accept fd %d", client_fd);
+                //printf("connected: %d\n", client_fd);
+                if (setup_sock(client_fd) == -1) {
+                    PyErr_SetFromErrno(PyExc_IOError);
+                    /* write_error_log(__FILE__, __LINE__); */
+                    call_error_logger();
+                    // die
+                    loop_done = 0;
+                    return;
+                }
+                remote_addr = inet_ntoa (client_addr.sin_addr);
+                remote_port = ntohs(client_addr.sin_port);
+                client = new_client_t(client_fd, remote_addr, remote_port);
+                init_parser(client, server_name, server_port);
 
-            finish = read_request(loop, fd, client);
-            if (finish == 1) {
-                if (check_status_code(client) > 0) {
-                    //current request ok
-                    prepare_call_wsgi(client);
-                    call_wsgi_handler(client);
+                finish = read_request(loop, fd, client);
+                if (finish == 1) {
+                    if (check_status_code(client) > 0) {
+                        //current request ok
+                        prepare_call_wsgi(client);
+                        call_wsgi_handler(client);
+                    }
+                } else if (finish == 0) {
+                    ret = picoev_add(loop, client_fd, PICOEV_READ, keep_alive_timeout, read_callback, (void *)client);
+                    if (ret == 0) {
+                        activecnt++;
+                    }
                 }
-            } else if (finish == 0) {
-                ret = picoev_add(loop, client_fd, PICOEV_READ, keep_alive_timeout, read_callback, (void *)client);
-                if (ret == 0) {
-                    activecnt++;
+            } else {
+                if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    PyErr_SetFromErrno(PyExc_IOError);
+                    /* write_error_log(__FILE__, __LINE__); */
+                    call_error_logger();
+                    // die
+                    kill_server(0);
                 }
-            }
-        } else {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                PyErr_SetFromErrno(PyExc_IOError);
-                /* write_error_log(__FILE__, __LINE__); */
-                call_error_logger();
-                // die
-                kill_server(0);
+                break;
             }
         }
-
     }
 }
 

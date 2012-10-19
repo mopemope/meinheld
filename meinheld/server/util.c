@@ -26,7 +26,8 @@ set_so_keepalive(int fd, int flag)
 int
 setup_sock(int fd)
 {
-    int on = 1, r;
+    int r;
+    int on = 1;
     r = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
     //assert(r == 0);
 
@@ -45,7 +46,11 @@ setup_sock(int fd)
     /* if(r == -1){ */
         /* return r; */
     /* } */
+#if linux
+    r = 0; // Use accept4() on Linux
+#else
     r = fcntl(fd, F_SETFL, O_NONBLOCK);
+#endif
     /* assert(r == 0); */
     return r;
 }
