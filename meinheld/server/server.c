@@ -1110,7 +1110,7 @@ parse_http_request(int fd, client_t *client, char *buf, ssize_t r)
 }
 
 static int
-read_request(picoev_loop *loop, int fd, client_t *client)
+read_request(picoev_loop *loop, int fd, client_t *client, char call_time_update)
 {
     char buf[READ_BUF_SIZE];
     ssize_t r;
@@ -1144,6 +1144,9 @@ read_request(picoev_loop *loop, int fd, client_t *client)
                 return set_read_error(client, 500);
             }
         default:
+            if (call_time_update) {
+                cache_time_update();
+            }
             return parse_http_request(fd, client, buf, r);
 
     }
@@ -1159,7 +1162,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         finish = read_timeout(fd, client);
 
     } else if ((events & PICOEV_READ) != 0) {
-        finish = read_request(loop, fd, client);
+        finish = read_request(loop, fd, client, 0);
     }
     if (finish == 1) {
         if (!picoev_del(main_loop, client->fd)) {
@@ -1214,7 +1217,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 client = new_client_t(client_fd, remote_addr, remote_port);
                 init_parser(client, server_name, server_port);
 
-                finish = read_request(loop, fd, client);
+                finish = read_request(loop, fd, client, 1);
                 if (finish == 1) {
                     if (check_status_code(client) > 0) {
                         //current request ok
