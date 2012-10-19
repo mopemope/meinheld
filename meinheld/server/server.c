@@ -1605,6 +1605,8 @@ fire_timers(void)
     while(q->size > 0 && loop_done && activecnt > 0) {
 
         timer = q->heap[0];
+        DEBUG("seconds:%d", timer->seconds);
+        DEBUG("now:%d", now);
         if (timer->seconds <= now) {
             //call
             timer = heappop(q);

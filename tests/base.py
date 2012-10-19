@@ -37,7 +37,7 @@ class ServerRunner(object):
         server.listen(("0.0.0.0", 8000))
         self.running = True
         if shutdown:
-            server.schedule_call(1, server.shutdown, 5)
+            server.schedule_call(1, server.shutdown, 3)
         if self.middleware:
             server.run(self.middleware(self.app))
         else:
@@ -54,11 +54,13 @@ class ClientRunner(object):
     def run(self):
 
         def _call():
-            r = self.func()
-            self.receive_data = r
-            self.environ = self.app.environ
-            if self.shutdown:
-                server.shutdown(2)
+            try:
+                r = self.func()
+                self.receive_data = r
+                self.environ = self.app.environ
+            finally:
+                if self.shutdown:
+                    server.shutdown(1)
 
         server.spawn(_call)
 
