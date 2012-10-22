@@ -388,6 +388,7 @@ extern "C" {
     if ( unlikely(picoev_poll_once_internal(loop, max_wait) != 0) ) {
       return -1;
     }
+    loop->now = current_msec / 1000;
     picoev_handle_timeout_internal(loop);
     return 0;
   }

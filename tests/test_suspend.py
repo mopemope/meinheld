@@ -115,7 +115,6 @@ def test_middleware():
     assert(env.get("QUERY_STRING") == None)
     assert(env.get(CONTINUATION_KEY))
 
-@mark.skipif('True')
 def test_suspend():
     """
     Timeout error test
@@ -127,7 +126,6 @@ def test_suspend():
     assert(res.status_code == 500)
     assert(env.get(CONTINUATION_KEY))
 
-@mark.skipif('True')
 def test_resume():
 
     def client1():
@@ -152,7 +150,6 @@ def test_resume():
     assert(env1.get(CONTINUATION_KEY))
     assert(env2.get(CONTINUATION_KEY))
 
-@mark.skipif('True')
 def test_double_suspend():
     def client():
         return requests.get("http://localhost:8000/")
@@ -172,7 +169,6 @@ def test_double_suspend():
     assert(env1.get(CONTINUATION_KEY))
     assert(env2.get(CONTINUATION_KEY))
 
-@mark.skipif('True')
 def test_illigal_resume():
     def client():
         return requests.get("http://localhost:8000/")
@@ -182,7 +178,6 @@ def test_illigal_resume():
     assert(env.get(CONTINUATION_KEY))
 
 
-@mark.skipif('True')
 def test_many_resume():
     
     def mk_client(i):
