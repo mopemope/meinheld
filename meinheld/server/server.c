@@ -38,7 +38,8 @@ typedef struct {
 
 static char *server_name = "127.0.0.1";
 static short server_port = 8000;
-static int listen_sock;  // listen socket
+/* static int listen_sock;  // listen socket */
+static PyObject *listen_socks = NULL;  // listen socket
 
 static volatile sig_atomic_t loop_done;
 static volatile sig_atomic_t call_shutdown = 0;
@@ -423,22 +424,50 @@ kill_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static inline void
 kill_server(int timeout)
 {
+
+    int listen_sock = 0;
+    PyObject *iter = NULL, *item;
+
     if (main_loop == NULL) {
         return;
     }
-    //stop accepting
-    if (!picoev_del(main_loop, listen_sock)) {
-        activecnt--;
-        DEBUG("activecnt:%d", activecnt);
+
+    iter = PyObject_GetIter(listen_socks);
+    if (PyErr_Occurred()){
+        call_error_logger();
+        return;
     }
 
-    //shutdown timeout
-    if (timeout > 0) {
-        //set timeout
-        (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, timeout, kill_callback, NULL);
-    } else {
-        (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, 1, kill_callback, NULL);
+    while((item =  PyIter_Next(iter))){
+#ifdef PY3
+        if (PyLong_Check(item)) {
+            listen_sock = (int)PyLong_AsLong(item);
+#else
+        if (PyInt_Check(item)) {
+            listen_sock = (int)PyInt_AsLong(item);
+#endif
+
+            //stop accepting
+            if (!picoev_del(main_loop, listen_sock)) {
+                activecnt--;
+                DEBUG("activecnt:%d", activecnt);
+            }
+
+            //shutdown timeout
+            if (timeout > 0) {
+                //set timeout
+                (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, timeout, kill_callback, NULL);
+            } else {
+                (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, 1, kill_callback, NULL);
+            }
+
+        } else {
+            //TODO WARN???   
+        }
+        Py_DECREF(item);
     }
+    Py_DECREF(iter);
+
 }
 
 static inline void
@@ -1247,7 +1276,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static void
 setup_server_env(void)
 {
-    setup_listen_sock(listen_sock);
+    /* setup_listen_sock(listen_sock); */
     cache_time_init();
     setup_static_env(server_name, server_port);
     setup_start_response();
@@ -1299,7 +1328,8 @@ inet_listen(void)
     int flag = 1;
     int res;
     char strport[7];
-
+    int listen_sock = 0;
+    PyObject *fd = NULL;
     
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -1357,6 +1387,17 @@ inet_listen(void)
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
+
+#ifdef PY3
+    fd =  PyLong_FromLong((long) listen_sock);
+#else
+    fd =  PyInt_FromLong((long) listen_sock);
+#endif 
+    listen_socks = PyList_New(0);
+    if (PyList_Append(listen_socks, fd) == -1) {
+        return -1;
+    }
+    Py_DECREF(fd);
     return 1;
 }
 
@@ -1376,10 +1417,12 @@ check_unix_sockpath(char *sock_name)
 static int
 unix_listen(char *sock_name, int len)
 {
+    int listen_sock = 0;
     int flag = 1;
     int res;
     struct sockaddr_un saddr;
     mode_t old_umask;
+    PyObject *fd;
 
     DEBUG("unix domain socket %s", sock_name);
 
@@ -1430,6 +1473,16 @@ unix_listen(char *sock_name, int len)
         return -1;
     }
     unix_sock_name = sock_name;
+#ifdef PY3
+    fd =  PyLong_FromLong((long) listen_sock);
+#else
+    fd =  PyInt_FromLong((long) listen_sock);
+#endif 
+    listen_socks = PyList_New(0);
+    if (PyList_Append(listen_socks, fd) == -1) {
+        return -1;
+    }
+    Py_DECREF(fd);
     return 1;
 }
 
@@ -1443,31 +1496,55 @@ fast_notify(void)
         tempfile_fd = 0;
     }
 }
+static PyObject* 
+set_listen_socket(PyObject *temp)
+{
+    if (listen_socks != NULL) {
+        PyErr_SetString(PyExc_Exception, "already set listen socket");
+        return NULL;
+    }
+#ifdef PY3
+    if (PyLong_Check(temp)) {
+#else
+    if (PyInt_Check(temp)) {
+#endif
+       listen_socks = PyList_New(0);
+       if (PyList_Append(listen_socks, temp) == -1) {
+            return NULL;
+       }
+        Py_DECREF(temp);
+    } else if (PyList_Check(temp)) {
+        listen_socks = temp;
+        Py_INCREF(listen_socks);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "must be list or int");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
 
 static PyObject *
 meinheld_listen(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *o = NULL;
+    PyObject *sock_fd = NULL;
     char *path;
     int ret, len;
-    int sock_fd = -1;
 
     static char *kwlist[] = {"address", "socket_fd", 0};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|Oi:listen",
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OO:listen",
                                      kwlist, &o, &sock_fd)) {
         return NULL;
     }
 
-    if (listen_sock > 0) {
+    if (listen_socks != NULL) {
         PyErr_SetString(PyExc_Exception, "already set listen socket");
         return NULL;
     }
 
-    if (o == NULL && sock_fd > 0) {
-        listen_sock = sock_fd;
-        DEBUG("use already listened sock fd:%d", sock_fd);
-        ret = 1;
+    if (o == NULL && sock_fd != NULL) {
+        return set_listen_socket(sock_fd);
     } else if (PyTuple_Check(o)) {
         //inet
         if (!PyArg_ParseTuple(o, "si:listen", &server_name, &server_port)) {
@@ -1486,7 +1563,6 @@ meinheld_listen(PyObject *self, PyObject *args, PyObject *kwds)
     }
     if (ret < 0) {
         //error
-        listen_sock = -1;
         return NULL;
     }
     
@@ -1650,8 +1726,10 @@ static PyObject *
 meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *watchdog_result;
+    PyObject *iter = NULL, *item = NULL;
     int ret;
     int silent = 0;
+    int listen_sock = 0;
 
     static char *kwlist[] = {"app", "silent", 0};
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|i:run",
@@ -1659,7 +1737,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    if (listen_sock <= 0) {
+    if (listen_socks == NULL) {
         PyErr_Format(PyExc_TypeError, "not found listen socket");
         return NULL;
 
@@ -1675,10 +1753,33 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     PyOS_setsig(SIGINT, sigint_cb);
     PyOS_setsig(SIGTERM, sigint_cb);
 
-    ret = picoev_add(main_loop, listen_sock, PICOEV_READ, ACCEPT_TIMEOUT_SECS, accept_callback, NULL);
-    if (ret == 0) {
-        activecnt++;
+    iter = PyObject_GetIter(listen_socks);
+    
+    if (PyErr_Occurred()){
+        call_error_logger();
+        return NULL;
     }
+    
+    DEBUG("socks %p", iter);
+    DEBUG("socks size %d", PyList_Size(listen_socks));
+
+    while((item =  PyIter_Next(iter))){
+#ifdef PY3
+        if (PyLong_Check(item)) {
+            listen_sock = (int)PyLong_AsLong(item);
+#else
+        if (PyInt_Check(item)) {
+            listen_sock = (int)PyInt_AsLong(item);
+#endif
+            setup_listen_sock(listen_sock);
+            ret = picoev_add(main_loop, listen_sock, PICOEV_READ, ACCEPT_TIMEOUT_SECS, accept_callback, NULL);
+            if (ret == 0) {
+                activecnt++;
+            }
+        }
+        Py_DECREF(item);
+    }
+    Py_CLEAR(iter);
 
     /* loop */
     while (likely(loop_done == 1 && activecnt > 0)) {
@@ -1712,12 +1813,32 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
 
     clear_server_env();
 
-    close(listen_sock);
-    listen_sock = 0;
-    if (unix_sock_name) {
-       unlink(unix_sock_name);
-       unix_sock_name = NULL;
+    iter = PyObject_GetIter(listen_socks);
+    
+    if (PyErr_Occurred()){
+        call_error_logger();
+        return NULL;
     }
+
+    while((item =  PyIter_Next(iter))){
+#ifdef PY3
+        if (PyLong_Check(item)) {
+            listen_sock = (int)PyLong_AsLong(item);
+#else
+        if (PyInt_Check(item)) {
+            listen_sock = (int)PyInt_AsLong(item);
+#endif
+            close(listen_sock);
+            if (unix_sock_name) {
+               unlink(unix_sock_name);
+               unix_sock_name = NULL;
+            }
+        }
+        Py_DECREF(item);
+    }
+    Py_CLEAR(iter);
+    Py_CLEAR(listen_socks);
+
 
     if (!silent &&  catch_signal) {
         //override
@@ -1838,16 +1959,11 @@ meinheld_get_client_body_buffer_size(PyObject *self, PyObject *args)
 PyObject *
 meinheld_set_listen_socket(PyObject *self, PyObject *args)
 {
-    int temp_sock;
-    if (!PyArg_ParseTuple(args, "i:listen_socket", &temp_sock)) {
+    PyObject *temp;
+    if (!PyArg_ParseTuple(args, "O:listen_socket", &temp)) {
         return NULL;
     }
-    if (listen_sock > 0) {
-        PyErr_SetString(PyExc_Exception, "already set listen socket");
-        return NULL;
-    }
-    listen_sock = temp_sock;
-    Py_RETURN_NONE;
+    return set_listen_socket(temp);
 }
 
 PyObject *
