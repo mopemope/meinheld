@@ -30,14 +30,19 @@ if not is_py3():
                 server.stop(int(self.timeout))
 
         def run(self):
-            fd = self.socket.fileno()
+            
+            if hasattr(self, "sockets"):
+                fds = [s.fileno() for s in self.sockets]
+            else:
+                fds = [self.socket.fileno()]
+
             server.set_keepalive(self.cfg.keepalive)
             server.set_picoev_max_fd(self.cfg.worker_connections)
             
             server.set_fastwatchdog(self.tmp.fileno(), self.ppid, int(self.timeout))
             #server.set_watchdog(self.watchdog)
             
-            server.set_listen_socket(fd)
+            server.set_listen_socket(fds)
             server.run(self.wsgi)
 
         def handle_quit(self, sig, frame):
