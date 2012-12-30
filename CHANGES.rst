@@ -1,5 +1,11 @@
 0.5.2
 =======
+(New Future Release, Release 2012-12-30)
+
+* Support new gunicorn future (multiple socket)
+
+0.5.2
+=======
 (bug fix release, release 2012-10-17)
 
 * Fix: some memory leak 
