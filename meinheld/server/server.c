@@ -1787,7 +1787,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
         fire_pendings();
         fire_timers();
         picoev_loop_once(main_loop, 10);
-        if (catch_signal) {
+        if (unlikely(catch_signal != 0)) {
             if (catch_signal == SIGINT) {
                 interrupted = 1;
             }
