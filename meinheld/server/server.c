@@ -1573,7 +1573,6 @@ static void
 sigint_cb(int signum)
 {
     DEBUG("call SIGINT");
-    kill_server(0);
     if (!catch_signal) {
         catch_signal = 1;
     }
@@ -1787,6 +1786,9 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
         fire_pendings();
         fire_timers();
         picoev_loop_once(main_loop, 10);
+        if (catch_signal) {
+            kill_server(0);
+        }
         if (watch_loop) {
             if (tempfile_fd) {
                 fast_notify();
