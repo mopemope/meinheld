@@ -1573,9 +1573,8 @@ static void
 sigint_cb(int signum)
 {
     DEBUG("call SIGINT");
-    kill_server(0);
     if (!catch_signal) {
-        catch_signal = 1;
+        catch_signal = signum;
     }
 }
 
@@ -1730,6 +1729,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     int ret;
     int silent = 0;
     int listen_sock = 0;
+    int interrupted = 0;
 
     static char *kwlist[] = {"app", "silent", 0};
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|i:run",
@@ -1787,6 +1787,13 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
         fire_pendings();
         fire_timers();
         picoev_loop_once(main_loop, 10);
+        if (unlikely(catch_signal != 0)) {
+            if (catch_signal == SIGINT) {
+                interrupted = 1;
+            }
+            catch_signal = 0;
+            kill_server(0);
+        }
         if (watch_loop) {
             if (tempfile_fd) {
                 fast_notify();
@@ -1840,11 +1847,10 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     Py_CLEAR(listen_socks);
 
 
-    if (!silent &&  catch_signal) {
+    if (!silent && interrupted) {
         //override
         PyErr_Clear();
         PyErr_SetNone(PyExc_KeyboardInterrupt);
-        catch_signal = 0;
         return NULL;
     }
     Py_RETURN_NONE;
