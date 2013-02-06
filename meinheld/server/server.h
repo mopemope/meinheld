@@ -4,7 +4,6 @@
 #include "meinheld.h"
 #include "picoev.h"
 #include "request.h"
-#include "http_parser.h"
 #include "time_cache.h"
 
 

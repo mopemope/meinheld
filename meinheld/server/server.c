@@ -4,7 +4,6 @@
 #include <signal.h>
 
 #ifdef linux
-#define _GNU_SOURCE
 #include <sys/prctl.h>
 #include <sys/socket.h>
 #endif
@@ -261,7 +260,7 @@ set_log_value(client_t *client, PyObject *environ, uintptr_t delta_msec)
     status_code = PyLong_FromLong(client->status_code);
     bytes = PyLong_FromLong(client->write_bytes);
     request_time = PyLong_FromLong(delta_msec);
-    local_time = NATIVE_FROMSTRING(http_log_time);
+    local_time = NATIVE_FROMSTRING((char*)http_log_time);
     
     if (status_code) {
         PyDict_SetItem(environ, status_code_key, status_code);
@@ -415,6 +414,8 @@ static void init_main_loop(void)
 static void
 kill_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
+
+    picoev_del(loop, fd);
     if ((events & PICOEV_TIMEOUT) != 0) {
         DEBUG("force shutdown...");
         loop_done = 0;
@@ -427,6 +428,7 @@ kill_server(int timeout)
 
     int listen_sock = 0;
     PyObject *iter = NULL, *item;
+    int set_callback = 0;
 
     if (main_loop == NULL) {
         return;
@@ -453,12 +455,15 @@ kill_server(int timeout)
                 DEBUG("activecnt:%d", activecnt);
             }
 
-            //shutdown timeout
-            if (timeout > 0) {
-                //set timeout
-                (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, timeout, kill_callback, NULL);
-            } else {
-                (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, 1, kill_callback, NULL);
+            if (!set_callback) {
+                //shutdown timeout
+                if (timeout > 0) {
+                    //set timeout
+                    (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, timeout, kill_callback, NULL);
+                } else {
+                    (void)picoev_add(main_loop, listen_sock, PICOEV_TIMEOUT, 1, kill_callback, NULL);
+                }
+                set_callback = 1;
             }
 
         } else {
@@ -1721,14 +1726,81 @@ fire_timers(void)
 
 }
 
+static int
+listen_all_sockets(void)
+{
+    PyObject *iter = NULL, *item = NULL;
+    int listen_sock = 0;
+    int ret = 0;
+
+    iter = PyObject_GetIter(listen_socks);
+    
+    if (PyErr_Occurred()){
+        call_error_logger();
+        return -1;
+    }
+    
+    DEBUG("socks iter %p", iter);
+    DEBUG("socks size %d", PyList_Size(listen_socks));
+
+    while((item =  PyIter_Next(iter))){
+#ifdef PY3
+        if (PyLong_Check(item)) {
+            listen_sock = (int)PyLong_AsLong(item);
+#else
+        if (PyInt_Check(item)) {
+            listen_sock = (int)PyInt_AsLong(item);
+#endif
+            setup_listen_sock(listen_sock);
+            ret = picoev_add(main_loop, listen_sock, PICOEV_READ, ACCEPT_TIMEOUT_SECS, accept_callback, NULL);
+            if (ret == 0) {
+                activecnt++;
+            }
+        }
+        Py_DECREF(item);
+    }
+    Py_DECREF(iter);
+    return 1;
+}
+
+static int
+close_all_sockets(void) 
+{
+    PyObject *iter = NULL, *item = NULL;
+    int listen_sock = 0;
+    
+    iter = PyObject_GetIter(listen_socks);
+    
+    if (PyErr_Occurred()){
+        call_error_logger();
+        return -1;
+    }
+
+    while((item =  PyIter_Next(iter))){
+#ifdef PY3
+        if (PyLong_Check(item)) {
+            listen_sock = (int)PyLong_AsLong(item);
+#else
+        if (PyInt_Check(item)) {
+            listen_sock = (int)PyInt_AsLong(item);
+#endif
+            close(listen_sock);
+            if (unix_sock_name) {
+               unlink(unix_sock_name);
+               unix_sock_name = NULL;
+            }
+        }
+        Py_DECREF(item);
+    }
+    Py_DECREF(iter);
+    return 1;
+}
+
 static PyObject *
 meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *watchdog_result;
-    PyObject *iter = NULL, *item = NULL;
-    int ret;
     int silent = 0;
-    int listen_sock = 0;
     int interrupted = 0;
 
     static char *kwlist[] = {"app", "silent", 0};
@@ -1753,33 +1825,11 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     PyOS_setsig(SIGINT, sigint_cb);
     PyOS_setsig(SIGTERM, sigint_cb);
 
-    iter = PyObject_GetIter(listen_socks);
-    
-    if (PyErr_Occurred()){
-        call_error_logger();
+
+    if (listen_all_sockets() < 0) {
+        //FATAL Error
         return NULL;
     }
-    
-    DEBUG("socks %p", iter);
-    DEBUG("socks size %d", PyList_Size(listen_socks));
-
-    while((item =  PyIter_Next(iter))){
-#ifdef PY3
-        if (PyLong_Check(item)) {
-            listen_sock = (int)PyLong_AsLong(item);
-#else
-        if (PyInt_Check(item)) {
-            listen_sock = (int)PyInt_AsLong(item);
-#endif
-            setup_listen_sock(listen_sock);
-            ret = picoev_add(main_loop, listen_sock, PICOEV_READ, ACCEPT_TIMEOUT_SECS, accept_callback, NULL);
-            if (ret == 0) {
-                activecnt++;
-            }
-        }
-        Py_DECREF(item);
-    }
-    Py_CLEAR(iter);
 
     /* loop */
     while (likely(loop_done == 1 && activecnt > 0)) {
@@ -1820,30 +1870,10 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
 
     clear_server_env();
 
-    iter = PyObject_GetIter(listen_socks);
-    
-    if (PyErr_Occurred()){
-        call_error_logger();
+    if (close_all_sockets() < 0) {
+        Py_CLEAR(listen_socks);
         return NULL;
     }
-
-    while((item =  PyIter_Next(iter))){
-#ifdef PY3
-        if (PyLong_Check(item)) {
-            listen_sock = (int)PyLong_AsLong(item);
-#else
-        if (PyInt_Check(item)) {
-            listen_sock = (int)PyInt_AsLong(item);
-#endif
-            close(listen_sock);
-            if (unix_sock_name) {
-               unlink(unix_sock_name);
-               unix_sock_name = NULL;
-            }
-        }
-        Py_DECREF(item);
-    }
-    Py_CLEAR(iter);
     Py_CLEAR(listen_socks);
 
 

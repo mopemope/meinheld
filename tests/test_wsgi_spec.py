@@ -54,7 +54,7 @@ def test_check_key():
     assert(env.get("PATH_INFO") == "/foo/bar")
     assert(env.get("QUERY_STRING") == None)
     assert(env.get("CONTENT_TYPE") == None)
-    assert(env.get("CONTENT_LENGTH") == None)
+    assert(env.get("CONTENT_LENGTH") == "0")
     assert(env.get("SERVER_NAME") == "0.0.0.0")
     assert(env.get("SERVER_PORT") == "8000")
     assert(env.get("SERVER_PROTOCOL") == "HTTP/1.1")
