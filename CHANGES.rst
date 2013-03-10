@@ -1,4 +1,10 @@
-0.5.2
+0.5.4
+=======
+(Bug Release, Release 2013-03-11)
+
+* Fix: Invalid signal callback
+
+0.5.3
 =======
 (New Future Release, Release 2012-12-30)
 
