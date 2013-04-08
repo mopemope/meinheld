@@ -1098,17 +1098,9 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     }
 #endif
 
-    if(self->cli->headers != NULL){
-        PyErr_SetString(PyExc_TypeError, "headers already set");
-        return NULL;
-    }
+    if (self->cli->headers != NULL && exc_info && exc_info != Py_None) {
+        // Re-raise original exception if headers sent
 
-    if (!PyList_Check(headers)) {
-        PyErr_SetString(PyExc_TypeError, "response headers must be a list");
-        return NULL;
-    }
-
-    if (exc_info && exc_info != Py_None) {
         PyObject *type = NULL;
         PyObject *value = NULL;
         PyObject *traceback = NULL;
@@ -1125,6 +1117,17 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         PyErr_Restore(type, value, traceback);
         return NULL;
     }
+
+    if(self->cli->headers != NULL){
+        PyErr_SetString(PyExc_TypeError, "headers already set");
+        return NULL;
+    }
+
+    if (!PyList_Check(headers)) {
+        PyErr_SetString(PyExc_TypeError, "response headers must be a list");
+        return NULL;
+    }
+
     
     bytes = wsgi_to_bytes(status);
     bytelen = PyBytes_GET_SIZE(bytes);
