@@ -31,6 +31,15 @@ class ErrApp(BaseApp):
         environ["XXXX"]
         return SIMPLE_RESPONSE
 
+class ErrAppEx(BaseApp):
+
+    def __call__(self, environ, start_response):
+        status = '500 InternalServerError'
+        response_headers = [('Content-type','text/plain')]
+        start_response(status, response_headers, ZeroDivisionError)
+        self.environ = environ.copy()
+        return RESPONSE
+
 class IterErrApp(BaseApp):
 
     def __call__(self, environ, start_response):
@@ -155,3 +164,12 @@ def test_upload_file():
     length = env["CONTENT_LENGTH"]
     data = env.get("wsgi.input").read()
     assert(len(data) == int(length))
+
+def test_error():
+    def client():
+        return requests.get("http://localhost:8000/foo/bar")
+
+    env, res = run_client(client, ErrAppEx)
+    assert(res.status_code == 500)
+    assert(res.content == ASSERT_RESPONSE)
+    assert(env.get("REQUEST_METHOD") == "GET")
