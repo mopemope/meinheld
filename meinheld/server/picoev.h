@@ -218,7 +218,9 @@ extern "C" {
   int picoev_add(picoev_loop* loop, int fd, int events, int timeout_in_secs,
 		 picoev_handler* callback, void* cb_arg) {
     picoev_fd* target;
-    assert(PICOEV_IS_INITED_AND_FD_IN_RANGE(fd));
+    if (unlikely(!PICOEV_IS_INITED_AND_FD_IN_RANGE(fd))) {
+      return -1;
+    }
     target = picoev.fds + fd;
     assert(target->loop_id == 0);
     target->callback = callback;

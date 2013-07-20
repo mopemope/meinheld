@@ -1226,9 +1226,9 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         // next turn or other process
         return;
     } else if ((events & PICOEV_READ) != 0) {
-
+        int i;
         socklen_t client_len = sizeof(client_addr);
-        for (;;) {
+        for (i=0; i<8; ++i) {
 #if linux
             client_fd = accept4(fd, (struct sockaddr *)&client_addr, &client_len, SOCK_NONBLOCK | SOCK_CLOEXEC);
 #else
