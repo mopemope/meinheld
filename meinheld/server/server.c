@@ -1215,7 +1215,7 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 static void
 accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
 {
-    int client_fd, ret, i;
+    int client_fd, ret;
     client_t *client;
     struct sockaddr_in client_addr;
     char *remote_addr;
@@ -1226,7 +1226,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         // next turn or other process
         return;
     } else if ((events & PICOEV_READ) != 0) {
-
+        int i;
         socklen_t client_len = sizeof(client_addr);
         for (i=0; i<8; ++i) {
 #if linux
