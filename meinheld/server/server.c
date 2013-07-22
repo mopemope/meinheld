@@ -36,7 +36,7 @@ typedef struct {
 } pending_queue_t;
 
 static char *server_name = "127.0.0.1";
-static short server_port = 8000;
+static uint16_t server_port = 8000;
 /* static int listen_sock;  // listen socket */
 static PyObject *listen_socks = NULL;  // listen socket
 
