@@ -79,6 +79,7 @@ import sys
 import time
 import random
 import re
+import platform
 
 from errno import EINVAL
 from errno import EWOULDBLOCK
@@ -182,6 +183,8 @@ _delegate_methods = ("recv", "recvfrom", "recv_into", "recvfrom_into", "send", "
 
 timeout_default = object()
 
+use_kqueue = platform.system() in ("Darwin", "FreeBSD")
+
 def internal_accept(s):
     sock = s._sock
     while True:
@@ -205,6 +208,10 @@ def internal_close(s):
 def internal_connect(s, address):
     if s.timeout == 0.0:
         return s._sock.connect(address)
+
+    # When poll for connect() with kqueue, poll for EVFILT_WRITE.
+    wait = wait_write if use_kqueue else wait_readwrite
+
     sock = s._sock
     if s.timeout is None:
         while True:
@@ -215,7 +222,7 @@ def internal_connect(s, address):
             if not result or result == EISCONN:
                 break
             elif (result in (EWOULDBLOCK, EINPROGRESS, EALREADY)) or (result == EINVAL and is_windows):
-                wait_readwrite(sock.fileno())
+                wait(sock.fileno())
             else:
                 raise error(result, strerror(result))
     else:
@@ -231,7 +238,7 @@ def internal_connect(s, address):
                 timeleft = end - time.time()
                 if timeleft <= 0:
                     raise timeout('timed out')
-                wait_readwrite(sock.fileno(), timeout=timeleft)
+                wait(sock.fileno(), timeout=timeleft)
             else:
                 raise error(result, strerror(result))
 
