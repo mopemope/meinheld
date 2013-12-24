@@ -112,7 +112,7 @@ trampoline_callback(picoev_loop* loop, int fd, int events, void* cb_arg);
 static PyObject*
 internal_schedule_call(int seconds, PyObject *cb, PyObject *args, PyObject *kwargs, PyObject *greenlet);
 
-static void
+static int
 prepare_call_wsgi(client_t *client);
 
 static void
@@ -372,8 +372,9 @@ close_client(client_t *client)
     if (client->request_queue->size > 0) {
         if (check_status_code(client) > 0) {
             //process pipeline
-            prepare_call_wsgi(client);
-            call_wsgi_handler(client);
+            if (prepare_call_wsgi(client) > 0) {
+                call_wsgi_handler(client);
+            }
         }
         return ;
     }
@@ -985,7 +986,7 @@ setting_keepalive(client_t *client)
 }
 */
 
-static void
+static int
 prepare_call_wsgi(client_t *client)
 {
     request *req = NULL;
@@ -996,16 +997,16 @@ prepare_call_wsgi(client_t *client)
 
     //check Expect
     if (check_http_expect(client) < 0) {
-        return;
+        return -1;
     }
 
     if (req->body_type == BODY_TYPE_TMPFILE) {
         if (set_input_file(client) == -1) {
-            return;
+            return -1;
         }
     } else {
         if (set_input_object(client) == -1) {
-            return;
+            return -1;
         }
     }
     
@@ -1013,6 +1014,7 @@ prepare_call_wsgi(client_t *client)
         client->keep_alive = 0;
     }
     /* setting_keepalive(client); */
+    return 1;
 }
 
 static int
@@ -1205,8 +1207,9 @@ read_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         }
         if (check_status_code(client) > 0) {
             //current request ok
-            prepare_call_wsgi(client);
-            call_wsgi_handler(client);
+            if (prepare_call_wsgi(client) > 0) {
+                call_wsgi_handler(client);
+            }
         }
         return;
     }
@@ -1255,8 +1258,9 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
                 if (finish == 1) {
                     if (check_status_code(client) > 0) {
                         //current request ok
-                        prepare_call_wsgi(client);
-                        call_wsgi_handler(client);
+                        if (prepare_call_wsgi(client) > 0) {
+                            call_wsgi_handler(client);
+                        }
                     }
                 } else if (finish == 0) {
                     ret = picoev_add(loop, client_fd, PICOEV_READ, keep_alive_timeout, read_callback, (void *)client);
