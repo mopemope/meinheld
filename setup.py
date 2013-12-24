@@ -10,8 +10,9 @@ import os.path
 import platform
 import fnmatch
 
-
 develop = False
+if os.environ.get("MEINHELD_DEVELOP") == "1":
+    develop = True
 # develop = True 
 
 def read(name):
