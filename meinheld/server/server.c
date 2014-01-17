@@ -579,6 +579,9 @@ app_handler(PyObject *self, PyObject *args)
         
             /* Py_INCREF(hub_switch_value); */
             res = greenlet_switch(parent, hub_switch_value, NULL);
+            Py_XDECREF(res);
+
+            // try again after event switch
             status = process_body(client);
         }
     }
