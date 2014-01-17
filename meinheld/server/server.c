@@ -515,7 +515,7 @@ static PyObject *
 app_handler(PyObject *self, PyObject *args)
 {
     int ret, active;
-    PyObject *wsgi_args = NULL, *start = NULL, *res = NULL;
+    PyObject *wsgi_args = NULL, *start = NULL, *current = NULL, *parent = NULL, *res = NULL;
     PyObject *env = NULL;
     ClientObject *pyclient;
     client_t *client;
@@ -572,6 +572,13 @@ app_handler(PyObject *self, PyObject *args)
             if ((ret == 0 && !active)) {
                 activecnt++;
             }
+
+            // switch to hub
+            current = pyclient->greenlet;
+            parent = greenlet_getparent(current);
+        
+            /* Py_INCREF(hub_switch_value); */
+            res = greenlet_switch(parent, hub_switch_value, NULL);
             status = process_body(client);
         }
     }
