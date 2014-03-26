@@ -1,3 +1,9 @@
+0.5.6
+=======
+(Bug Release, Release 2014-03-26)
+
+* Fix: Support Python 3.4
+
 0.5.4
 =======
 (Bug Release, Release 2013-03-11)
