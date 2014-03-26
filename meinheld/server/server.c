@@ -165,13 +165,13 @@ realloc_pendings(void)
 static void
 destroy_pendings(void)
 {
+    int i = 0, len; 
+    TimerObject *timer = NULL;
+    TimerObject **t = g_pendings->q;
     if (g_pendings == NULL) {
         return;
     }
-    int i = 0; 
-    int len = g_pendings->size;
-    TimerObject *timer = NULL;
-    TimerObject **t = g_pendings->q;
+    len = g_pendings->size;
     t += i;
 
     while(len--) {

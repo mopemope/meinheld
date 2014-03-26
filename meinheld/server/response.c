@@ -404,6 +404,9 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
     PyObject *bytes1 = NULL, *bytes2 = NULL;
     char *name = NULL, *value = NULL;
     Py_ssize_t namelen, valuelen;
+#ifdef PY3
+    int o;
+#endif
 
     if(likely(fast_headers != NULL)){
         for (i = 0; i < hlen; i++) {
@@ -481,7 +484,7 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
             add_header(bucket, name, namelen, value, valuelen);
 #ifdef PY3
             //keep bytes string 
-            int o = PyList_Append(bucket->temp1, bytes1);
+            o = PyList_Append(bucket->temp1, bytes1);
             if(o != -1){
                 o = PyList_Append(bucket->temp1, bytes2);
                 if(o == -1){
@@ -782,10 +785,10 @@ static response_status
 process_write(client_t *client)
 {
     PyObject *iterator = NULL;
-    PyObject *item;
-    char *buf;
-    Py_ssize_t buflen;
-    write_bucket *bucket;
+    PyObject *item, *chunk_data = NULL;
+    char *buf = NULL, *lendata = NULL;
+    Py_ssize_t buflen, len;
+    write_bucket *bucket = NULL;
     response_status ret;
     
     DEBUG("process_write start");
@@ -804,10 +807,10 @@ process_write(client_t *client)
                         Py_DECREF(item);
                         return STATUS_ERROR;
                     }
-                    char *lendata  = NULL;
-                    Py_ssize_t len = 0;
+                    lendata  = NULL;
+                    len = 0;
 
-                    PyObject *chunk_data = get_chunk_data(buflen);
+                    chunk_data = get_chunk_data(buflen);
                     //TODO CHECK ERROR
                     PyBytes_AsStringAndSize(chunk_data, &lendata, &len);
                     set_chunked_data(bucket, lendata, len, buf, buflen);
@@ -1084,8 +1087,9 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     PyObject *status = NULL, *headers = NULL, *exc_info = NULL, *bytes = NULL;
     char *status_code = NULL;
     char *status_line = NULL;
-    int bytelen = 0;
+    int bytelen = 0, int_code;
     ResponseObject *self = NULL;
+    char *buf = NULL;
 
     self = (ResponseObject *)obj;
 #ifdef PY3
@@ -1131,7 +1135,10 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     
     bytes = wsgi_to_bytes(status);
     bytelen = PyBytes_GET_SIZE(bytes);
-    char buf[bytelen];
+    buf = PyMem_Malloc(sizeof(char*) * bytelen);
+    if (!buf) { 
+        return NULL;
+    }
     status_line = buf;
     strcpy(status_line, PyBytes_AS_STRING(bytes));
     
@@ -1140,17 +1147,23 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     if (!*status_line) {
         PyErr_SetString(PyExc_ValueError, "status message was not supplied");
         Py_XDECREF(bytes);
+        if (buf) {
+            PyMem_Free(buf);
+        }
         return NULL;
     }
 
     status_code = strsep((char **)&status_line, " ");
 
     errno = 0;
-    int int_code = strtol(status_code, &status_code, 10);
+    int_code = strtol(status_code, &status_code, 10);
 
     if (*status_code || errno == ERANGE) {
         PyErr_SetString(PyExc_TypeError, "status value is not an integer");
         Py_XDECREF(bytes);
+        if (buf) {
+            PyMem_Free(buf);
+        }
         return NULL;
     }
 
@@ -1158,6 +1171,9 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     if (int_code < 100 || int_code > 999) {
         PyErr_SetString(PyExc_ValueError, "status code is invalid");
         Py_XDECREF(bytes);
+        if (buf) {
+            PyMem_Free(buf);
+        }
         return NULL;
     }
 
@@ -1178,6 +1194,9 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 
     /* DEBUG("set http_status %p", self->cli); */
     Py_XDECREF(bytes);
+    if (buf) {
+        PyMem_Free(buf);
+    }
     Py_RETURN_NONE;
 }
 

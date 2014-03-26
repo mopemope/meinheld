@@ -270,7 +270,10 @@ set_query(PyObject *env, char *buf, int len)
     int c, ret, slen = 0;
     char *s0;
     PyObject *obj;
-
+#ifdef PY3
+    char *c2;
+    PyObject *v;
+#endif
     s0 = buf;
     while(len > 0){
         c = *buf++;
@@ -291,8 +294,8 @@ set_query(PyObject *env, char *buf, int len)
         
 #ifdef PY3
         //TODO CHECK ERROR 
-        char *c2 = PyBytes_AS_STRING(obj);
-        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+        c2 = PyBytes_AS_STRING(obj);
+        v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
         ret = PyDict_SetItem(env, query_string_key, v);
         Py_DECREF(v);
 #else
@@ -466,10 +469,9 @@ message_begin_cb(http_parser *p)
 {
     request *req = NULL;
     PyObject *environ = NULL;
+    client_t *client = get_client(p);
 
     DEBUG("message_begin_cb");
-    
-    client_t *client = get_client(p);
 
     req = new_request();
     if(req == NULL){
@@ -494,7 +496,10 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
 {
     request *req = get_current_request(p);
     PyObject *env = NULL, *obj = NULL;
-
+#ifdef PY3
+    char *c1, *c2;
+    PyObject *f, *v;
+#endif
     /* DEBUG("field key:%.*s", (int)len, buf); */
 
     if(req->last_header_element != FIELD){
@@ -505,10 +510,10 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
         }
 #ifdef PY3
         //TODO CHECK ERROR 
-        char *c1 = PyBytes_AS_STRING(req->field);
-        PyObject *f = PyUnicode_DecodeLatin1(c1, strlen(c1), NULL);
-        char *c2 = PyBytes_AS_STRING(req->value);
-        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+        c1 = PyBytes_AS_STRING(req->field);
+        f = PyUnicode_DecodeLatin1(c1, strlen(c1), NULL);
+        c2 = PyBytes_AS_STRING(req->value);
+        v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
         PyDict_SetItem(env, f, v);
         Py_DECREF(f);
         Py_DECREF(v);
@@ -602,8 +607,8 @@ url_cb(http_parser *p, const char *buf, size_t len)
 static int
 body_cb(http_parser *p, const char *buf, size_t len)
 {
-    DEBUG("body_cb");
     request *req = get_current_request(p);
+    DEBUG("body_cb");
 
     if(max_content_length < req->body_readed + len){
 
@@ -810,9 +815,8 @@ headers_complete_cb(http_parser *p)
 int
 message_complete_cb(http_parser *p)
 {
-    DEBUG("message_complete_cb");
-    
     client_t *client = get_client(p);
+    DEBUG("message_complete_cb");
     client->complete = 1;
     client->upgrade = p->upgrade;
 

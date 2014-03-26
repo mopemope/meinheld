@@ -50,6 +50,8 @@ cache_time_update(void)
     char          *p0, *p1, *p2;
     cache_time_t      *tp;
     struct timeval   tv;
+    time_t tt;
+    struct tm *gmt, *p;
 
     gettimeofday(&tv, NULL);
 
@@ -76,8 +78,8 @@ cache_time_update(void)
     tp->sec = sec;
     tp->msec = msec;
 
-	time_t tt = time(NULL);
-    struct tm* gmt = gmtime(&tt);
+    tt = time(NULL);
+    gmt = gmtime(&tt);
 
     p0 = &cached_http_time[slot][0];
 
@@ -86,7 +88,7 @@ cache_time_update(void)
                        months[gmt->tm_mon], gmt->tm_year + 1900,
                        gmt->tm_hour, gmt->tm_min, gmt->tm_sec);
 
-    struct tm* p = localtime(&tt);
+    p = localtime(&tt);
     p->tm_mon++;
     p->tm_year += 1900;
     tp->gmtoff = (int)get_timezone(p->tm_isdst);
