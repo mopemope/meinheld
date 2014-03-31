@@ -569,7 +569,7 @@ set_first_body_data(client_t *client, char *data, size_t datalen)
 static response_status
 write_headers(client_t *client, char *data, size_t datalen, char is_file)
 {
-    write_bucket *bucket; 
+    write_bucket *bucket = 0; 
     uint32_t hlen = 0;
     PyObject *headers = NULL, *templist = NULL;
     response_status ret;
@@ -580,7 +580,13 @@ write_headers(client_t *client, char *data, size_t datalen, char is_file)
     }
 
     //TODO ERROR CHECK
+    if (!client->headers){
+        goto error;
+    }
     headers = PySequence_Fast(client->headers, "header must be list");
+    if (!headers){
+        goto error;
+    }
     hlen = PySequence_Fast_GET_SIZE(headers);
 
     bucket = new_write_bucket(client->fd, (hlen * 4) + 42 );
