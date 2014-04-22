@@ -98,6 +98,7 @@ static PyObject *http_method_get;
 static PyObject *http_method_head;
 static PyObject *http_method_post;
 static PyObject *http_method_put;
+static PyObject *http_method_patch;
 static PyObject *http_method_connect;
 static PyObject *http_method_options;
 static PyObject *http_method_trace;
@@ -743,6 +744,9 @@ headers_complete_cb(http_parser *p)
         case HTTP_PUT:
             obj = http_method_put;
             break;
+        case HTTP_PATCH:
+            obj = http_method_patch;
+            break;
         case HTTP_CONNECT:
             obj = http_method_connect;
             break;
@@ -934,6 +938,7 @@ setup_static_env(char *name, int port)
     http_method_head = NATIVE_FROMSTRING("HEAD");
     http_method_post = NATIVE_FROMSTRING("POST");
     http_method_put = NATIVE_FROMSTRING("PUT");
+    http_method_patch = NATIVE_FROMSTRING("PATCH");
     http_method_connect = NATIVE_FROMSTRING("CONNECT");
     http_method_options = NATIVE_FROMSTRING("OPTIONS");
     http_method_trace = NATIVE_FROMSTRING("TRACE");
@@ -1001,6 +1006,7 @@ clear_static_env(void)
     Py_DECREF(http_method_head);
     Py_DECREF(http_method_post);
     Py_DECREF(http_method_put);
+    Py_DECREF(http_method_patch);
     Py_DECREF(http_method_connect);
     Py_DECREF(http_method_options);
     Py_DECREF(http_method_trace);
