@@ -13,15 +13,12 @@ class MeinheldWorker(Worker):
         Logger.access = _access
         Logger.error = _error
 
-        if self.cfg.accesslog is None:
+        if self.cfg.accesslog is self.cfg.logconfig is None:
             server.set_access_logger(None)
         else:
             server.set_access_logger(self.log)
 
-        if self.cfg.errorlog is None:
-            server.set_error_logger(None)
-        else:
-            server.set_error_logger(self.log)
+        server.set_error_logger(self.log)
     
     def watchdog(self):
         self.notify()
