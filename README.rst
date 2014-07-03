@@ -21,7 +21,7 @@ Installation
 
 Install from pypi::
 
-  $ easy_install -ZU meinheld
+  $ pip install -U meinheld
 
 Install from source:: 
 
@@ -29,9 +29,9 @@ Install from source::
 
 meinheld supports gunicorn.
 
-To install gunicorn (only python 2.x)::
+To install gunicorn::
 
-  $ easy_install -ZU gunicorn
+  $ pip install -U gunicorn
 
 
 Basic Usage
@@ -42,9 +42,9 @@ simple wsgi app::
     from meinheld import server
 
     def hello_world(environ, start_response):
-        status = '200 OK'
-        res = "Hello world!"
-        response_headers = [('Content-type','text/plain'),('Content-Length',str(len(res)))]
+        status = b'200 OK'
+        res = b"Hello world!"
+        response_headers = [('Content-type', 'text/plain'), ('Content-Length', str(len(res)))]
         start_response(status, response_headers)
         return [res]
 
@@ -182,6 +182,3 @@ meinheld uses sendfile(2), over wgsi.file_wrapper.
 .. _meinheld mailing list: http://groups.google.com/group/meinheld
 .. _`#meinheld`: http://webchat.freenode.net/?channels=meinheld
 .. _freenode: http://freenode.net
-
-
-
