@@ -1,6 +1,9 @@
 What's this
 ---------------------------------
 
+.. image:: https://travis-ci.org/mopemope/meinheld.png
+    :target: https://travis-ci.org/mopemope/meinheld
+
 This is a high performance python wsgi web server.
 
 Thus this is yet an another asynchronous web server like gevent.
