@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from base import *
+from collections import OrderedDict
 import requests
 import os
 
@@ -143,13 +144,13 @@ def test_headers():
 def test_post():
 
     def client():
-        payload = {'key1': 'value1', 'key2': 'value2'}
+        payload = OrderedDict([('key1', 'value1'), ('key2', 'value2')])
         return requests.post("http://localhost:8000/", data=payload)
 
     env, res = run_client(client, App)
     assert(res.status_code == 200)
     assert(res.content == ASSERT_RESPONSE)
-    assert(env.get("wsgi.input").read() == b"key2=value2&key1=value1")
+    assert(env.get("wsgi.input").read() == b"key1=value1&key2=value2")
 
 def test_upload_file():
 
