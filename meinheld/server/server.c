@@ -244,6 +244,7 @@ new_client_t(int client_fd, char *remote_addr, uint32_t remote_port)
     //memset(client, 0, sizeof(client_t));
 
     client->fd = client_fd;
+    client->complete = 1;
     client->request_queue = new_request_queue();
     client->remote_addr = remote_addr;
     client->remote_port = remote_port;
@@ -1041,10 +1042,11 @@ set_read_error(client_t *client, int status_code)
         //finish = 1
         return 1;
     } else {
-        if (client->http_parser->state != s_start_req) {
+        if (!client->complete) {
+            // read error while reading request.
             client->status_code = status_code;
             send_error_page(client);
-        }
+        } // else keepalive timeout. should not send any data.
         close_client(client);
         return -1;
     }
