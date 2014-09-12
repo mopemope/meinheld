@@ -1041,8 +1041,10 @@ set_read_error(client_t *client, int status_code)
         //finish = 1
         return 1;
     } else {
-        client->status_code = status_code;
-        send_error_page(client);
+        if (client->http_parser->state != s_start_req) {
+            client->status_code = status_code;
+            send_error_page(client);
+        }
         close_client(client);
         return -1;
     }
