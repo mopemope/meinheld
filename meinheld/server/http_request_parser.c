@@ -863,11 +863,8 @@ init_parser(client_t *cli, const char *name, const short port)
 size_t
 execute_parse(client_t *cli, const char *data, size_t len)
 {
-    size_t ret = http_parser_execute(cli->http_parser, &settings, data, len);
-    //check new protocol
-    /* cli->upgrade = cli->http_parser->upgrade; */
-
-    return ret;
+    cli->complete = 0;
+    return http_parser_execute(cli->http_parser, &settings, data, len);
 }
 
 
