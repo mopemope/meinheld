@@ -2,6 +2,7 @@
 *.pyc
 *.pyo
 *.so
+*.swp
 env
 env*
 dist
@@ -11,4 +12,5 @@ build
 _mailinglist
 TODO
 .tox
+tests/reports
 
