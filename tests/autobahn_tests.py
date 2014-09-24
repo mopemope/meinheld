@@ -32,8 +32,8 @@ def ensure_wstest():
         call(('pip2', 'install', 'autobahntestsuite'))
 
 def setup_servers():
-    server27 = Popen(('python2', 'autobahn_test_servers.py', '8002'))
-    server34 = Popen(('python3', 'autobahn_test_servers.py', '8003'))
+    server27 = Popen(('python2', 'autobahn_test_server.py', '8002'))
+    server34 = Popen(('python3', 'autobahn_test_server.py', '8003'))
     return server27, server34
 
 def teardown_servers(servers):
