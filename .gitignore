@@ -12,5 +12,5 @@ build
 _mailinglist
 TODO
 .tox
-tests/reports
+tests/autobahn-report
 
