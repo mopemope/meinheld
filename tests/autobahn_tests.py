@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from os.path import join, abspath
 from subprocess import Popen, call
 
@@ -20,8 +21,9 @@ def ensure_virtualenv():
 
     if not hasattr(sys, 'real_prefix'):
         raise Exception('Not inside a virtualenv')
+    print('Running in a virtual environment')
 
-def ensure_python2():
+def ensure_python2(python2):
     """As recommended by Autobahn, the test client should be run with a
     Python 2 interpreter. The interpreter is installed in the current
     virtualenv. The build to be tested by tox is also reinstalled using
@@ -36,12 +38,16 @@ except AttributeError:
     sys.exit(1)
 '''
 
-    if call(('python2.7', '-c', src)):
-        call(('virtualenv', '-p', 'python2.7', sys.prefix))
+    if call((python2, '-c', src)):
+        print('Installing {} into virtualenv'.format(python2))
+        call(('virtualenv', '-q', '-p', python2, sys.prefix))
+    else:
+        print(python2, 'found in virtualenv')
 
     zipfile = 'meinheld-{}.zip'.format(meinheld.__version__)
     zipfile = abspath(join(sys.prefix, '..', 'dist', zipfile))
-    call(('pip2', 'install', '--pre', '-U', zipfile))
+    print('Installing', zipfile)
+    call(('pip2', 'install', '-q', '--pre', '-U', zipfile))
 
 def ensure_wstest():
     """Installs the test client."""
@@ -49,7 +55,8 @@ def ensure_wstest():
     try:
         call(('wstest', '-a'))
     except FileNotFoundError:
-        call(('pip2', 'install', 'autobahntestsuite'))
+        print('Installing Autobahn test suite')
+        call(('pip2', 'install', '-q', 'autobahntestsuite'))
 
 
 # Server Setup
@@ -57,6 +64,7 @@ def ensure_wstest():
 def setup_servers():
     """Starts servers within subprocesses."""
 
+    print('Starting test servers')
     server27 = Popen(('python2', 'autobahn_test_server.py', '8002'))
     server34 = Popen(('python3', 'autobahn_test_server.py', '8003'))
     return server27, server34
@@ -70,6 +78,7 @@ def teardown_servers(servers):
             server.wait()
         except AttributeError:
             pass
+    print('Stopped test servers')
 
 
 # Report Parsing
@@ -139,8 +148,16 @@ def runtests():
     This is why both servers are tested from a single environemnt.
     """
 
+    parser = ArgumentParser(description=
+            'Runs Autobahn test client against Meinheld servers.')
+
+    parser.add_argument('-p2', type=str, default='python2.7', help='The'
+            'Python 2 instance in which the Autobahn test client will run.')
+
+    args = parser.parse_args()
+
     ensure_virtualenv()
-    ensure_python2()
+    ensure_python2(args.p2)
     ensure_wstest()
 
     servers = []
