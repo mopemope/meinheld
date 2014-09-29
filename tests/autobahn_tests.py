@@ -151,13 +151,19 @@ def runtests():
     parser = ArgumentParser(description=
             'Runs Autobahn test client against Meinheld servers.')
 
-    parser.add_argument('-p2', type=str, default='python2.7', help='The'
-            'Python 2 instance in which the Autobahn test client will run.')
+    parser.add_argument('-p2', '--python2', type=str, default='python2.7',
+            help='The Python 2 instance in which the Autobahn test client '
+            'will run')
+    parser.add_argument('-r', '--accept-result', type=int, default=3,
+            help='The maximum test case result to accept as non-failure')
+    parser.add_argument('-c', '--accept-close-result', type=int, default=4,
+            help='The maximum test case closing result to accept as '
+            'non-failure')
 
     args = parser.parse_args()
 
     ensure_virtualenv()
-    ensure_python2(args.p2)
+    ensure_python2(args.python2)
     ensure_wstest()
 
     servers = []
@@ -166,7 +172,9 @@ def runtests():
         call(('wstest', '-m', 'fuzzingclient', '-s', 'fuzzingclient.json'))
     finally:
         teardown_servers(servers)
-    sys.exit(read_report('fuzzingclient.json', (3, 4)))
+
+    accept = (args.accept_result, args.accept_close_result)
+    sys.exit(read_report('fuzzingclient.json', accept))
 
 if __name__ == '__main__':
     runtests()
