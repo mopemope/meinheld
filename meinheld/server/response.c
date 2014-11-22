@@ -622,7 +622,9 @@ write_headers(client_t *client, char *data, size_t datalen, char is_file)
         }
     }
 
-    if(client->keep_alive == 1){
+    if(client->status_code == 101){
+        add_header(bucket, "Connection", 10, "upgrade", 7);
+    }else if(client->keep_alive == 1){
         //Keep-Alive
         add_header(bucket, "Connection", 10, "Keep-Alive", 10);
     }else{
