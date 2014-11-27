@@ -9,6 +9,7 @@ def is_py3():
 
 if is_py3():
     from itertools import cycle
+    unicode = str
 else:
     from itertools import cycle
     from itertools import imap as map
@@ -256,11 +257,13 @@ class WebSocket(object):
         if self.version in (13,):
             # payload
             opcode = 2
-            if not isinstance(message, bytes):
-                payload = message.encode('utf-8')
+            if isinstance(message, unicode):  # text
                 opcode = 1
-            elif not isinstance(message, str):
-                payload = str(message)
+                payload = message.encode('utf-8')
+            else:
+                payload = message
+            if not isinstance(payload, bytes):
+                raise TypeError("message should be str, unicode or bytes.")
 
             # header(fin,maskflag,opcode,length)
             fin = 0x80  #0x80:fin, 0:continuation
@@ -295,70 +298,87 @@ class WebSocket(object):
         may contain only part of the rest of the message.
 
         Returns an array of messages, and the buffer remainder that
-        didn't contain any full messages."""
+        didn't contain any full messages.
+        """
+        if self.version not in (13,):
+            raise ValueError("Unknown WebSocket protocol version.")
+
         msgs = []
         buf = self._buf
-        if self.version in (13,):
+        msg = None
+        is_text = False
+        while True:
             idx = 0
-            while buf:
-                # b1, b2 = struct.unpack('>BB', buf[idx:idx+1])
-                if is_py3():
-                    b1, b2 = buf[idx], buf[idx+1]
-                else:
-                    b1, b2 = ord(buf[idx]), ord(buf[idx+1])
+            if len(buf) < idx+2:
+                return msgs
+            if is_py3():
+                b1, b2 = buf[idx], buf[idx+1]
+            else:
+                b1, b2 = ord(buf[idx]), ord(buf[idx+1])
 
+            idx += 2
+            fin = bool(b1 & 0x80)  #TODO with opcode==0
+            opcode = b1 & 0x0f
+            mask = bool(b2 & 0x80)
+            length = (b2 & 0x7f)
+            if length == 126:
+                if len(buf) < idx+2:
+                    return msgs
+                length = struct.unpack('>H', buf[idx:idx+2])[0]
                 idx += 2
-                fin = bool(b1 & 0x80)  #TODO with opcode==0
-                opcode = b1 & 0x0f
-                mask = bool(b2 & 0x80)
-                length = (b2 & 0x7f)
-                if length == 126:
-                    length = struct.unpack('>H', buf[idx:idx+2])
-                    idx += 2
-                elif length == 127:
-                    length = struct.unpack('>Q', buf[dx::idx+8])
-                    idx += 8
+            elif length == 127:
+                if len(buf) < idx+8:
+                    return msgs
+                length = struct.unpack('>Q', buf[idx:idx+8])[0]
+                idx += 8
 
-                if mask:
-                    maskdata = buf[idx:idx+4]
-                    idx += 4
+            if mask:
+                if len(buf) < idx + 4:
+                    return msgs
+                maskdata = buf[idx:idx+4]
+                idx += 4
 
-                data = buf[idx:idx+length]
-                idx += length
+            if len(buf) < idx + length:
+                return msgs
 
-                if mask:
-                    if is_py3():
-                        data = ''.join(chr(d^m) for d,m in zip(data, cycle(maskdata)))
-                    else:
-                        data = b''.join(chr(d^m) for d,m in zip(
-                                                        map(ord, data),
-                                                        cycle(map(ord, maskdata))
-                                                        ))
-                if opcode == 0:  #continuation
-                    pass  #TODO with fin
-                elif opcode == 1:  #text
-                    if is_py3():
-                        data = data.encode('iso-8859-1').decode('utf-8')
-                    else:
-                        data = data.decode('utf-8', 'replace')
-                elif opcode == 2:  #binary
-                    pass
-                elif opcode == 8:  #close
-                    self.websocket_closed = True
-                    #TODO process 2byte close status
-                    break
-                elif opcode == 9:  #ping
-                    pass  #TODO
-                elif opcode == 10: #pong
-                    pass  #TODO
+            data = buf[idx:idx+length]
+            idx += length
+
+            if mask:
+                if is_py3():
+                    data = ''.join(chr(d^m) for d,m in zip(data, cycle(maskdata)))
+                    data = data.encode('iso-8859-1')
                 else:
-                    raise ValueError("Don't understand how to parse this type of message: %r" % buf)
-                msgs.append(data)
-                buf = buf[idx:]
-        else:
-            raise ValueError("Unknown WebSocket protocol version.") 
-
-        self._buf = buf
+                    data = b''.join(chr(d^m) for d,m in zip(
+                                                    map(ord, data),
+                                                    cycle(map(ord, maskdata))
+                                                    ))
+            print(opcode, length, data[:16])
+            if opcode == 0:  #continuation
+                if is_text:
+                    msg += data.decode('utf-8')
+                else:
+                    msg += data
+            elif opcode == 1:  #text
+                is_text = True
+                msg = data.decode('utf-8')
+            elif opcode == 2:  #binary
+                is_text = False
+                msg = data
+            elif opcode == 8:  #close
+                self.websocket_closed = True
+                #TODO process 2byte close status
+                break
+            elif opcode == 9:  #ping
+                pass  #TODO
+            elif opcode == 10: #pong
+                pass  #TODO
+            else:
+                raise ValueError("Don't understand how to parse this type of message: %r, %s" % (buf, idx))
+            self._buf = buf = buf[idx:]
+            if fin:
+                msgs.append(msg)
+                msg = None
         return msgs
     
     def send(self, message):
