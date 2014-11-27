@@ -1879,7 +1879,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     Py_DECREF(wsgi_app);
-    Py_XDECREF(watchdog);
+    Py_CLEAR(watchdog);
     
     current_client = NULL;
     picoev_destroy_loop(main_loop);
