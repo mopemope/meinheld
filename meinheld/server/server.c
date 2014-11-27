@@ -1879,7 +1879,7 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     Py_DECREF(wsgi_app);
-    Py_XDECREF(watchdog);
+    Py_CLEAR(watchdog);
     
     current_client = NULL;
     picoev_destroy_loop(main_loop);
@@ -2047,8 +2047,9 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_TypeError, "must be callable");
         return NULL;
     }
+    Py_INCREF(temp);
+    Py_XDECREF(watchdog);
     watchdog = temp;
-    Py_INCREF(watchdog);
     watch_loop = 1;
     Py_RETURN_NONE;
 }
