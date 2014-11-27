@@ -2047,8 +2047,9 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_TypeError, "must be callable");
         return NULL;
     }
+    Py_INCREF(temp);
+    Py_XDECREF(watchdog);
     watchdog = temp;
-    Py_INCREF(watchdog);
     watch_loop = 1;
     Py_RETURN_NONE;
 }
