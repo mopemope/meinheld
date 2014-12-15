@@ -713,7 +713,6 @@ call_wsgi_handler(client_t *client)
 #ifdef WITH_GREENLET
     //new greenlet
     greenlet = greenlet_new(handler, NULL);
-    Py_DECREF(greenlet_getparent(greenlet));
     // set_greenlet
     pyclient->greenlet = greenlet;
     Py_INCREF(pyclient->greenlet);
@@ -2346,7 +2345,6 @@ meinheld_spawn(PyObject *self, PyObject *args, PyObject *kwargs)
     if (greenlet == NULL) {
         return NULL;
     }
-    Py_DECREF(greenlet_getparent(greenlet));
     res = internal_schedule_call(0, func, func_args, func_kwargs, greenlet);
     Py_XDECREF(res);
     DEBUG("greenlet refcnt:%d", (int)Py_REFCNT(greenlet));
