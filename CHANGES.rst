@@ -1,3 +1,9 @@
+0.5.7
+=======
+(Bug Release, Release 2014-12-17)
+
+* Fix: Support Only Greenlet 0.4.5
+
 0.5.6
 =======
 (Bug Release, Release 2014-03-26)
