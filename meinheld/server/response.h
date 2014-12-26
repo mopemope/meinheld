@@ -29,7 +29,6 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     PyObject *filelike;
-
 } FileWrapperObject;
 
 typedef enum {

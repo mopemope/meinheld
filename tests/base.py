@@ -24,7 +24,6 @@ def start_server(app, middleware=None):
 
 class ServerRunner(object):
 
-
     def __init__(self, app, middleware=None):
         self.app = app
         self.middleware = middleware
@@ -37,14 +36,13 @@ class ServerRunner(object):
         server.listen(("0.0.0.0", 8000))
         self.running = True
         if shutdown:
-            server.schedule_call(1, server.shutdown, 3)
+            server.schedule_call(1, server.shutdown, 4)
         if self.middleware:
             server.run(self.middleware(self.app))
         else:
             server.run(self.app)
 
 class ClientRunner(object):
-
 
     def __init__(self, app, func, shutdown=True):
         self.func = func

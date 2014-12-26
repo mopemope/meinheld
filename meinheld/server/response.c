@@ -37,37 +37,29 @@
 
 ResponseObject *start_response = NULL;
 
-static PyObject*
-wsgi_to_bytes(PyObject *value)
+static int
+wsgi_to_bytes(PyObject *value, char **data, Py_ssize_t *len)
 {
-    PyObject *result = NULL;
-
 #ifdef PY3
     if (!PyUnicode_Check(value)) {
         PyErr_Format(PyExc_TypeError, "expected unicode object, value "
                      "of type %.200s found", value->ob_type->tp_name);
-        return NULL;
+        return -1;
     }
-
-    result = PyUnicode_AsLatin1String(value);
-
-    if (!result) {
-        PyErr_SetString(PyExc_ValueError, "unicode object contains non "
-                        "latin-1 characters");
-        return NULL;
+    if (PyUnicode_READY(value) == -1) {
+        return -1;
     }
+    if (PyUnicode_KIND(value) != PyUnicode_1BYTE_KIND) {
+        PyErr_SetString(PyExc_ValueError,
+                        "unicode object contains non latin-1 characters");
+        return -1;
+    }
+    *len = PyUnicode_GET_SIZE(value);
+    *data = (char*)PyUnicode_1BYTE_DATA(value);
+    return 0;
 #else
-    if (!PyBytes_Check(value)) {
-        PyErr_Format(PyExc_TypeError, "expected byte string object, "
-                     "value of type %.200s found", value->ob_type->tp_name);
-        return NULL;
-    }
-
-    Py_INCREF(value);
-    result = value;
+    return PyBytes_AsStringAndSize(value, data, len);
 #endif
-
-    return result;
 }
 
 static int
@@ -401,7 +393,6 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
     int i;
     PyObject *tuple = NULL;
     PyObject *obj1 = NULL, *obj2 = NULL;
-    PyObject *bytes1 = NULL, *bytes2 = NULL;
     char *name = NULL, *value = NULL;
     Py_ssize_t namelen, valuelen;
 #ifdef PY3
@@ -430,20 +421,16 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
 
             obj1 = PyTuple_GET_ITEM(tuple, 0);
             obj2 = PyTuple_GET_ITEM(tuple, 1);
-            if(unlikely(!obj1)){
-                goto error;
-            }
-            if(unlikely(!obj2)){
-                goto error;
-            }
-            bytes1 = wsgi_to_bytes(obj1);
-            if(unlikely(PyBytes_AsStringAndSize(bytes1, &name, &namelen) == -1)){
+            if(unlikely(!obj1 || !obj2)){
                 goto error;
             }
 
-            //value
-            bytes2 = wsgi_to_bytes(obj2);
-            if(unlikely(PyBytes_AsStringAndSize(bytes2, &value, &valuelen) == -1)){
+            // field-name
+            if (unlikely(wsgi_to_bytes(obj1, &name, &namelen) == -1)) {
+                goto error;
+            }
+            // field-value
+            if (unlikely(wsgi_to_bytes(obj2, &value, &valuelen) == -1)) {
                 goto error;
             }
 
@@ -482,22 +469,7 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
             }
             DEBUG("response header %s:%d : %s:%d",name, (int)namelen, value, (int)valuelen);
             add_header(bucket, name, namelen, value, valuelen);
-#ifdef PY3
-            //keep bytes string 
-            o = PyList_Append(bucket->temp1, bytes1);
-            if(o != -1){
-                o = PyList_Append(bucket->temp1, bytes2);
-                if(o == -1){
-                    goto error;
-                }
-            }else{
-                goto error;
-            }
-#endif
-            Py_XDECREF(bytes1);
-            Py_XDECREF(bytes2);
         }
-
     }else{
         RDEBUG("WARN header is lost...");
     }
@@ -508,8 +480,6 @@ error:
         /* write_error_log(__FILE__, __LINE__); */
         call_error_logger();
     }
-    Py_XDECREF(bytes1);
-    Py_XDECREF(bytes2);
     return -1;
 }
 
@@ -1059,11 +1029,11 @@ ResponseObject_dealloc(ResponseObject* self)
 
 
 static PyObject*
-create_status(PyObject *bytes, int bytelen, int http_minor)
+create_status(char *bytes, int bytelen, int http_minor)
 {
     buffer_result r;
-    buffer_t *b = new_buffer(256, 0);
-    if(b == NULL){
+    buffer_t *b = new_buffer(bytelen + 12, 0);
+    if (b == NULL) {
         return NULL;
     }
     
@@ -1075,7 +1045,7 @@ create_status(PyObject *bytes, int bytelen, int http_minor)
     if(r != WRITE_OK){
         goto error;
     }
-    r = write2buf(b, PyBytes_AS_STRING(bytes), bytelen);
+    r = write2buf(b, bytes, bytelen);
     if(r != WRITE_OK){
         goto error;
     }
@@ -1092,12 +1062,10 @@ error:
 static PyObject *
 ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
 {
-    PyObject *status = NULL, *headers = NULL, *exc_info = NULL, *bytes = NULL;
-    char *status_code = NULL;
-    char *status_line = NULL;
+    PyObject *status = NULL, *headers = NULL, *exc_info = NULL;
+    char *bytes;
     int bytelen = 0, int_code;
     ResponseObject *self = NULL;
-    char *buf = NULL;
 
     self = (ResponseObject *)obj;
 #ifdef PY3
@@ -1140,49 +1108,52 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
         return NULL;
     }
 
-    
-    bytes = wsgi_to_bytes(status);
-    bytelen = PyBytes_GET_SIZE(bytes);
-    buf = PyMem_Malloc(sizeof(char*) * bytelen);
-    if (!buf) { 
+#ifdef PY3
+    if (!PyUnicode_Check(status)) {
+        PyErr_Format(PyExc_TypeError, "expected unicode object, value "
+                     "of type %.200s found", status->ob_type->tp_name);
         return NULL;
     }
-    status_line = buf;
-    strcpy(status_line, PyBytes_AS_STRING(bytes));
-    
-    /* DEBUG("%s :%d", (char*)status_line, bytelen); */
+    if (unlikely(PyUnicode_READY(status) == -1)) {
+        return NULL;
+    }
+    if (!PyUnicode_IS_COMPACT_ASCII(status)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "unicode object contains non ascii characters");
+        return -1;
+    }
+    bytes = PyUnicode_1BYTE_DATA(status);
+    bytelen = PyUnicode_GET_LENGTH(status);
+#else
+    if (!PyBytes_Check(status)) {
+        PyErr_Format(PyExc_TypeError, "expected bytes object, value "
+                     "of type %.200s found", status->ob_type->tp_name);
+        return NULL;
+    }
+    bytes = PyBytes_AS_STRING(status);
+    bytelen = PyBytes_GET_SIZE(status);
+#endif
 
-    if (!*status_line) {
-        PyErr_SetString(PyExc_ValueError, "status message was not supplied");
-        Py_XDECREF(bytes);
-        if (buf) {
-            PyMem_Free(buf);
-        }
+    /* DEBUG("%s :%d", (char*)bytes, bytelen); */
+
+    // status code should be 3digits
+    if (strchr(bytes, ' ') != bytes + 3) {
+        PyErr_SetString(PyExc_ValueError, "Bad status code is supplied");
         return NULL;
     }
 
-    status_code = strsep((char **)&status_line, " ");
-
-    errno = 0;
-    int_code = strtol(status_code, &status_code, 10);
-
-    if (*status_code || errno == ERANGE) {
-        PyErr_SetString(PyExc_TypeError, "status value is not an integer");
-        Py_XDECREF(bytes);
-        if (buf) {
-            PyMem_Free(buf);
+    {
+        char *p = bytes + 3;
+        errno = 0;
+        int_code = strtol(bytes, &p, 10);
+        if (p != bytes + 3 || errno == ERANGE) {
+            PyErr_SetString(PyExc_TypeError, "status value is not an integer");
+            return NULL;
         }
-        return NULL;
-    }
-
-
-    if (int_code < 100 || int_code > 999) {
-        PyErr_SetString(PyExc_ValueError, "status code is invalid");
-        Py_XDECREF(bytes);
-        if (buf) {
-            PyMem_Free(buf);
+        if (int_code < 100 || int_code > 999) {
+            PyErr_SetString(PyExc_ValueError, "status code is invalid");
+            return NULL;
         }
-        return NULL;
     }
 
     self->cli->status_code = int_code;
@@ -1199,12 +1170,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     /* }else{ */
         /* self->cli->http_status =  PyBytes_FromFormat("HTTP/1.0 %s\r\n", PyBytes_AS_STRING(bytes)); */
     /* } */
-
     /* DEBUG("set http_status %p", self->cli); */
-    Py_XDECREF(bytes);
-    if (buf) {
-        PyMem_Free(buf);
-    }
     Py_RETURN_NONE;
 }
 
