@@ -395,9 +395,6 @@ add_all_headers(write_bucket *bucket, PyObject *fast_headers, int hlen, client_t
     PyObject *obj1 = NULL, *obj2 = NULL;
     char *name = NULL, *value = NULL;
     Py_ssize_t namelen, valuelen;
-#ifdef PY3
-    int o;
-#endif
 
     if(likely(fast_headers != NULL)){
         for (i = 0; i < hlen; i++) {
@@ -1120,7 +1117,7 @@ ResponseObject_call(PyObject *obj, PyObject *args, PyObject *kw)
     if (!PyUnicode_IS_COMPACT_ASCII(status)) {
         PyErr_SetString(PyExc_ValueError,
                         "unicode object contains non ascii characters");
-        return -1;
+        return NULL;
     }
     bytes = PyUnicode_1BYTE_DATA(status);
     bytelen = PyUnicode_GET_LENGTH(status);
