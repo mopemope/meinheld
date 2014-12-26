@@ -15,7 +15,7 @@ You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 Requirements
 ---------------------------------
 
-meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.2** . and **greenlet == 0.4.5**.
+meinheld requires **Python 2.x >= 2.7** or **Python 3.x >= 3.3**. and **greenlet == 0.4.5**.
 
 meinheld supports Linux, FreeBSD, Mac OS X.
 
@@ -45,7 +45,7 @@ simple wsgi app::
     from meinheld import server
 
     def hello_world(environ, start_response):
-        status = b'200 OK'
+        status = '200 OK'
         res = b"Hello world!"
         response_headers = [('Content-type', 'text/plain'), ('Content-Length', str(len(res)))]
         start_response(status, response_headers)
@@ -56,7 +56,7 @@ simple wsgi app::
 
 
 with gunicorn. user worker class "egg:meinheld#gunicorn_worker" or "meinheld.gmeinheld.MeinheldWorker"::
-    
+
     $ gunicorn --workers=2 --worker-class="egg:meinheld#gunicorn_worker" gunicorn_test:app
 
 Continuation
