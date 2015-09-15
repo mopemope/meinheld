@@ -896,7 +896,7 @@ set_input_file(client_t *client)
     rewind(tmp);
     
     fd = fileno(tmp);
-    input = PyFile_FromFd(fd, "<tmpfile>", "r", -1, NULL, NULL, NULL, 1);
+    input = PyFile_FromFd(fd, "<tmpfile>", "rb", -1, NULL, NULL, NULL, 1);
     if (input == NULL) {
         fclose(tmp);
         req->body = NULL;
