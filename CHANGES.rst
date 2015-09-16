@@ -1,3 +1,9 @@
+0.5.8
+=======
+(Bug Release, Release 2015-09-16)
+
+* Fix: Read temporary file binary mode
+
 0.5.7
 =======
 (Bug Release, Release 2014-12-17)
