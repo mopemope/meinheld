@@ -47,6 +47,7 @@ except AttributeError:
 
     zipfile = 'meinheld-{}.zip'.format(meinheld.__version__)
     zipfile = abspath(join(sys.prefix, '..', 'dist', zipfile))
+    call(('pip2', 'install', '-U', 'unittest2'))
     print('Installing', zipfile)
     call(('pip2', 'install', '-q', '--pre', '-U', zipfile))
 
