@@ -1140,16 +1140,12 @@ parse_http_request(int fd, client_t *client, char *buf, ssize_t r)
         if (parse_new_protocol(req, buf, r, nread) == -1) {
             return set_read_error(client, req->bad_request_code);
         }
-    } else {
-        if (nread != r || req->bad_request_code > 0) {
-            if (req == NULL) {
-                DEBUG("fd %d bad_request code 400", fd);
-                return set_read_error(client, 400);
-            } else {
-                DEBUG("fd %d bad_request code %d", fd,  req->bad_request_code);
-                return set_read_error(client, req->bad_request_code);
-            }
-        }
+    } else if (req == NULL) {
+        DEBUG("fd %d bad_request code 400", fd);
+        return set_read_error(client, 400);
+    } else if (nread != r || req->bad_request_code > 0) {
+        DEBUG("fd %d bad_request code %d", fd,  req->bad_request_code);
+        return set_read_error(client, req->bad_request_code);
     }
 
     if (parser_finish(client) > 0) {
