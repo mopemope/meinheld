@@ -15,7 +15,7 @@ You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 Requirements
 ---------------------------------
 
-meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.2** . and **greenlet == 0.4.5**.
+meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.2** . and **greenlet >= 0.4.5**.
 
 meinheld supports Linux, FreeBSD, Mac OS X.
 
