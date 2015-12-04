@@ -40,7 +40,9 @@ To install gunicorn::
 Basic Usage
 ---------------------------------
 
-simple wsgi app::
+simple wsgi app:
+
+.. code:: python
 
     from meinheld import server
 
