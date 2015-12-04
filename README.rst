@@ -68,7 +68,9 @@ To enable continuations, use ContinuationMiddleware. get Continuation from wsgi 
 
 Continuation objects have two very interesting methods, `suspend` and `resume`.
 
-For example::
+For example:
+
+.. code:: python
 
     from meinheld import server
     from meinheld import middleware
@@ -103,7 +105,9 @@ Websocket
 
 meinheld support Websockets. use WebSocketMiddleware. 
 
-For example::
+For example:
+
+.. code:: python
 
     from flask import Flask, render_template, request
     from meinheld import server, middleware
@@ -157,8 +161,10 @@ Socket
 
 This patch replaces the standard socket module.
 
-For Example::
-    
+For Example:
+
+.. code:: python
+
     from meinheld import patch
     patch.patch_all()
 
