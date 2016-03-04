@@ -13,7 +13,7 @@ import fnmatch
 develop = False
 if os.environ.get("MEINHELD_DEVELOP") == "1":
     develop = True
-# develop = True 
+# develop = True
 
 nogreen = False
 if os.environ.get("MEINHELD_NOGREEN") == "1":
@@ -83,7 +83,7 @@ library_dirs=[]
 include_dirs=[]
 
 setup(name='meinheld',
-    version="0.5.8",
+    version="0.5.9",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
@@ -123,4 +123,3 @@ setup(name='meinheld',
         'Topic :: Internet :: WWW/HTTP :: WSGI :: Server'
     ],
 )
-
