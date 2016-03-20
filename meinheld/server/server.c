@@ -85,6 +85,7 @@ static PyObject *empty_string = NULL; //""
 static PyObject *app_handler_func = NULL;
 
 /* gunicorn */
+static time_t watchdog_lasttime;
 static int spinner = 0;
 static int tempfile_fd = 0;
 static int gtimeout = 0;
@@ -1857,7 +1858,8 @@ meinheld_run_loop(PyObject *self, PyObject *args, PyObject *kwds)
             catch_signal = 0;
             kill_server(0);
         }
-        if (watch_loop) {
+        if (watch_loop && watchdog_lasttime != main_loop->now) {
+            watchdog_lasttime = main_loop->now;
             if (tempfile_fd) {
                 fast_notify();
             } else if (watchdog) {
@@ -2024,6 +2026,7 @@ meinheld_set_fastwatchdog(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "iii", &_fd, &_ppid, &timeout))
         return NULL;
 
+    watchdog_lasttime = 0;
     tempfile_fd = _fd;
     ppid = _ppid;
     gtimeout = timeout;
@@ -2044,6 +2047,7 @@ meinheld_set_watchdog(PyObject *self, PyObject *args)
     }
     Py_INCREF(temp);
     Py_XDECREF(watchdog);
+    watchdog_lasttime = 0;
     watchdog = temp;
     watch_loop = 1;
     Py_RETURN_NONE;

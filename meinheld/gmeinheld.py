@@ -1,10 +1,12 @@
+import os
 import sys
-import types
+
 from gunicorn.workers.base import Worker
 from gunicorn.glogging import Logger
+
 from meinheld import server
 from meinheld.mlogging import _access, _error
-import os
+
 
 class MeinheldWorker(Worker):
 
@@ -19,7 +21,7 @@ class MeinheldWorker(Worker):
             server.set_access_logger(self.log)
 
         server.set_error_logger(self.log)
-    
+
     def watchdog(self):
         self.notify()
 
@@ -28,7 +30,7 @@ class MeinheldWorker(Worker):
             server.stop(int(self.timeout))
 
     def run(self):
-        
+
         if hasattr(self, "sockets"):
             fds = [s.fileno() for s in self.sockets]
         else:
@@ -36,10 +38,10 @@ class MeinheldWorker(Worker):
 
         server.set_keepalive(self.cfg.keepalive)
         server.set_picoev_max_fd(self.cfg.worker_connections)
-        
+
         server.set_fastwatchdog(self.tmp.fileno(), self.ppid, int(self.timeout))
         #server.set_watchdog(self.watchdog)
-        
+
         server.set_listen_socket(fds)
         server.run(self.wsgi)
 
@@ -49,4 +51,3 @@ class MeinheldWorker(Worker):
     def handle_exit(self, sig, frame):
         server.stop()
         sys.exit(0)
-
