@@ -6,10 +6,10 @@ workers = []
 
 def hello_world(environ, start_response):
     status = '200 OK'
-    res = "Hello world!"
-    response_headers = [('Content-type','text/plain'),('Content-Length',str(len(res)))]
+    res = b"Hello world!"
+    response_headers = [('Content-type', 'text/plain'), ('Content-Length', str(len(res)))]
     start_response(status, response_headers)
-#    print environ
+    #print(environ)
     return [res]
 
 def run(app, i):
@@ -31,8 +31,3 @@ meinheld.set_access_logger(None)
 meinheld.set_error_logger(None)
 meinheld.listen(("0.0.0.0", 8000))
 start()
-
-
-
-
-
