@@ -38,6 +38,14 @@
 # define PICOEV_EPOLL_DEFER_DELETES 1
 #endif
 
+// EPOLLEXCLUSIVE was added in Linux 4.5
+// When using backported (new) kernel, kernel supports it in spite of
+// sys/epoll.h doesn't define it.
+// Kernel older than 4.5 ignores this flag.  So we can pass it safely.
+#ifndef EPOLLEXCLUSIVE
+#define EPOLLEXCLUSIVE  (1 << 28)
+#endif
+
 typedef struct picoev_loop_epoll_st {
   picoev_loop loop;
   int epfd;
@@ -106,7 +114,7 @@ int picoev_update_events_internal(picoev_loop* _loop, int fd, int events)
   } while (0)
   
 #if PICOEV_EPOLL_DEFER_DELETES
-  
+
   if ((events & PICOEV_DEL) != 0) {
     /* nothing to do */
   } else if ((events & PICOEV_READWRITE) == 0) {
@@ -115,6 +123,7 @@ int picoev_update_events_internal(picoev_loop* _loop, int fd, int events)
     SET(EPOLL_CTL_MOD, 0);
     if (epoll_ret != 0) {
       assert(errno == ENOENT);
+      ev.events |= EPOLLEXCLUSIVE;
       SET(EPOLL_CTL_ADD, 1);
     }
   }
@@ -124,7 +133,12 @@ int picoev_update_events_internal(picoev_loop* _loop, int fd, int events)
   if ((events & PICOEV_READWRITE) == 0) {
     SET(EPOLL_CTL_DEL, 1);
   } else {
-    SET(target->events == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD, 1);
+    if (target->events == 0) {
+      ev.events |= EPOLLEXCLUSIVE;
+      SET(EPOLL_CTL_ADD, 1);
+    } else {
+      SET(EPOLL_CTL_MOD, 1);
+    }
   }
   
 #endif
