@@ -31,7 +31,7 @@
 
 #include "http_parser.h"
 
-#define SERVER "meinheld/0.5.9"
+#define SERVER "meinheld/0.6.0"
 #define MODULE_NAME "meinheld.server"
 
 #ifdef DEVELOP

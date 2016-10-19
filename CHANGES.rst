@@ -1,30 +1,37 @@
+0.6.0
+=======
+(Release 2016-10-19)
+
+* Improve: Use EPOLLEXCLUSIVE, Improve multi process performance (Linux Kernel >= 4.5)
+* Improve: Improve performance gunicorn worker
+
 0.5.9
 =======
-(Bug Release, Release 2016-03-04)
+(Bug fix Release, Release 2016-03-04)
 
 * Fix: segfault when bad request
 
 0.5.8
 =======
-(Bug Release, Release 2015-09-16)
+(Bug fix Release, Release 2015-09-16)
 
 * Fix: Read temporary file binary mode
 
 0.5.7
 =======
-(Bug Release, Release 2014-12-17)
+(Bug fix Release, Release 2014-12-17)
 
 * Fix: Support Only Greenlet 0.4.5
 
 0.5.6
 =======
-(Bug Release, Release 2014-03-26)
+(Bug fix Release, Release 2014-03-26)
 
 * Fix: Support Python 3.4
 
 0.5.4
 =======
-(Bug Release, Release 2013-03-11)
+(Bug fix Release, Release 2013-03-11)
 
 * Fix: Invalid signal callback
 
