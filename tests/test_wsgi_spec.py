@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+from collections import OrderedDict
+import os
+import sys
 
 from base import *
-from collections import OrderedDict
 import requests
-import os
 
 ASSERT_RESPONSE = b"Hello world!"
 RESPONSE = [b"Hello ", b"world!"]
@@ -99,7 +100,11 @@ def test_encode():
     
     env, res = run_client(client, App)
     assert(res.content == ASSERT_RESPONSE)
-    assert(env.get("PATH_INFO") == "/あいう")
+    path_info = env.get('PATH_INFO')
+    expected = "/あいう"  # utf-8
+    if sys.version_info[0] > 2:
+        expected = expected.encode('utf-8').decode('latin1')
+    assert(env.get("PATH_INFO") == expected)
     assert(env.get("QUERY_STRING") == None)
 
 
