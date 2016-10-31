@@ -99,7 +99,7 @@ def test_encode():
     
     env, res = run_client(client, App)
     assert(res.content == ASSERT_RESPONSE)
-    assert(env.get("PATH_INFO") == "/あいう")
+    assert(env.get("PATH_INFO") == "/あいう".encode('utf-8').decode('latin1'))
     assert(env.get("QUERY_STRING") == None)
 
 

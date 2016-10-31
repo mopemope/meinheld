@@ -348,25 +348,18 @@ set_path(PyObject *env, char *buf, int len)
     slen = t - s0;
     slen = urldecode(s0, slen);
 
-    obj = PyBytes_FromStringAndSize(s0, slen);
-    /* DEBUG("path:%.*s", (int)slen, PyBytes_AS_STRING(obj)); */
-
-    if(likely(obj != NULL)){
 #ifdef PY3
-        //TODO CHECK ERROR 
-        char *c2 = PyBytes_AS_STRING(obj);
-        PyObject *v = PyUnicode_DecodeUTF8(c2, strlen(c2), NULL);
-        PyDict_SetItem(env, path_info_key, v);
-        Py_DECREF(v);
+    obj = PyUnicode_DecodeLatin1(s0, slen, "strict");
 #else
-        PyDict_SetItem(env, path_info_key, obj);
+    obj = PyBytes_FromStringAndSize(s0, slen);
 #endif
+    if (likely(obj != NULL)) {
+        PyDict_SetItem(env, path_info_key, obj);
         Py_DECREF(obj);
         return slen;
-    }else{
+    } else {
         return -1;
     }
-
 }
 
 static PyObject*
