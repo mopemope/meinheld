@@ -1,4 +1,23 @@
+sudo: required
+dist: trusty
 language: python
+cache: pip
+python:
+    - "2.7"
+    - "3.3"
+    - "3.4"
+    - "3.5"
+    - "3.5-dev"
+    - "3.6-dev"
+    - "nightly"
+
+before_install:
+    - "echo TRAVIS_PYTHON_VERSION= $TRAVIS_PYTHON_VERSION"
+    - python -c 'import sys; print(sys.version)'
+
 install:
-    - pip install tox
-script: tox
+    - pip install -U pytest requests pytest-faulthandler
+    - pip install -e .
+
+script:
+    - py.test -v
