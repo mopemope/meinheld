@@ -1,8 +1,8 @@
 from meinheld import server
+import requests  # requests should not be pached
 from meinheld import patch
 patch.patch_all()
 import time
-import requests
 
 
 running = False
