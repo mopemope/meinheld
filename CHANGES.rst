@@ -1,3 +1,9 @@
+0.6.1
+=======
+(Bug fix release 2016-11-02)
+
+* Fix: decode PATH_INFO as latin1
+
 0.6.0
 =======
 (Release 2016-10-19)
