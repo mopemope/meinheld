@@ -1,7 +1,7 @@
 What's this
 ---------------------------------
 
-.. image:: https://travis-ci.org/mopemope/meinheld.png
+.. image:: https://travis-ci.org/mopemope/meinheld.svg
     :target: https://travis-ci.org/mopemope/meinheld
 
 This is a high performance python wsgi web server.
