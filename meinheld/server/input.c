@@ -246,10 +246,22 @@ InputObject_iternext(InputObject *self)
     return next;
 }
 
+static PyObject*
+InputObject_reset(InputObject *self)
+{
+    if(is_close(self)){
+        return NULL;
+    }
+    self->pos = 0;
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static struct PyMethodDef InputObject_methods[] = {
   {"read",    (PyCFunction)InputObject_read,     METH_VARARGS, ""},
   {"readline",    (PyCFunction)InputObject_readline, METH_VARARGS, ""},
   {"readlines",    (PyCFunction)InputObject_readlines,METH_VARARGS, ""},
+  {"reset",    (PyCFunction)InputObject_reset,METH_VARARGS, ""},
   {NULL,    NULL}
 };
 
