@@ -36,7 +36,7 @@ def hello_world(environ, start_response):
 
 server.listen(("0.0.0.0", 8000))
 server.run(hello_world)</pre>
-          <p>Meinheld can also serve through <a href="http://www.gnicorn.org/">Gunicorn</a>.</p>
+          <p>Meinheld can also serve through <a href="http://gunicorn.org/">Gunicorn</a>.</p>
           <code class="block">$ gunicorn --workers=2 \
            --worker-class="egg:meinheld#gunicorn_worker" \
            gunicorn_test:app</code>
@@ -63,7 +63,6 @@ server.run(hello_world)</pre>
           <p>You can reach the developers via</p>
           <ul>
             <li><a href="http://groups.google.com/group/meinheld">meinheld | Google Groups</a></li>
-            <li>#meinheld on <a href="http://www.freenode.net/">freenode</a></li>
           </ul>
           <h2>Development</h2>
           <p>The source repository of Meinheld is available on GitHub.</p>
@@ -79,7 +78,7 @@ server.run(hello_world)</pre>
   </div>
   <script type="text/javascript">
     SyntaxHighlighter.defaults['gutter'] = false;
-    SyntaxHighlighter.all(); 
+    SyntaxHighlighter.all();
   </script>
 </body>
 </html>
