@@ -1242,7 +1242,7 @@ accept_callback(picoev_loop* loop, int fd, int events, void* cb_arg)
         int i;
         socklen_t client_len = sizeof(client_addr);
         for (i=0; i<8; ++i) {
-#if linux
+#if linux && defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
             client_fd = accept4(fd, (struct sockaddr *)&client_addr, &client_len, SOCK_NONBLOCK | SOCK_CLOEXEC);
 #else
             client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
