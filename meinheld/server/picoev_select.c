@@ -102,7 +102,7 @@ picoev_loop* picoev_create_loop(int max_timeout)
     return NULL;
   }
   
-  loop->loop.now = current_msec / 1000;
+  loop->now = current_msec / 1000;
   return loop;
 }
 
