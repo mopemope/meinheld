@@ -76,6 +76,8 @@ PyObject* timeout_error;
 /* reuse object */
 static PyObject *client_key = NULL; //meinheld.client
 static PyObject *wsgi_input_key = NULL; //wsgi.input key
+// https://gist.github.com/mitsuhiko/5721107
+static PyObject *wsgi_input_terminated_key = NULL; //wsgi.input_terminated key
 static PyObject *status_code_key = NULL; //STATUS_CODE
 static PyObject *bytes_sent_key = NULL; // SEND_BYTES
 static PyObject *request_time_key = NULL; // REQUEST_TIME
@@ -1019,6 +1021,9 @@ prepare_call_wsgi(client_t *client)
             return -1;
         }
     }
+    if (!PyDict_SetItem((PyObject *)req->environ, wsgi_input_terminated_key, Py_True)) {
+        return -1;
+    }
 
     if (!is_keep_alive) {
         client->keep_alive = 0;
@@ -1308,6 +1313,7 @@ setup_server_env(void)
 
     client_key = NATIVE_FROMSTRING("meinheld.client");
     wsgi_input_key = NATIVE_FROMSTRING("wsgi.input");
+    wsgi_input_terminated_key = NATIVE_FROMSTRING("wsgi.input_terminated");
     status_code_key = NATIVE_FROMSTRING("STATUS_CODE");
     bytes_sent_key = NATIVE_FROMSTRING("SEND_BYTES");
     request_time_key = NATIVE_FROMSTRING("REQUEST_TIME");
@@ -1331,6 +1337,7 @@ clear_server_env(void)
 
     Py_DECREF(client_key);
     Py_DECREF(wsgi_input_key);
+    Py_DECREF(wsgi_input_terminated_key);
     Py_DECREF(status_code_key);
     Py_DECREF(bytes_sent_key);
     Py_DECREF(request_time_key);
