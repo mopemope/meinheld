@@ -419,12 +419,12 @@ def internal_shutdown(s, how):
 
 if is_py3():
     class socket(object):
-        
+
         patched = True
         #__slots__ = ["__weakref__", "_io_refs", "_closed", "_sock", "timeout"]
-        
+
         def __init__(self, family=AF_INET, type=SOCK_STREAM, proto=0, fileno=None):
-            
+
             self._sock = _socket.socket(family, type, proto, fileno)
 
             self._io_refs = 0
@@ -607,7 +607,7 @@ else:
     SocketType = socket
 
 if hasattr(_socket, 'socketpair'):
-    
+
     def socketpair(*args):
         one, two = _socket.socketpair(*args)
         return socket(_sock=one), socket(_sock=two)
@@ -618,7 +618,7 @@ if is_py3():
     pass
 else:
     if hasattr(_socket, 'fromfd'):
-        
+
         def fromfd(*args):
             return socket(_sock=_socket.fromfd(*args))
     else:

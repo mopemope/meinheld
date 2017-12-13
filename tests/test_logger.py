@@ -17,7 +17,7 @@ class TestLogger(object):
         assert(exc != None)
         assert(val != None)
         assert(tb != None)
-        
+
 
 class App(BaseApp):
 
