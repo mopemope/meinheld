@@ -1,5 +1,6 @@
 from meinheld import server
 import requests  # requests should not be pached
+import traceback
 from meinheld import patch
 patch.patch_all()
 import time
@@ -58,6 +59,8 @@ class ClientRunner(object):
                 r = self.func()
                 self.receive_data = r
                 self.environ = self.app.environ
+            except:
+                traceback.print_exc()
             finally:
                 if self.shutdown:
                     server.shutdown(1)
