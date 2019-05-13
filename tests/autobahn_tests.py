@@ -184,7 +184,7 @@ def report_case(report_file):
 
 def runtests():
     """Runs the Autobahn Test Suite against Meinheld on both Python 2.7 and
-    Python 3.4. The test suite itself should run on Python 2.7, and should
+    Python 3.7. The test suite itself should run on Python 2.7, and should
     collect results from all servers from a single run (to report correctly).
     This is why both servers are tested from a single environemnt.
     """
@@ -222,4 +222,3 @@ def runtests():
 
 if __name__ == '__main__':
     runtests()
-

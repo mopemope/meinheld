@@ -8,9 +8,10 @@ env*
 dist
 build
 *.egg
+*.eggs
 *.egg-info
 _mailinglist
 TODO
 .tox
 tests/autobahn-report
-
+.ccls-cache
