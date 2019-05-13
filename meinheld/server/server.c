@@ -1021,9 +1021,7 @@ prepare_call_wsgi(client_t *client)
             return -1;
         }
     }
-    if (!PyDict_SetItem((PyObject *)req->environ, wsgi_input_terminated_key, Py_True)) {
-        return -1;
-    }
+    PyDict_SetItem((PyObject *)req->environ, wsgi_input_terminated_key, Py_True);
 
     if (!is_keep_alive) {
         client->keep_alive = 0;
@@ -2608,5 +2606,3 @@ initserver(void)
     return m;
 #endif
 }
-
-
