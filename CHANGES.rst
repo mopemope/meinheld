@@ -1,3 +1,9 @@
+1.0.1
+=======
+(Bug fix release 2019-05-14)
+
+* Fix: broken environment
+
 1.0.0
 =======
 (Bug fix release 2019-05-13)
