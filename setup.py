@@ -87,7 +87,7 @@ library_dirs=[]
 include_dirs=[]
 
 setup(name='meinheld',
-    version="0.6.1",
+    version="1.0.0",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',
@@ -114,7 +114,7 @@ setup(name='meinheld',
         )],
 
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',

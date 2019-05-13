@@ -5,7 +5,7 @@
             "agent": "python2.7",
             "url": "ws://127.0.0.1:8002"
         }, {
-            "agent": "python3.4",
+            "agent": "python3.7",
             "url": "ws://127.0.0.1:8003"
         }
     ],

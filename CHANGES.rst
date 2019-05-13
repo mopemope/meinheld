@@ -1,3 +1,10 @@
+1.0.0
+=======
+(Bug fix release 2019-05-13)
+
+* Fix: support wsgi.input_terminated flag
+* Fix: chunked request fails with 411 length required
+
 0.6.1
 =======
 (Bug fix release 2016-11-02)
