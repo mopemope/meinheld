@@ -92,9 +92,23 @@
 
 //#if (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 2) || PY_MAJOR_VERSION > 3
 #if PY_MAJOR_VERSION >= 3
+static __inline__ char*
+as_str(PyObject* obj)
+{
+    char *c = NULL;
+    PyObject *latin1;
+
+    latin1 = PyUnicode_AsLatin1String(obj);
+    if(latin1 == NULL){
+        return NULL;
+    }
+    c = PyBytes_AsString(latin1);
+    Py_DECREF(latin1);
+    return c;
+}
 # define PY3
 # define NATIVE_GET_STRING_SIZE  PyUnicode_GET_SIZE
-# define NATIVE_ASSTRING PyUnicode_AsUTF8
+# define NATIVE_ASSTRING  as_str
 # define NATIVE_FROMSTRING  PyUnicode_FromString
 # define NATIVE_FROMSTRINGANDSIZE  PyUnicode_FromStringAndSize
 # define NATIVE_FROMFORMAT  PyUnicode_FromFormat

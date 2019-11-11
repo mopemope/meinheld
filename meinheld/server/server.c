@@ -857,7 +857,11 @@ check_http_expect(client_t *client)
         ///TODO CHECK
         c = PyDict_GetItemString(req->environ, "HTTP_EXPECT");
         if (c) {
-            val = NATIVE_ASSTRING(c);
+#ifdef PY3
+            val = PyUnicode_AsUTF8(c);
+#else
+            val = PyBytes_AS_STRING(c);
+#endif
             if (!strncasecmp(val, "100-continue", 12)) {
                 ret = write(client->fd, "HTTP/1.1 100 Continue\r\n\r\n", 25);
                 if (ret < 0) {
