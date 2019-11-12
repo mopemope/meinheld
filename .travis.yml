@@ -6,16 +6,9 @@ python:
     - "2.7"
     - "3.5"
     - "3.6"
+    - "3.7"
+    - "3.8"
     - "nightly"
-
-matrix:
-    include:
-        - python: 3.7
-          dist: xenial
-          sudo: required
-        - python: 3.8
-          dist: xenial
-          sudo: required
 
 before_install:
     - "echo TRAVIS_PYTHON_VERSION= $TRAVIS_PYTHON_VERSION"
