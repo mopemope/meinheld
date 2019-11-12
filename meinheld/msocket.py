@@ -91,6 +91,9 @@ from errno import EALREADY
 from errno import EAGAIN
 from errno import EISCONN
 from os import strerror
+import warnings
+
+warnings.warn("msocket module is deprecated and will be removed in 2.0", DeprecationWarning)
 
 try:
     from errno import EBADF

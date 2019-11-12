@@ -6,8 +6,6 @@ What's this
 
 This is a high performance python wsgi web server.
 
-Thus this is yet an another asynchronous web server like gevent.
-
 And meinheld is a WSGI compliant web server. (PEP333 and PEP3333 supported)
 
 You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
@@ -15,9 +13,9 @@ You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
 Requirements
 ---------------------------------
 
-meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.2** . and **greenlet >= 0.4.5**.
+meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.5** . and **greenlet >= 0.4.5**.
 
-meinheld supports Linux, FreeBSD, Mac OS X.
+meinheld supports Linux, FreeBSD, and macOS.
 
 Installation
 ---------------------------------
@@ -64,6 +62,8 @@ with gunicorn. user worker class "egg:meinheld#gunicorn_worker" or "meinheld.gme
 Continuation
 ---------------------------------
 
+**NOTE: This feature is deprecated and will be removed in 2.0**
+
 meinheld provides a simple continuation API (based on greenlet).
 
 To enable continuations, use ContinuationMiddleware. get Continuation from wsgi environ.
@@ -104,6 +104,8 @@ For more info see http://github.com/mopemope/meinheld/tree/master/example/chat/
 
 Websocket 
 ---------------------------------
+
+**NOTE: This feature is deprecated and will be removed in 2.0**
 
 meinheld support Websockets. use WebSocketMiddleware. 
 
@@ -155,6 +157,8 @@ For example:
 
 Patching 
 ---------------------------------
+
+**NOTE: This feature is deprecated and will be removed in 2.0**
 
 meinheld provides a few monkeypatches.
 
