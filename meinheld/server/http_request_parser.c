@@ -396,7 +396,7 @@ get_http_header_key(const char *s, int len)
 static void
 key_upper(char *s, const char *key, size_t len)
 {
-    int i = 0;
+    size_t i = 0;
     int c;
     for (i = 0; i < len; i++) {
         c = key[i];
@@ -723,6 +723,7 @@ headers_complete_cb(http_parser *p)
         return -1;
     }
 
+    client->current_req->method = p->method;
     switch(p->method){
         case HTTP_DELETE:
             obj = http_method_delete;
