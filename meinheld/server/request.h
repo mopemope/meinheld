@@ -31,16 +31,17 @@ typedef struct {
 
     PyObject *environ;
     void *next;
+
+    int method;
     int body_length;
     int body_readed;
     int bad_request_code;
     void *body;
     request_body_type body_type;
-    
+
     PyObject *field;
     PyObject *value;
     uintptr_t start_msec;
-
 } request;
 
 typedef struct {

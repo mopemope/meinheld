@@ -569,6 +569,19 @@ set_first_body_data(client_t *client, char *data, size_t datalen)
     }
 }
 
+// Check if response body must not be sent.
+// See https://tools.ietf.org/html/rfc7230#section-3.3.1
+static int
+is_no_body(client_t *client)
+{
+    if (client->current_req->method == HTTP_HEAD) {
+        return 1;
+    }
+    return client->status_code < 200   // 1xx
+        || client->status_code == 204  // No content
+        || client->status_code == 304; // Not Modified
+}
+
 static response_status
 write_headers(client_t *client, char *data, size_t datalen, char is_file)
 {
@@ -593,11 +606,13 @@ write_headers(client_t *client, char *data, size_t datalen, char is_file)
     hlen = PySequence_Fast_GET_SIZE(headers);
 
     bucket = new_write_bucket(client->fd, (hlen * 4) + 42 );
-
     if(bucket == NULL){
         goto error;
     }
     templist = PyList_New(hlen * 4);
+    if (templist == NULL) {
+        goto error;
+    }
     bucket->temp1 = templist;
 
     if(add_status_line(bucket, client) == -1){
@@ -608,9 +623,9 @@ write_headers(client_t *client, char *data, size_t datalen, char is_file)
         //Error
         goto error;
     }
-    
+
     // check content_length_set
-    if(data && !client->content_length_set && client->http_parser->http_minor == 1){
+    if (!is_no_body(client) && data && !client->content_length_set && client->http_parser->http_minor == 1) {
         //Transfer-Encoding chunked
         add_header(bucket, "Transfer-Encoding", 17, "chunked", 7);
         client->chunked_response = 1;
