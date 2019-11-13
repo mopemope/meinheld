@@ -43,7 +43,10 @@ class MeinheldWorker(Worker):
         #server.set_watchdog(self.watchdog)
 
         server.set_listen_socket(fds)
-        server.run(self.wsgi)
+        try:
+            server.run(self.wsgi)
+        except KeyboardInterrupt:
+            pass
 
     def handle_quit(self, sig, frame):
         server.stop(int(self.timeout))
