@@ -220,3 +220,25 @@ def test_upgrade():
     assert(res.status_code == 101)
     assert(headers["upgrade"] == "websocket")
     assert(headers["connection"] == "upgrade")
+
+
+def test_no_content():
+
+    class App(BaseApp):
+        def __call__(self, environ, start_response):
+            status = "204 No Content"
+            response_headers = []
+            start_response(status, response_headers)
+            self.environ = environ.copy()
+            return []
+
+    def client():
+        return requests.get("http://localhost:8000")
+
+    env, res = run_client(client, App)
+    headers = res.headers
+    # print(env)
+    # print(res)
+    assert(res.status_code == 204)
+    assert("Content-Length" not in headers)
+    assert("Transfer-Encoding" not in headers)
