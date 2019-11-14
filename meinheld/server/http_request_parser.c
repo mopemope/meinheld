@@ -52,9 +52,10 @@
  *
  */
 
-static int prefix_len;
+const static int prefix_len = 5;  /* "HTTP_" */
 
 static PyObject *empty_string;
+static PyObject *separator_string;
 
 static PyObject *version_key;
 static PyObject *version_val;
@@ -227,7 +228,7 @@ urldecode(char *buf, int len)
 }
 
 static PyObject*
-concat_string(PyObject *o, const char *buf, size_t len)
+concat_bytes(PyObject *o, const char *buf, size_t len)
 {
     PyObject *ret;
     size_t l;
@@ -237,6 +238,7 @@ concat_string(PyObject *o, const char *buf, size_t len)
 
     ret = PyBytes_FromStringAndSize((char*)0, l + len);
     if(ret == NULL){
+        Py_DECREF(o);
         return ret;
     }
     dest = PyBytes_AS_STRING(ret);
@@ -245,6 +247,24 @@ concat_string(PyObject *o, const char *buf, size_t len)
     memcpy(dest + l, buf , len);
     Py_DECREF(o);
     return ret;
+}
+
+static PyObject*
+concat_string(PyObject *o, const char *buf, size_t len)
+{
+#ifdef PY3
+    assert(PyUnicode_CheckExact(o));
+    PyObject *tail = PyUnicode_DecodeLatin1(buf, len, NULL);
+    if (tail == NULL) {
+        return NULL;
+    }
+    PyObject *c = PyUnicode_Concat(o, tail);
+    Py_DECREF(o);
+    Py_DECREF(tail);
+    return c;
+#else
+    return concat_bytes(o, buf, len);
+#endif
 }
 
 static int
@@ -370,8 +390,27 @@ get_http_header_key(const char *s, int len)
     char *dest;
     char c;
 
+#ifdef PY3
+    int ascii = 1;
+    for (int i = 0; i < len; i++) {
+        if (s[i] > 127) {
+            ascii = 0;
+            break;
+        }
+    }
+
+    obj = PyUnicode_New(prefix_len + len, ascii ? 127 : 255);
+    if (obj == NULL) {
+        return NULL;
+    }
+    dest = (char*)PyUnicode_DATA(obj);
+#else
     obj = PyBytes_FromStringAndSize(NULL, len + prefix_len);
+    if (obj == NULL) {
+        return NULL;
+    }
     dest = (char*)PyBytes_AS_STRING(obj);
+#endif
 
     *dest++ = 'H';
     *dest++ = 'T';
@@ -487,39 +526,75 @@ message_begin_cb(http_parser *p)
 
 
 static int
+add_header(request *req)
+{
+    assert(req->field && req->value);
+    PyObject *env = req->environ;
+    int ret = -1;
+
+#ifdef PY3
+    //TODO: error check
+    char *c2 = PyBytes_AS_STRING(req->value);
+    PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
+    if (v == NULL) {
+        goto end;
+    }
+
+    // borrowed reference.
+    PyObject *tmp = PyDict_SetDefault(env, req->field, v);
+    if (tmp == NULL) {
+        Py_DECREF(v);
+        goto end;
+    }
+
+    if (likely(tmp == v)) {
+        Py_DECREF(v);
+        ret = 0;
+    } else {
+        PyObject *u = PyUnicode_Concat(tmp, separator_string);
+        if (u == NULL) {
+            Py_DECREF(v);
+            goto end;
+        }
+        PyObject *w = PyUnicode_Concat(u, v);
+        Py_DECREF(v);
+        if (w == NULL) {
+            Py_DECREF(u);
+            goto end;
+        }
+        ret = PyDict_SetItem(env, req->field, w);
+        Py_DECREF(w);
+    }
+#else
+    // BUG: Doesn't concatenate two fields.
+    // We don't fix it because we will drop Python 2 support soon.
+    ret = PyDict_SetItem(env, req->field, req->value);
+#endif
+
+end:
+    Py_DECREF(req->field);
+    Py_DECREF(req->value);
+    req->field = NULL;
+    req->value = NULL;
+    req->num_headers++;
+    return ret;
+}
+
+static int
 header_field_cb(http_parser *p, const char *buf, size_t len)
 {
     request *req = get_current_request(p);
-    PyObject *env = NULL, *obj = NULL;
-#ifdef PY3
-    char *c1, *c2;
-    PyObject *f, *v;
-#endif
+    PyObject *obj = NULL;
     /* DEBUG("field key:%.*s", (int)len, buf); */
 
     if(req->last_header_element != FIELD){
-        env = req->environ;
         if(LIMIT_REQUEST_FIELDS <= req->num_headers){
             req->bad_request_code = 400;
             return -1;
         }
-#ifdef PY3
-        //TODO CHECK ERROR 
-        c1 = PyBytes_AS_STRING(req->field);
-        f = PyUnicode_DecodeLatin1(c1, strlen(c1), NULL);
-        c2 = PyBytes_AS_STRING(req->value);
-        v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
-        PyDict_SetItem(env, f, v);
-        Py_DECREF(f);
-        Py_DECREF(v);
-#else
-        PyDict_SetItem(env, req->field, req->value);
-#endif
-        Py_DECREF(req->field);
-        Py_DECREF(req->value);
-        req->field = NULL;
-        req->value = NULL;
-        req->num_headers++;
+        if (add_header(req) < 0) {
+            return -1;
+        }
     }
 
     if(likely(req->field == NULL)){
@@ -554,7 +629,7 @@ header_value_cb(http_parser *p, const char *buf, size_t len)
     if(likely(req->value== NULL)){
         obj = PyBytes_FromStringAndSize(buf, len);
     }else{
-        obj = concat_string(req->value, buf, len);
+        obj = concat_bytes(req->value, buf, len);
     }
 
     if(unlikely(obj == NULL)){
@@ -693,27 +768,11 @@ headers_complete_cb(http_parser *p)
 
     //Last header
     if(likely(req->field && req->value)){
-
-#ifdef PY3
-        //TODO CHECK ERROR 
-        char *c1 = PyBytes_AS_STRING(req->field);
-        PyObject *f = PyUnicode_DecodeLatin1(c1, strlen(c1), NULL);
-        char *c2 = PyBytes_AS_STRING(req->value);
-        PyObject *v = PyUnicode_DecodeLatin1(c2, strlen(c2), NULL);
-        PyDict_SetItem(env, f, v);
-        Py_DECREF(f);
-        Py_DECREF(v);
-#else
-        PyDict_SetItem(env, req->field, req->value);
-#endif
-        Py_DECREF(req->field);
-        Py_DECREF(req->value);
-        req->field = NULL;
-        req->value = NULL;
-        if(unlikely(ret == -1)){
+        if (add_header(req) < 0) {
             return -1;
         }
     }
+
     ret = replace_env_key(env, h_content_type_key, content_type_key);
     if(unlikely(ret == -1)){
         return -1;
@@ -873,9 +932,8 @@ parser_finish(client_t *cli)
 void
 setup_static_env(char *name, int port)
 {
-    prefix_len = strlen("HTTP_");
-
     empty_string = NATIVE_FROMSTRING("");
+    separator_string = NATIVE_FROMSTRING(", ");
 
     version_val = Py_BuildValue("(ii)", 1, 0);
     version_key = NATIVE_FROMSTRING("wsgi.version");
