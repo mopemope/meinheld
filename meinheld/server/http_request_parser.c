@@ -576,7 +576,9 @@ end:
     Py_DECREF(req->value);
     req->field = NULL;
     req->value = NULL;
-    req->num_headers++;
+    if (likely(ret == 0)) {
+        req->num_headers++;
+    }
     return ret;
 }
 
