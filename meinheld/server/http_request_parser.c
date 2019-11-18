@@ -391,15 +391,7 @@ get_http_header_key(const char *s, int len)
     char c;
 
 #ifdef PY3
-    int ascii = 1;
-    for (int i = 0; i < len; i++) {
-        if (s[i] > 127) {
-            ascii = 0;
-            break;
-        }
-    }
-
-    obj = PyUnicode_New(prefix_len + len, ascii ? 127 : 255);
+    obj = PyUnicode_New(prefix_len + len, 127);
     if (obj == NULL) {
         return NULL;
     }
@@ -411,6 +403,8 @@ get_http_header_key(const char *s, int len)
     }
     dest = (char*)PyBytes_AS_STRING(obj);
 #endif
+
+    // TODO: Cache common header keys.
 
     *dest++ = 'H';
     *dest++ = 'T';
@@ -582,6 +576,23 @@ end:
     return ret;
 }
 
+/* Check buf is valid field name.
+ * Currently, this checks only s is ASCII string.
+ * Retrun 1 when it is valid, 0 otherwise.
+ */
+static int
+check_field_name(const char *s, size_t len)
+{
+    int ascii = 1;
+    for (int i = 0; i < len; i++) {
+        if (s[i] > 127) {
+            ascii = 0;
+            break;
+        }
+    }
+    return ascii;
+}
+
 static int
 header_field_cb(http_parser *p, const char *buf, size_t len)
 {
@@ -589,7 +600,7 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
     PyObject *obj = NULL;
     /* DEBUG("field key:%.*s", (int)len, buf); */
 
-    if(req->last_header_element != FIELD){
+    if (req->last_header_element != FIELD) {
         if(LIMIT_REQUEST_FIELDS <= req->num_headers){
             req->bad_request_code = 400;
             return -1;
@@ -597,6 +608,10 @@ header_field_cb(http_parser *p, const char *buf, size_t len)
         if (add_header(req) < 0) {
             return -1;
         }
+    }
+    if (!check_field_name(buf, len)) {
+        req->bad_request_code = 400;
+        return -1;
     }
 
     if(likely(req->field == NULL)){
