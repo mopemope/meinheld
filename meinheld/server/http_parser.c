@@ -136,7 +136,7 @@ do {                                                                 \
 #define PROXY_CONNECTION "proxy-connection"
 #define CONNECTION "connection"
 #define CONTENT_LENGTH "content-length"
-#define TRANSFER_ENCODING "transfer-encoding"
+#define TRANSFER_ENCODING "Transfer-Encoding"
 #define UPGRADE "upgrade"
 #define CHUNKED "chunked"
 #define KEEP_ALIVE "keep-alive"
@@ -1311,7 +1311,7 @@ size_t http_parser_execute (http_parser *parser,
             case h_matching_transfer_encoding:
               parser->index++;
               if (parser->index > sizeof(TRANSFER_ENCODING)-1
-                  || c != TRANSFER_ENCODING[parser->index]) {
+                  || ch != TRANSFER_ENCODING[parser->index]) {
                 parser->header_state = h_general;
               } else if (parser->index == sizeof(TRANSFER_ENCODING)-2) {
                 parser->header_state = h_transfer_encoding;
@@ -1493,7 +1493,7 @@ size_t http_parser_execute (http_parser *parser,
           case h_matching_transfer_encoding_chunked:
             parser->index++;
             if (parser->index > sizeof(CHUNKED)-1
-                || c != CHUNKED[parser->index]) {
+                || ch != CHUNKED[parser->index]) {
               parser->header_state = h_general;
             } else if (parser->index == sizeof(CHUNKED)-2) {
               parser->header_state = h_transfer_encoding_chunked;
