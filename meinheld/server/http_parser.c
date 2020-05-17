@@ -115,7 +115,7 @@ do {                                                                 \
     FOR##_mark = NULL;                                               \
   }                                                                  \
 } while (0)
-  
+
 /* Run the data callback FOR and consume the current byte */
 #define CALLBACK_DATA(FOR)                                           \
     CALLBACK_DATA_(FOR, p - FOR##_mark, p - data + 1)
@@ -1389,7 +1389,7 @@ size_t http_parser_execute (http_parser *parser,
         }
 
         c = LOWER(ch);
-        
+
         switch (parser->header_state) {
           case h_upgrade:
             parser->flags |= F_UPGRADE;
@@ -1410,8 +1410,13 @@ size_t http_parser_execute (http_parser *parser,
               SET_ERRNO(HPE_INVALID_CONTENT_LENGTH);
               goto error;
             }
+            if (parser->set_content_length > 0) {
+              SET_ERRNO(HPE_INVALID_CONTENT_LENGTH);
+              goto error;
+            }
 
             parser->content_length = ch - '0';
+            parser->set_content_length = 1;
             break;
 
           case h_connection:
@@ -1449,7 +1454,7 @@ size_t http_parser_execute (http_parser *parser,
         }
 
         c = LOWER(ch);
-        
+
         switch (parser->header_state) {
           case h_general:
             break;

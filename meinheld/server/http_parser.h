@@ -141,7 +141,7 @@ enum flags
 
 
 /* Map for errno-related constants
- * 
+ *
  * The provided argument should be a macro that takes 2 arguments.
  */
 #define HTTP_ERRNO_MAP(XX)                                           \
@@ -214,6 +214,7 @@ struct http_parser {
 
   uint32_t nread;          /* # bytes read in various scenarios */
   uint64_t content_length; /* # bytes in body (0 if no Content-Length header) */
+  unsigned char set_content_length;
 
   /** READ-ONLY **/
   unsigned short http_major;
