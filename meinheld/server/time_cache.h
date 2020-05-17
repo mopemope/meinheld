@@ -4,9 +4,9 @@
 #include "meinheld.h"
 
 typedef struct {
-    time_t sec;
-    uintptr_t msec;
-    int   gmtoff;
+  time_t sec;
+  uintptr_t msec;
+  int gmtoff;
 } cache_time_t;
 
 void cache_time_init(void);

@@ -16,5 +16,4 @@ int set_err_logger(PyObject *obj);
 int call_access_logger(PyObject *environ);
 int call_error_logger(void);
 
-
 #endif
