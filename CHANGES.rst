@@ -1,3 +1,9 @@
+1.0.2
+=======
+(Bug fix release 2020-05-17)
+
+* Fix: HTTP Request Smuggling
+
 1.0.1
 =======
 (Bug fix release 2019-05-14)
