@@ -6,16 +6,16 @@ What's this
 
 This is a high performance python wsgi web server.
 
-And meinheld is a WSGI compliant web server. (PEP333 and PEP3333 supported)
+And Meinheld is a WSGI compliant web server. (PEP333 and PEP3333 supported)
 
-You can also join us in `meinheld mailing list`_ and `#meinheld`_ on freenode_
+You can also join us in `meinheld mailing list`_.
 
 Requirements
 ---------------------------------
 
-meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.5** . and **greenlet >= 0.4.5**.
+Meinheld requires **Python 2.x >= 2.6** or **Python 3.x >= 3.5** . and **greenlet >= 0.4.5**.
 
-meinheld supports Linux, FreeBSD, and macOS.
+Meinheld supports Linux, FreeBSD, and macOS.
 
 Installation
 ---------------------------------
@@ -24,11 +24,11 @@ Install from pypi::
 
   $ pip install -U meinheld
 
-Install from source:: 
+Install from source::
 
   $ python setup.py install
 
-meinheld supports gunicorn.
+Meinheld also supports working as a gunicorn worker.
 
 To install gunicorn::
 
@@ -56,7 +56,7 @@ simple wsgi app:
 
 
 with gunicorn. user worker class "egg:meinheld#gunicorn_worker" or "meinheld.gmeinheld.MeinheldWorker"::
-    
+
     $ gunicorn --workers=2 --worker-class="egg:meinheld#gunicorn_worker" gunicorn_test:app
 
 Continuation
@@ -64,7 +64,7 @@ Continuation
 
 **NOTE: This feature is deprecated and will be removed in 2.0**
 
-meinheld provides a simple continuation API (based on greenlet).
+Meinheld provides a simple continuation API (based on greenlet).
 
 To enable continuations, use ContinuationMiddleware. get Continuation from wsgi environ.
 
@@ -79,15 +79,15 @@ For example:
 
     def app(environ, start_response):
         ...
-        
+
         #get Continuation
         c = environ.get(middleware.CONTINUATION_KEY, None)
-        
+
         ...
 
         if condtion:
             waiters.append(c)
-            #suspend 
+            #suspend
             c.suspend()
         else:
             for c in waiters:
@@ -102,12 +102,12 @@ For example:
 
 For more info see http://github.com/mopemope/meinheld/tree/master/example/chat/
 
-Websocket 
+Websocket
 ---------------------------------
 
 **NOTE: This feature is deprecated and will be removed in 2.0**
 
-meinheld support Websockets. use WebSocketMiddleware. 
+Meinheld support Websockets. use WebSocketMiddleware.
 
 For example:
 
@@ -149,20 +149,20 @@ For example:
             participants.remove(ws)
         return ""
 
-            
+
     if __name__ == "__main__":
         server.listen(("0.0.0.0", 8000))
         server.run(middleware.WebSocketMiddleware(app))
 
 
-Patching 
+Patching
 ---------------------------------
 
 **NOTE: This feature is deprecated and will be removed in 2.0**
 
-meinheld provides a few monkeypatches.
+Meinheld provides a few monkeypatches.
 
-Socket 
+Socket
 ==========================================
 
 This patch replaces the standard socket module.
@@ -180,7 +180,7 @@ For more info see http://github.com/mopemope/meinheld/tree/master/example/patch/
 Performance
 ------------------------------
 
-For parsing HTTP requests, meinheld uses Ryan Dahl's http-parser library.
+For parsing HTTP requests, Meinheld uses Ryan Dahl's http-parser library.
 
 (see https://github.com/joyent/http-parser)
 
@@ -188,12 +188,9 @@ It is built around the high performance event library picoev.
 
 (see http://developer.cybozu.co.jp/kazuho/2009/08/picoev-a-tiny-e.html)
 
-sendfile
+Sendfile
 ===========================
 
-meinheld uses sendfile(2), over wgsi.file_wrapper.
-
+Meinheld uses sendfile(2), over wgsi.file_wrapper.
 
 .. _meinheld mailing list: http://groups.google.com/group/meinheld
-.. _`#meinheld`: http://webchat.freenode.net/?channels=meinheld
-.. _freenode: http://freenode.net
