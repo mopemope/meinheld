@@ -9,13 +9,12 @@ typedef struct {
   PyObject *callback;
   time_t seconds;
   char called;
-  PyObject *greenlet;
 } TimerObject;
 
 extern PyTypeObject TimerObjectType;
 
 TimerObject *TimerObject_new(long seconds, PyObject *callback, PyObject *args,
-                             PyObject *kwargs, PyObject *greenlet);
+                             PyObject *kwargs);
 
 void fire_timer(TimerObject *timer);
 

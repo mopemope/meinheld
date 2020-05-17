@@ -107,7 +107,7 @@ class Logger(object):
                 'p': "<%s>" % os.getpid()
                 }
         # add request headers
-        
+
         for k, v in environ.items():
             if k.startswith('HTTP_'):
                 #header
@@ -122,7 +122,7 @@ class Logger(object):
         # # wrap atoms:
         # # - make sure atoms will be test case insensitively
         # # - if atom doesn't exist replace it by '-'
-        
+
         safe_atoms = SafeAtoms(atoms)
 
         try:
@@ -198,7 +198,7 @@ def _access(self, environ):
             'p': "<%s>" % os.getpid()
             }
     # add request headers
-    
+
     for k, v in environ.items():
         if k.startswith('HTTP_'):
             #header
@@ -213,7 +213,7 @@ def _access(self, environ):
     # # wrap atoms:
     # # - make sure atoms will be test case insensitively
     # # - if atom doesn't exist replace it by '-'
-    
+
     safe_atoms = SafeAtoms(atoms)
 
     try:
@@ -226,4 +226,3 @@ logger = Logger()
 from meinheld import server
 server.set_access_logger(logger)
 server.set_error_logger(logger)
-

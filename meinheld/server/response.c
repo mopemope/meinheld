@@ -1,5 +1,6 @@
 #include "response.h"
 
+#include <sys/uio.h>
 #include "log.h"
 #include "meinheld.h"
 #include "util.h"
@@ -280,7 +281,7 @@ static void writev_log(write_bucket *data) {
 
 static response_status writev_bucket(write_bucket *data) {
   size_t w;
-  int i = 0;
+  uint32_t i = 0;
   Py_BEGIN_ALLOW_THREADS
 #ifdef DEVELOP
       BDEBUG("\nwritev_bucket fd:%d", data->fd);
@@ -290,7 +291,7 @@ static response_status writev_bucket(write_bucket *data) {
 #endif
   w = writev(data->fd, data->iov, data->iov_cnt);
   BDEBUG("writev fd:%d ret:%d total_size:%d", data->fd, (int)w, data->total);
-  Py_END_ALLOW_THREADS if (w == -1) {
+  Py_END_ALLOW_THREADS if (w == (size_t)-1) {
     // error
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       BDEBUG("try again later");

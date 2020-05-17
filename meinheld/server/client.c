@@ -1,9 +1,5 @@
 #include "client.h"
 
-#ifdef WITH_GREENLET
-#include "greensupport.h"
-#endif
-
 #define CLIENT_MAXFREELIST 1024
 
 static ClientObject *client_free_list[CLIENT_MAXFREELIST];
@@ -40,7 +36,6 @@ static ClientObject *alloc_ClientObject(void) {
 }
 
 static void dealloc_ClientObject(ClientObject *client) {
-  Py_CLEAR(client->greenlet);
   if (client_numfree < CLIENT_MAXFREELIST) {
     client_free_list[client_numfree++] = client;
     GDEBUG("back to pool %p", client);
@@ -64,11 +59,6 @@ PyObject *ClientObject_New(client_t *client) {
   }
 
   o->client = client;
-  o->greenlet = NULL;
-  o->args = NULL;
-  o->kwargs = NULL;
-  o->suspended = 0;
-  /* o->resumed = 0; */
 
   GDEBUG("ClientObject_New pyclient:%p client:%p fd:%d", o, o->client,
          o->client->fd);
@@ -79,47 +69,10 @@ static void ClientObject_dealloc(ClientObject *self) {
   GDEBUG("ClientObject_dealloc pyclient:%p client:%p fd:%d", self, self->client,
          self->client->fd);
   // self->client = NULL;
-  DEBUG("XDECREF greenlet:%p", self->greenlet);
   dealloc_ClientObject(self);
-  // Py_XDECREF(self->greenlet);
   // PyObject_DEL(self);
 }
 
-static PyObject *ClientObject_set_greenlet(ClientObject *self, PyObject *args) {
-#ifdef WITH_GREENLET
-  PyObject *temp;
-
-  if (!PyArg_ParseTuple(args, "O:set_greenlet", &temp)) {
-    return NULL;
-  }
-  if (!greenlet_check(temp)) {
-    PyErr_SetString(PyExc_TypeError, "must be greenlet object");
-    return NULL;
-  }
-
-  if (self->greenlet) {
-    // not set
-    Py_RETURN_NONE;
-  }
-
-  Py_INCREF(temp);
-  self->greenlet = temp;
-  Py_RETURN_NONE;
-#else
-  NO_GREENLET_ERROR;
-#endif
-}
-
-static PyObject *ClientObject_get_greenlet(ClientObject *self, PyObject *args) {
-#ifdef WITH_GREENLET
-  if (self->greenlet) {
-    return (PyObject *)self->greenlet;
-  }
-  Py_RETURN_NONE;
-#else
-  NO_GREENLET_ERROR;
-#endif
-}
 
 static PyObject *ClientObject_get_fd(ClientObject *self, PyObject *args) {
   return Py_BuildValue("i", self->client->fd);
@@ -136,18 +89,11 @@ static PyObject *ClientObject_set_closed(ClientObject *self, PyObject *args) {
 }
 
 static PyMethodDef ClientObject_method[] = {
-    {"set_greenlet", (PyCFunction)ClientObject_set_greenlet, METH_VARARGS, 0},
-    {"get_greenlet", (PyCFunction)ClientObject_get_greenlet, METH_NOARGS, 0},
     {"get_fd", (PyCFunction)ClientObject_get_fd, METH_VARARGS, "get fd"},
     {"set_closed", (PyCFunction)ClientObject_set_closed, METH_VARARGS,
      "set response closed"},
     {NULL, NULL}};
 
-/*
-static PyMemberDef ClientObject_members[] = {
-    {"_greenlet", T_OBJECT_EX, offsetof(ClientObject, greenlet), 0, "greenlet"},
-    {NULL}
-};*/
 
 PyTypeObject ClientObjectType = {
 #ifdef PY3

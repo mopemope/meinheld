@@ -15,10 +15,6 @@ if os.environ.get("MEINHELD_DEVELOP") == "1":
     develop = True
 # develop = True
 
-nogreen = False
-if os.environ.get("MEINHELD_NOGREEN") == "1":
-    nogreen = True
-
 
 def read(name):
     return open(os.path.join(os.path.dirname(__file__), name)).read()
@@ -63,18 +59,8 @@ def get_sources(path, ignore_files):
 
 check_platform()
 pypy = check_pypy()
-if pypy:
-    nogreen = True
-
-if nogreen:
-    define_macros=[
-            ("HTTP_PARSER_DEBUG", "0") ]
-    install_requires=[]
-else:
-    define_macros=[
-            ("WITH_GREENLET",None),
-            ("HTTP_PARSER_DEBUG", "0") ]
-    install_requires=['greenlet>=0.4.5,<0.5']
+define_macros=[("HTTP_PARSER_DEBUG", "0") ]
+install_requires=[]
 
 if develop:
     define_macros.append(("DEVELOP",None))
@@ -87,7 +73,7 @@ library_dirs=[]
 include_dirs=[]
 
 setup(name='meinheld',
-    version="1.0.2",
+    version="2.0.0",
     description="High performance asynchronous Python WSGI Web Server",
     long_description=read('README.rst'),
     author='yutaka matsubara',

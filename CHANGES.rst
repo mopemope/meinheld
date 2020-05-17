@@ -1,3 +1,10 @@
+2.0.0
+=======
+(Next Release)
+
+This version is not backwards compatible.
+* Breaking change: Removed greenlet support.
+
 1.0.2
 =======
 (Bug fix release 2020-05-17)
