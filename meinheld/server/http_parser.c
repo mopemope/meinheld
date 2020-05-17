@@ -1597,6 +1597,10 @@ size_t http_parser_execute (http_parser *parser,
          * we have to simulate it by handling a change in errno below.
          */
         if (settings->on_headers_complete) {
+          if(parser->set_content_length == 1 && parser->flags & F_CHUNKED){
+            return -1;
+          }
+
           switch (settings->on_headers_complete(parser)) {
             case 0:
               break;
