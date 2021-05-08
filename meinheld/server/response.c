@@ -454,12 +454,18 @@ static int add_all_headers(write_bucket *bucket, PyObject *fast_headers,
         goto error;
       }
       bytes1 = wsgi_to_bytes(obj1);
+      if (bytes1 == NULL) {
+        goto error;
+      }
       if (unlikely(PyBytes_AsStringAndSize(bytes1, &name, &namelen) == -1)) {
         goto error;
       }
 
       // value
       bytes2 = wsgi_to_bytes(obj2);
+      if (bytes2 == NULL) {
+        goto error;
+      }
       if (unlikely(PyBytes_AsStringAndSize(bytes2, &value, &valuelen) == -1)) {
         goto error;
       }
@@ -1125,6 +1131,9 @@ static PyObject *ResponseObject_call(PyObject *obj, PyObject *args,
   }
 
   bytes = wsgi_to_bytes(status);
+  if (bytes == NULL) {
+      return NULL;
+  }
   bytelen = PyBytes_GET_SIZE(bytes);
   buf = PyMem_Malloc(sizeof(char *) * bytelen);
   if (!buf) {
